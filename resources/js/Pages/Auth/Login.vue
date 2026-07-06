@@ -48,7 +48,7 @@
                         <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-900/30 ring-1 ring-white/10">
                             <span class="font-bold text-xl">D</span>
                         </div>
-                        <span class="text-white font-bold text-xl tracking-wide">Dayang Offshore</span>
+                        <span class="text-white font-bold text-xl tracking-wide">Dayang Inventory Management System</span>
                     </div>
     
                     <div>
@@ -57,12 +57,12 @@
                             <span class="text-orange-500">Inventory</span> Control.
                         </h1>
                         <p class="text-lg text-slate-400 max-w-md">
-                            Securely manage assets, track yard movements, and monitor compliance in real-time.
+                            Securely manage stock items, track inventory movements, and monitor compliance in real-time.
                         </p>
                     </div>
     
                     <div class="text-sm text-slate-500">
-                        &copy; 2025 Dayang Offshore. All rights reserved.
+                        &copy; 2025 Dayang Inventory Management System. All rights reserved.
                     </div>
                 </div>
             </div>

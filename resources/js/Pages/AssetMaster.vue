@@ -108,16 +108,16 @@
     </script>
     
     <template>
-        <Head title="Asset Master" />
+        <Head title="Stock Item Master" />
     
         <AuthenticatedLayout>
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
-                    <h2 class="text-2xl font-bold text-white">Asset <span class="text-orange-500">Explorer</span></h2>
+                    <h2 class="text-2xl font-bold text-white">Stock Item <span class="text-orange-500">Explorer</span></h2>
                     <p class="text-slate-400 text-sm">Manage inventory, certificates, and specifications.</p>
                 </div>
                 <button class="btn bg-orange-600 hover:bg-orange-700 text-white border-none gap-2 px-6 normal-case font-bold rounded-lg shadow-lg shadow-orange-900/20">
-                    <CubeIcon class="w-5 h-5" /> New Asset
+                    <CubeIcon class="w-5 h-5" /> New Stock Item
                 </button>
             </div>
     

@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html {
+        font-size: 15px;
+    }
+
+    :root {
+        --grass-50: #f7fcf5;
+        --grass-100: #eef9e9;
+        --grass-200: #d8f0d0;
+        --grass-300: #b8e0ae;
+        --grass-400: #86c87b;
+        --grass-500: #4f9f4a;
+        --grass-600: #3c8a39;
+        --grass-700: #2f6f2d;
+        --grass-800: #265826;
+        --grass-900: #1e451f;
+        --grass-text: #234222;
+        --grass-muted: #5f7b5e;
+        --grass-border: #cfe6ca;
+    }
+
+    body {
+        background: linear-gradient(180deg, #ffffff 0%, var(--grass-50) 100%);
+        color: var(--grass-text);
+    }
+    input,
+    select,
+    textarea {
+        color: var(--grass-text);
+    }
+
+    ::placeholder {
+        color: #7f9a7a;
+    }
+}

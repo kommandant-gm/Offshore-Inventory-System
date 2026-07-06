@@ -182,7 +182,7 @@
         <AuthenticatedLayout>
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <p class="text-slate-400 text-sm font-medium mb-1">Asset Master</p>
+                    <p class="text-slate-400 text-sm font-medium mb-1">Stock Item Master</p>
                     <h2 class="text-3xl font-bold text-white">Yard Locations & <span class="text-orange-500">Mapping</span></h2>
                 </div>
                 

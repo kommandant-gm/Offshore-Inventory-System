@@ -1,296 +1,704 @@
 <script setup>
-    import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-    import { Head } from '@inertiajs/vue3';
-    import { 
-        PlusIcon, ArrowDownTrayIcon, EllipsisHorizontalIcon,
-        PlayIcon, TruckIcon, QrCodeIcon, DocumentTextIcon, WrenchScrewdriverIcon,
-        ArchiveBoxIcon // Added for Racks
-    } from '@heroicons/vue/24/outline';
-    import { ExclamationTriangleIcon, CheckBadgeIcon } from '@heroicons/vue/24/solid';
-    
-    // Mock Data with REAL EXCEL CONTEXT
-    const recentMovements = [
-        { 
-            time: '10:45 AM', 
-            title: 'DESB-K-CR-1129 Moved to Offshore', 
-            operator: 'Operator: Ahmad Z.', 
-            badge: 'Deployed', 
-            color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
-        },
-        { 
-            time: '09:30 AM', 
-            title: 'DESB-HPU-005 Check-Out', 
-            operator: 'Crew: Logistics Team', 
-            badge: 'Out', 
-            color: 'bg-orange-500/10 text-orange-400 border-orange-500/20' 
-        },
-        { 
-            time: '08:15 AM', 
-            title: 'DESB-K-CR-1130 Marked Damaged', 
-            operator: 'Inspector: Mike R.', 
-            badge: 'Critical', 
-            color: 'bg-red-500/10 text-red-400 border-red-500/20' 
-        },
-        { 
-            time: '07:50 AM', 
-            title: 'Morning Gate Log', 
-            operator: 'System Log', 
-            badge: 'System', 
-            color: 'bg-slate-700 text-slate-300 border-slate-600' 
-        },
-    ];
-    
-    const incomingTools = [
-        { 
-            name: 'Cylinder Rack 4x4x5', 
-            id: 'DESB-K-CR-1336', 
-            source: 'Supplier HQ', 
-            status: 'In Transit', 
-            statusColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20', 
-            eta: '14:00 Today' 
-        },
-        { 
-            name: 'Offshore Container 10ft', 
-            id: 'CNT-10-992', 
-            source: 'Rig Platform A', 
-            status: 'Arrived', 
-            statusColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', 
-            eta: '09:00 Today' 
-        },
-        { 
-            name: 'Hydraulic Power Unit', 
-            id: 'DESB-HPU-002', 
-            source: 'Maintenance', 
-            status: 'Delayed', 
-            statusColor: 'text-red-400 bg-red-500/10 border-red-500/20', 
-            eta: 'Pending' 
-        },
-    ];
-    </script>
-    
-    <template>
-        <Head title="Dashboard" />
-    
-        <AuthenticatedLayout>
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <p class="text-slate-400 text-sm font-medium mb-1">Overview</p>
-                    <h2 class="text-3xl font-bold text-white">Welcome back, <span class="text-orange-500">Aniq Aiman</span></h2>
-                </div>
-                <div class="flex items-center gap-3">
-                    <button class="btn bg-orange-600 hover:bg-orange-700 text-white border-none gap-2 px-6 normal-case font-bold rounded-lg shadow-lg shadow-orange-900/20 transition-all hover:scale-105">
-                        <PlusIcon class="w-5 h-5" /> New Transaction
-                    </button>
-                    <button class="btn bg-[#1e293b] border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white gap-2 px-6 normal-case font-medium rounded-lg">
-                        <ArrowDownTrayIcon class="w-5 h-5" /> Export Report
-                    </button>
-                </div>
-            </div>
-    
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-                <div class="bg-[#1e293b] p-6 rounded-2xl border border-slate-700/50 relative overflow-hidden group hover:border-red-500/30 transition-all shadow-lg">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h4 class="text-slate-400 text-sm font-medium">Damaged / Critical</h4>
-                            <div class="flex items-baseline gap-2 mt-2">
-                                <span class="text-4xl font-bold text-white">12</span>
-                                <span class="bg-red-500/10 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/20">Action Req</span>
-                            </div>
-                        </div>
-                        <ExclamationTriangleIcon class="w-14 h-14 text-red-500/10 absolute -right-2 -top-2" />
-                    </div>
-                    <div class="w-full bg-slate-700 h-1.5 rounded-full mt-4 mb-2 overflow-hidden">
-                        <div class="bg-red-500 h-1.5 rounded-full" style="width: 35%"></div>
-                    </div>
-                    <p class="text-[11px] text-slate-400">3 items marked "Damaged" today</p>
-                </div>
-    
-                <div class="bg-[#1e293b] p-6 rounded-2xl border border-slate-700/50 hover:border-orange-500/30 transition-all shadow-lg">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h4 class="text-slate-400 text-sm font-medium">Total Asset Value</h4>
-                            <div class="flex items-center gap-3 mt-2">
-                                <span class="text-4xl font-bold text-white">RM 4.2M</span>
-                                <span class="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/20 leading-tight">+5%</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="w-full bg-slate-700 h-1.5 rounded-full mt-4 mb-2 overflow-hidden">
-                        <div class="bg-gradient-to-r from-orange-600 to-orange-400 h-1.5 rounded-full" style="width: 70%"></div>
-                    </div>
-                    <p class="text-[11px] text-slate-400">1,240 Total Assets Tracked</p>
-                </div>
-    
-                <div class="bg-[#1e293b] p-6 rounded-2xl border border-slate-700/50 relative overflow-hidden hover:border-amber-500/30 transition-all shadow-lg">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h4 class="text-slate-400 text-sm font-medium">Pending Certificates</h4>
-                            <div class="flex items-baseline gap-2 mt-2">
-                                <span class="text-4xl font-bold text-white">5</span>
-                                <span class="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/20">Renew</span>
-                            </div>
-                        </div>
-                        <CheckBadgeIcon class="w-14 h-14 text-amber-500/10 absolute -right-2 -top-2" />
-                    </div>
-                    <div class="w-full bg-slate-700 h-1.5 rounded-full mt-4 mb-2 overflow-hidden">
-                        <div class="bg-amber-500 h-1.5 rounded-full" style="width: 45%"></div>
-                    </div>
-                    <p class="text-[11px] text-slate-400">2 Expiring in &lt; 7 days</p>
-                </div>
-    
-                <div class="bg-[#1e293b] p-6 rounded-2xl border border-slate-700/50 relative overflow-hidden hover:border-orange-500/30 transition-all shadow-lg">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h4 class="text-slate-400 text-sm font-medium">Incoming Shipment</h4>
-                            <div class="flex items-baseline gap-2 mt-2">
-                                <span class="text-4xl font-bold text-white">28</span>
-                                <span class="bg-orange-500/10 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded border border-orange-500/20">Items</span>
-                            </div>
-                        </div>
-                        <TruckIcon class="w-14 h-14 text-orange-500/10 absolute -right-2 -top-2" />
-                    </div>
-                    <div class="w-full bg-slate-700 h-1.5 rounded-full mt-4 mb-2 overflow-hidden">
-                        <div class="bg-white h-1.5 rounded-full" style="width: 60%"></div>
-                    </div>
-                    <p class="text-[11px] text-slate-400">Next arrival: 14:00 PM</p>
-                </div>
-            </div>
-    
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
-                
-                <div class="xl:col-span-2 bg-[#1e293b] border border-slate-700/50 rounded-2xl p-6 shadow-xl">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="flex items-center gap-3">
-                            <span class="relative flex h-3 w-3">
-                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                              <span class="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
-                            </span>
-                            <h3 class="font-bold text-white">CCTV Live Feed - TKY Yard</h3>
-                        </div>
-                        <div class="join bg-[#0f172a] border border-slate-700/50 rounded-lg p-1">
-                            <button class="join-item btn btn-xs bg-orange-600 text-white border-none hover:bg-orange-700">Cam 1</button>
-                            <button class="join-item btn btn-xs btn-ghost text-slate-400 hover:text-white">Cam 2</button>
-                            <button class="join-item btn btn-xs btn-ghost text-slate-400 hover:text-white">Cam 3</button>
-                        </div>
-                    </div>
-    
-                    <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden group border border-slate-700/50 shadow-2xl">
-                        <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=2670&auto=format&fit=crop" class="w-full h-full object-cover opacity-60" alt="Warehouse">
-                        
-                        <div class="absolute top-4 left-4 bg-black/60 border border-white/10 px-3 py-1 rounded text-xs font-mono text-white flex items-center gap-2 backdrop-blur-sm">
-                            <span class="text-orange-500 font-bold">REC</span> 
-                            <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> 
-                            <span>10:42:15 AM</span>
-                        </div>
-    
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <button class="w-16 h-16 rounded-full bg-orange-500/20 backdrop-blur-sm flex items-center justify-center border border-orange-500/50 hover:scale-110 hover:bg-orange-500 hover:border-orange-500 transition-all duration-300 group/play">
-                                <PlayIcon class="w-8 h-8 text-white ml-1 group-hover/play:text-black" />
-                            </button>
-                        </div>
-    
-                        <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
-                            <div class="h-full bg-orange-500 w-2/3 shadow-[0_0_10px_rgba(249,115,22,0.5)]"></div>
-                        </div>
-                    </div>
-                </div>
-    
-                <div class="xl:col-span-1 bg-[#1e293b] border border-slate-700/50 rounded-2xl p-6 flex flex-col shadow-xl">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-white">Recent Movements</h3>
-                        <button class="text-slate-500 hover:text-white"><EllipsisHorizontalIcon class="w-6 h-6"/></button>
-                    </div>
-    
-                    <div class="relative pl-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                        <div class="absolute left-2 top-2 bottom-0 w-px bg-slate-700"></div>
-    
-                        <div v-for="(item, index) in recentMovements" :key="index" class="relative pl-8 mb-8 last:mb-0 group">
-                            <div class="absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-[#1e293b] z-10" :class="index === 0 ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]' : 'bg-slate-600'"></div>
-                            
-                            <span class="text-xs font-mono text-slate-500 mb-1 block">{{ item.time }}</span>
-                            <h4 class="text-sm font-semibold text-white group-hover:text-orange-400 transition-colors">{{ item.title }}</h4>
-                            <p class="text-xs text-slate-400 mt-1">{{ item.operator }}</p>
-                            <span :class="`inline-block mt-2 text-[10px] px-2 py-0.5 rounded border ${item.color}`">
-                                {{ item.badge }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-    
-            <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                
-                <div class="xl:col-span-3 bg-[#1e293b] border border-slate-700/50 rounded-2xl p-6 shadow-xl">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-white">Incoming Assets</h3>
-                        <button class="text-sm text-orange-500 hover:text-orange-400 font-medium">View All</button>
-                    </div>
-    
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead>
-                                <tr class="text-slate-500 border-b border-slate-700/50 text-xs uppercase tracking-wider">
-                                    <th class="pb-3 font-medium pl-2">Asset Name</th>
-                                    <th class="pb-3 font-medium">Tag No</th>
-                                    <th class="pb-3 font-medium">Source</th>
-                                    <th class="pb-3 font-medium">Status</th>
-                                    <th class="pb-3 font-medium text-right pr-2">ETA</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-700/30">
-                                <tr v-for="tool in incomingTools" :key="tool.id" class="group hover:bg-slate-800 transition-colors">
-                                    <td class="py-4 pl-2">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center group-hover:bg-orange-500/20 group-hover:text-orange-500 transition-colors">
-                                                <ArchiveBoxIcon class="w-4 h-4 text-slate-400 group-hover:text-orange-500" />
-                                            </div>
-                                            <span class="font-medium text-white">{{ tool.name }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="py-4 text-slate-400 font-mono text-xs">{{ tool.id }}</td>
-                                    <td class="py-4 text-slate-300">{{ tool.source }}</td>
-                                    <td class="py-4">
-                                        <span :class="`px-2.5 py-1 rounded-full text-xs font-bold border ${tool.statusColor}`">
-                                            {{ tool.status }}
-                                        </span>
-                                    </td>
-                                    <td class="py-4 text-right text-white font-medium pr-2">{{ tool.eta }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-    
-                <div class="xl:col-span-1 grid grid-cols-2 gap-4 h-fit">
-                    <button class="bg-[#1e293b] hover:bg-[#253045] border border-slate-700/50 aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 group transition-all hover:border-orange-500/30 shadow-lg">
-                        <div class="w-12 h-12 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-all shadow-lg shadow-orange-900/10">
-                            <QrCodeIcon class="w-6 h-6" />
-                        </div>
-                        <span class="text-sm font-medium text-slate-300 group-hover:text-white">Scan Asset</span>
-                    </button>
-    
-                    <button class="bg-[#1e293b] hover:bg-[#253045] border border-slate-700/50 aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 group transition-all hover:border-blue-500/30 shadow-lg">
-                        <div class="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all">
-                            <DocumentTextIcon class="w-6 h-6" />
-                        </div>
-                        <span class="text-sm font-medium text-slate-300 group-hover:text-white">Permit Log</span>
-                    </button>
-                </div>
-    
-            </div>
-        </AuthenticatedLayout>
-    </template>
-    
-    <style scoped>
-    /* Stealth Scrollbar for the timeline */
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 4px;
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import PageHeader from '@/Components/PageHeader.vue';
+import { Head, Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const props = defineProps({
+    stats: {
+        type: Object,
+        required: true,
+    },
+    featuredMovement: {
+        type: Object,
+        default: null,
+    },
+    recentMovements: {
+        type: Array,
+        default: () => [],
+    },
+    movementMix: {
+        type: Array,
+        default: () => [],
+    },
+    weeklyActivity: {
+        type: Array,
+        default: () => [],
+    },
+    attentionItems: {
+        type: Array,
+        default: () => [],
+    },
+    cogSummary: {
+        type: Object,
+        default: () => ({ issuedCount: 0, receivedCount: 0 }),
+    },
+    cogEntries: {
+        type: Array,
+        default: () => [],
+    },
+    systemHealth: {
+        type: Object,
+        required: true,
+    },
+});
+
+const previewFeaturedMovement = {
+    item_code: 'CAT-RACK-012',
+    description: 'Cylinder Rack 4x4x5',
+    transaction_type: 'interloc_transfer',
+    transaction_date: '2026-06-04',
+    quantity: 4,
+    total_value: 3200,
+    source_location: 'Yard Zone A',
+    destination_location: 'Project DESB',
+    created_by: 'Ops Control',
+};
+
+const previewRecentMovements = [
+    previewFeaturedMovement,
+    {
+        id: 'preview-2',
+        item_code: 'CAT-ROPE-001',
+        description: 'Polyamide Rope 1/2" x 200 MTR',
+        transaction_type: 'issue',
+        transaction_date: '2026-06-03',
+        quantity: 20,
+        total_value: 2800,
+        source_location: 'Main Store',
+        destination_location: 'Offshore Base',
+        created_by: 'Inventory Team',
+    },
+    {
+        id: 'preview-3',
+        item_code: 'CAT-HOSE-009',
+        description: 'Air Hose 2"',
+        transaction_type: 'receive',
+        transaction_date: '2026-06-02',
+        quantity: 12,
+        total_value: 1440,
+        source_location: 'Vendor',
+        destination_location: 'Receiving Bay',
+        created_by: 'Store Clerk',
+    },
+    {
+        id: 'preview-4',
+        item_code: 'CAT-PAINT-005',
+        description: 'Dog Leg Paint Brush 2"',
+        transaction_type: 'material_return',
+        transaction_date: '2026-06-01',
+        quantity: 6,
+        total_value: 63,
+        source_location: 'Maintenance Team',
+        destination_location: 'General Store',
+        created_by: 'Maintenance Lead',
+    },
+];
+
+const previewMovementMix = [
+    { type: 'interloc_transfer', label: 'Interloc Transfer', total: 14 },
+    { type: 'issue', label: 'Issue', total: 11 },
+    { type: 'receive', label: 'Receive', total: 8 },
+    { type: 'material_return', label: 'Material Return', total: 5 },
+    { type: 'physical_adjustment', label: 'Physical Adjustment', total: 3 },
+];
+
+const previewWeeklyActivity = [
+    { label: 'Mon', count: 3 },
+    { label: 'Tue', count: 6 },
+    { label: 'Wed', count: 4 },
+    { label: 'Thu', count: 8 },
+    { label: 'Fri', count: 5 },
+    { label: 'Sat', count: 7 },
+    { label: 'Sun', count: 4 },
+];
+
+const previewAttentionItems = [
+    {
+        id: 'preview-item-1',
+        item_code: 'CAT-ROPE-001',
+        description: 'Polyamide Rope 1/2" x 200 MTR',
+        category: 'General Store',
+        location: 'Main Store',
+        opening_stock: 24,
+        current_stock: 20,
+        minimum_stock: 10,
+    },
+    {
+        id: 'preview-item-2',
+        item_code: 'CAT-RACK-012',
+        description: 'Cylinder Rack 4x4x5',
+        category: 'Equipment',
+        location: 'Yard Zone A',
+        opening_stock: 12,
+        current_stock: 8,
+        minimum_stock: 4,
+    },
+    {
+        id: 'preview-item-3',
+        item_code: 'CAT-HOSE-009',
+        description: 'Air Hose 2"',
+        category: 'General Store',
+        location: 'Receiving Bay',
+        opening_stock: 18,
+        current_stock: 12,
+        minimum_stock: 6,
+    },
+];
+
+const previewCogEntries = [
+    {
+        id: 'preview-cog-1',
+        item_code: 'CAT-RACK-012',
+        description: 'Cylinder Rack 4x4x5',
+        transaction_date: '2026-06-04',
+        transaction_type: 'interloc_transfer',
+        cog_issued_out: 'COG-OPS-1042',
+        cog_received: '',
+        total_value: 3200,
+    },
+    {
+        id: 'preview-cog-2',
+        item_code: 'CAT-ROPE-001',
+        description: 'Polyamide Rope 1/2" x 200 MTR',
+        transaction_date: '2026-06-03',
+        transaction_type: 'issue',
+        cog_issued_out: 'COG-MAR-881',
+        cog_received: '',
+        total_value: 2800,
+    },
+    {
+        id: 'preview-cog-3',
+        item_code: 'CAT-HOSE-009',
+        description: 'Air Hose 2"',
+        transaction_date: '2026-06-02',
+        transaction_type: 'material_return',
+        cog_issued_out: '',
+        cog_received: 'COG-RET-223',
+        total_value: 1440,
+    },
+];
+
+const overviewCards = computed(() => [
+    { label: 'Stock Items', value: props.stats.assetItems, tone: 'text-[#2f6f2d]', href: route('assets.index') },
+    { label: 'Movements Logged', value: props.stats.assetTransactions, tone: 'text-[#4f9f4a]', href: route('asset-movements.index') },
+    { label: 'Categories', value: props.stats.categories, tone: 'text-[#5b9c56]', href: route('categories.index') },
+    { label: 'Locations', value: props.stats.locations, tone: 'text-[#3c8a39]', href: route('locations.index') },
+]);
+
+const hasLiveMovements = computed(() => props.recentMovements.length > 0);
+const hasLiveCharts = computed(() => props.weeklyActivity.some((entry) => Number(entry.count ?? 0) > 0));
+const hasLiveAttention = computed(() => props.attentionItems.length > 0);
+const hasLiveCog = computed(() => props.cogEntries.length > 0);
+
+const dashboardFeaturedMovement = computed(() => props.featuredMovement ?? previewFeaturedMovement);
+const dashboardRecentMovements = computed(() => hasLiveMovements.value ? props.recentMovements : previewRecentMovements);
+const dashboardMovementMix = computed(() => props.movementMix.length > 0 ? props.movementMix : previewMovementMix);
+const dashboardWeeklyActivity = computed(() => hasLiveCharts.value ? props.weeklyActivity : previewWeeklyActivity);
+const dashboardAttentionItems = computed(() => hasLiveAttention.value ? props.attentionItems : previewAttentionItems);
+const dashboardCogEntries = computed(() => hasLiveCog.value ? props.cogEntries : previewCogEntries);
+const dashboardCogSummary = computed(() => hasLiveCog.value ? props.cogSummary : { issuedCount: 2, receivedCount: 1 });
+const showPreviewBanner = computed(() => !hasLiveMovements.value || !hasLiveCharts.value || !hasLiveAttention.value || !hasLiveCog.value);
+
+const weeklyPeak = computed(() => Math.max(...dashboardWeeklyActivity.value.map((entry) => Number(entry.count ?? 0)), 1));
+const chartPalette = ['#4f9f4a', '#6fbb68', '#86c87b', '#b8e0ae', '#d8e7d4'];
+const donutCircumference = 2 * Math.PI * 54;
+
+const inventoryDistribution = computed(() => {
+    const segments = [
+        { label: 'Stock Items', value: Number(props.stats.assetItems ?? 0), color: '#4f9f4a' },
+        { label: 'Movements', value: Number(props.stats.assetTransactions ?? 0), color: '#6fbb68' },
+        { label: 'Categories', value: Number(props.stats.categories ?? 0), color: '#86c87b' },
+        { label: 'Locations', value: Number(props.stats.locations ?? 0), color: '#b8e0ae' },
+    ].filter((segment) => segment.value > 0);
+
+    const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+
+    if (!total) {
+        return {
+            total: 0,
+            background: 'conic-gradient(#d8e7d4 0deg 360deg)',
+            segments: [],
+        };
     }
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
+
+    let angle = 0;
+
+    return {
+        total,
+        background: `conic-gradient(${segments.map((segment) => {
+            const start = angle;
+            angle += (segment.value / total) * 360;
+            return `${segment.color} ${start}deg ${angle}deg`;
+        }).join(', ')})`,
+        segments: segments.map((segment) => ({
+            ...segment,
+            share: Math.round((segment.value / total) * 100),
+        })),
+    };
+});
+
+const movementDonutSegments = computed(() => {
+    const entries = dashboardMovementMix.value
+        .map((entry, index) => ({
+            label: entry.label,
+            value: Number(entry.total ?? 0),
+            color: chartPalette[index % chartPalette.length],
+        }))
+        .filter((entry) => entry.value > 0);
+
+    const total = entries.reduce((sum, entry) => sum + entry.value, 0);
+    let offset = 0;
+
+    return {
+        total,
+        segments: entries.map((entry) => {
+            const length = total ? (entry.value / total) * donutCircumference : 0;
+            const segment = {
+                ...entry,
+                share: total ? Math.round((entry.value / total) * 100) : 0,
+                dasharray: `${length} ${Math.max(donutCircumference - length, 0)}`,
+                dashoffset: -offset,
+            };
+            offset += length;
+            return segment;
+        }),
+    };
+});
+
+const movementState = (type) => {
+    switch (type) {
+        case 'receive':
+            return { label: 'Received', tone: 'text-[#3c8a39]', bg: 'bg-[#6fbb68]', progress: 100 };
+        case 'issue':
+            return { label: 'Issued Out', tone: 'text-[#2f6f2d]', bg: 'bg-[#4f9f4a]', progress: 76 };
+        case 'interloc_transfer':
+            return { label: 'In Transfer', tone: 'text-[#4f9f4a]', bg: 'bg-[#86c87b]', progress: 58 };
+        case 'material_return':
+            return { label: 'Returned', tone: 'text-[#3c8a39]', bg: 'bg-[#6fbb68]', progress: 88 };
+        case 'physical_adjustment':
+            return { label: 'Adjusted', tone: 'text-[#5b9c56]', bg: 'bg-[#b8e0ae]', progress: 68 };
+        case 'price_adjustment':
+            return { label: 'Repriced', tone: 'text-[#4f9f4a]', bg: 'bg-[#86c87b]', progress: 64 };
+        default:
+            return { label: String(type ?? 'Movement').replaceAll('_', ' '), tone: 'text-[#5f7b5e]', bg: 'bg-[#d8e7d4]', progress: 44 };
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: #334155;
-        border-radius: 20px;
-    }
-    </style>
+};
+
+const formatNumber = (value) => Number(value ?? 0).toFixed(2).replace('.00', '');
+const formatMoney = (value) => Number(value ?? 0).toFixed(2);
+</script>
+
+<template>
+    <Head title="Dashboard" />
+
+    <AuthenticatedLayout>
+        <PageHeader
+            title="Operations Dashboard"
+            description="High-level stock item control with movement tracking, activity charts, and inventory attention points."
+        >
+            <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                <Link class="btn w-full border border-[#d8e7d4] bg-white text-[#234222] shadow-sm hover:bg-[#eef8ea] sm:w-auto" :href="route('asset-movements.index')">Open Tracking</Link>
+                <Link class="btn w-full border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95 sm:w-auto" :href="route('asset-movements.create')">New Movement</Link>
+            </div>
+        </PageHeader>
+
+        <div v-if="showPreviewBanner" class="rounded-[1.5rem] border border-[#cfe6ca] bg-[linear-gradient(180deg,#ffffff_0%,#eef8ea_100%)] px-5 py-4 text-sm text-[#355733] shadow-[0_18px_40px_rgba(79,159,74,0.10)]">
+            Showing dashboard preview data for sections that do not have enough live records yet. Real movements and stock activity will replace these previews automatically.
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Link
+                v-for="card in overviewCards"
+                :key="card.label"
+                :href="card.href"
+                class="rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f3fbef_100%)] p-5 shadow-[0_18px_38px_rgba(79,159,74,0.10)] transition hover:border-[#b8e0ae]"
+            >
+                <p class="text-xs uppercase tracking-[0.24em] text-[#7f9a7a]">{{ card.label }}</p>
+                <div class="mt-3 flex items-end justify-between">
+                    <p class="text-3xl font-semibold" :class="card.tone">{{ card.value }}</p>
+                    <div class="flex gap-1.5">
+                        <span
+                            v-for="bar in 5"
+                            :key="bar"
+                            class="w-2 rounded-full bg-[#6fbb68]"
+                            :style="{ height: `${18 + (bar * 5)}px` }"
+                        />
+                    </div>
+                </div>
+            </Link>
+        </div>
+
+        <div class="grid gap-6 2xl:grid-cols-[1.12fr,0.88fr]">
+            <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_40px_rgba(79,159,74,0.10)]">
+                <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
+                        <p class="text-sm text-[#7f9a7a]">Movement Highlight</p>
+                        <h2 class="text-[1.7rem] font-semibold leading-tight text-[#234222] sm:text-2xl">Live Tracking Focus</h2>
+                    </div>
+                    <span class="inline-flex w-fit rounded-full border border-[#b8e0ae] bg-[#eef8ea] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#3c8a39]">
+                        {{ systemHealth.movementCountToday }} today
+                    </span>
+                </div>
+
+                <div class="grid gap-5 2xl:grid-cols-[1.15fr,0.85fr]">
+                    <article class="overflow-hidden rounded-[1.8rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5 text-[#234222] shadow-[0_22px_50px_rgba(79,159,74,0.12)]">
+                        <template v-if="dashboardFeaturedMovement">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0">
+                                    <p class="break-words text-sm font-semibold tracking-[0.08em] text-[#355733]">{{ dashboardFeaturedMovement.item_code }}</p>
+                                    <p class="mt-1 text-sm leading-6 text-[#6c8c69]">{{ dashboardFeaturedMovement.description }}</p>
+                                </div>
+                                <div class="inline-flex w-fit rounded-full border border-[#b8e0ae] bg-[#eef8ea] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]" :class="movementState(dashboardFeaturedMovement.transaction_type).tone">
+                                    {{ movementState(dashboardFeaturedMovement.transaction_type).label }}
+                                </div>
+                            </div>
+
+                            <div class="mt-6 rounded-[1.3rem] border border-[#d8e7d4] bg-[#fbfefa] px-4 py-4">
+                                <div class="grid gap-2 text-sm text-[#5f7b5e] sm:grid-cols-2 sm:items-center">
+                                    <span class="break-words">{{ dashboardFeaturedMovement.source_location ?? 'Source pending' }}</span>
+                                    <span class="break-words sm:text-right">{{ dashboardFeaturedMovement.destination_location ?? 'Destination pending' }}</span>
+                                </div>
+
+                                <div class="relative mt-4 h-10">
+                                    <div class="absolute left-0 right-0 top-1/2 h-[2px] -translate-y-1/2 bg-[#d8e7d4]" />
+                                    <div class="absolute left-0 top-1/2 h-[2px] -translate-y-1/2 bg-[#6fbb68]" :style="{ width: `${movementState(dashboardFeaturedMovement.transaction_type).progress}%` }" />
+                                    <div class="absolute left-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-[#6fbb68] bg-white" />
+                                    <div class="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-[#6fbb68] bg-white" :style="{ left: `calc(${movementState(dashboardFeaturedMovement.transaction_type).progress}% - 0.375rem)` }" />
+                                    <div class="absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-[#d8e7d4] bg-white" />
+                                </div>
+
+                                <div class="mt-3 flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-[#7f9a7a]">
+                                    <span>Source</span>
+                                    <span>{{ dashboardFeaturedMovement.transaction_date }}</span>
+                                    <span>{{ movementState(dashboardFeaturedMovement.transaction_type).label }}</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                <div class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-3">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Quantity</p>
+                                    <p class="mt-2 text-base font-semibold text-[#234222] sm:text-lg">{{ formatNumber(dashboardFeaturedMovement.quantity) }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-3">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Value</p>
+                                    <p class="mt-2 text-base font-semibold text-[#3c8a39] sm:text-lg">RM {{ formatMoney(dashboardFeaturedMovement.total_value) }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-3">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Handled By</p>
+                                    <p class="mt-2 break-words text-sm font-semibold text-[#234222]">{{ dashboardFeaturedMovement.created_by ?? 'System' }}</p>
+                                </div>
+                            </div>
+                        </template>
+                    </article>
+
+                    <div class="space-y-5">
+                        <section class="rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-sm text-[#7f9a7a]">Movement Mix</p>
+                                    <h3 class="text-base font-semibold text-[#234222] sm:text-lg">Activity Balance</h3>
+                                </div>
+                                <span class="inline-flex w-fit rounded-full border border-[#d8e7d4] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3c8a39]">
+                                    Top Types
+                                </span>
+                            </div>
+
+                            <div class="mt-5 space-y-4">
+                                <div v-for="entry in dashboardMovementMix" :key="entry.type" class="space-y-2">
+                                    <div class="flex items-start justify-between gap-4 text-sm">
+                                        <span class="min-w-0 break-words text-[#5f7b5e]">{{ entry.label }}</span>
+                                        <span class="text-[#3c8a39]">{{ entry.total }}</span>
+                                    </div>
+                                    <div class="h-2 overflow-hidden rounded-full bg-[#dfe9db]">
+                                        <div class="h-full rounded-full bg-[linear-gradient(90deg,#86c87b_0%,#4f9f4a_100%)]" :style="{ width: `${(entry.total / Math.max(...dashboardMovementMix.map(item => item.total), 1)) * 100}%` }" />
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-[#7f9a7a]">System Pulse</p>
+                                    <h3 class="text-lg font-semibold text-[#234222]">Current Health</h3>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                                <div class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-4">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Active Items</p>
+                                    <p class="mt-2 text-xl font-semibold text-[#234222] sm:text-2xl">{{ systemHealth.activeItems }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-4">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Movements Today</p>
+                                    <p class="mt-2 text-xl font-semibold text-[#3c8a39] sm:text-2xl">{{ systemHealth.movementCountToday }}</p>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_40px_rgba(79,159,74,0.10)]">
+                <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
+                        <p class="text-sm text-[#7f9a7a]">Weekly Activity</p>
+                        <h2 class="text-2xl font-semibold text-[#234222]">Movement Trend</h2>
+                    </div>
+                    <span class="inline-flex w-fit rounded-full border border-[#d8e7d4] bg-[#fbfefa] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#5f7b5e]">
+                        Last 7 days
+                    </span>
+                </div>
+
+                <div class="rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
+                        <div class="flex h-52 items-end gap-2 sm:gap-4">
+                        <div v-for="entry in dashboardWeeklyActivity" :key="entry.label" class="flex flex-1 flex-col items-center gap-3">
+                            <div class="flex w-full items-end justify-center rounded-t-[1rem] bg-[#edf4ea] px-2 pt-2" style="height: 170px;">
+                                <div
+                                    class="w-full rounded-[0.9rem] bg-[linear-gradient(180deg,#86c87b_0%,#4f9f4a_100%)] shadow-[0_10px_28px_rgba(79,159,74,0.22)]"
+                                    :style="{ height: `${Math.max((entry.count / weeklyPeak) * 140, entry.count ? 24 : 10)}px` }"
+                                />
+                            </div>
+                            <div class="text-center">
+                                <p class="text-sm font-semibold text-[#234222]">{{ entry.count }}</p>
+                                <p class="text-xs uppercase tracking-[0.16em] text-[#7f9a7a]">{{ entry.label }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="mt-6 rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-[#7f9a7a]">Chart Panel</p>
+                            <h3 class="text-lg font-semibold text-[#234222]">Inventory Distribution</h3>
+                        </div>
+                        <span class="inline-flex w-fit rounded-full border border-[#d8e7d4] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3c8a39]">
+                            Inventory
+                        </span>
+                    </div>
+
+                    <div class="mt-5 rounded-[1.5rem] border border-[#d8e7d4] bg-white p-5">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Inventory Pie</p>
+                                <p class="mt-1 text-sm font-semibold text-[#234222]">Record Distribution</p>
+                            </div>
+                            <p class="text-sm font-semibold text-[#3c8a39]">{{ inventoryDistribution.total }}</p>
+                        </div>
+
+                        <div class="mt-5 space-y-5">
+                            <div class="mx-auto w-fit">
+                                <div class="relative h-44 w-44 rounded-full border border-[#d8e7d4] shadow-[0_12px_30px_rgba(79,159,74,0.12)]" :style="{ background: inventoryDistribution.background }">
+                                    <div class="absolute inset-[22%] rounded-full border border-[#e2efdd] bg-white" />
+                                </div>
+                            </div>
+
+                            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                <div v-for="segment in inventoryDistribution.segments" :key="segment.label" class="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[#edf3eb] bg-[#fbfefa] px-4 py-3">
+                                    <div class="flex min-w-0 items-center gap-3">
+                                        <span class="h-3 w-3 rounded-full" :style="{ backgroundColor: segment.color }" />
+                                        <span class="truncate text-sm text-[#355733]">{{ segment.label }}</span>
+                                    </div>
+                                    <span class="text-sm font-semibold text-[#234222]">{{ segment.share }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="mt-6 rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-[#7f9a7a]">Chart Panel</p>
+                            <h3 class="text-lg font-semibold text-[#234222]">Movement Type Allocation</h3>
+                        </div>
+                        <span class="inline-flex w-fit rounded-full border border-[#d8e7d4] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3c8a39]">
+                            Movement
+                        </span>
+                    </div>
+
+                    <div class="mt-5 rounded-[1.5rem] border border-[#d8e7d4] bg-white p-5">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Movement Donut</p>
+                                <p class="mt-1 text-sm font-semibold text-[#234222]">Type Allocation</p>
+                            </div>
+                            <p class="text-sm font-semibold text-[#3c8a39]">{{ movementDonutSegments.total }}</p>
+                        </div>
+
+                        <div class="mt-5 space-y-5">
+                            <div class="relative mx-auto flex h-44 w-44 items-center justify-center">
+                                <svg class="h-44 w-44 -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
+                                    <circle cx="60" cy="60" r="54" fill="none" stroke="#e4efe0" stroke-width="12" />
+                                    <circle
+                                        v-for="segment in movementDonutSegments.segments"
+                                        :key="segment.label"
+                                        cx="60"
+                                        cy="60"
+                                        r="54"
+                                        fill="none"
+                                        :stroke="segment.color"
+                                        stroke-width="12"
+                                        stroke-linecap="round"
+                                        :stroke-dasharray="segment.dasharray"
+                                        :stroke-dashoffset="segment.dashoffset"
+                                    />
+                                </svg>
+                                <div class="absolute text-center">
+                                    <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">Mix</p>
+                                    <p class="mt-1 text-3xl font-semibold text-[#234222]">{{ movementDonutSegments.total }}</p>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                <div v-for="segment in movementDonutSegments.segments" :key="segment.label" class="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[#edf3eb] bg-[#fbfefa] px-4 py-3">
+                                    <div class="flex min-w-0 items-center gap-3">
+                                        <span class="h-3 w-3 rounded-full" :style="{ backgroundColor: segment.color }" />
+                                        <span class="truncate text-sm text-[#355733]">{{ segment.label }}</span>
+                                    </div>
+                                    <span class="text-sm font-semibold text-[#234222]">{{ segment.value }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="mt-6 grid gap-6 2xl:grid-cols-[1fr,1fr]">
+                    <section class="rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-[#7f9a7a]">Recent Movement Feed</p>
+                                <h3 class="text-lg font-semibold text-[#234222]">Latest Logs</h3>
+                            </div>
+                            <Link class="text-sm font-medium text-[#3c8a39] hover:text-[#2f6f2d]" :href="route('asset-movements.index')">View all</Link>
+                        </div>
+
+                        <div class="mt-5 space-y-3">
+                            <article
+                                v-for="movement in dashboardRecentMovements"
+                                :key="movement.id"
+                                class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-4"
+                            >
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-[#234222]">{{ movement.item_code }}</p>
+                                        <p class="mt-1 text-xs leading-5 text-[#6c8c69]">{{ movement.description }}</p>
+                                    </div>
+                                    <span class="inline-flex w-fit rounded-full border border-[#b8e0ae] bg-[#eef8ea] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]" :class="movementState(movement.transaction_type).tone">
+                                        {{ movementState(movement.transaction_type).label }}
+                                    </span>
+                                </div>
+                                <div class="mt-3 flex flex-col gap-1 text-xs text-[#6c8c69] sm:flex-row sm:items-center sm:justify-between">
+                                    <span class="break-words">{{ movement.source_location ?? 'Source pending' }} to {{ movement.destination_location ?? 'Destination pending' }}</span>
+                                    <span>{{ movement.transaction_date }}</span>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
+
+                    <section class="rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-[#7f9a7a]">Attention Items</p>
+                                <h3 class="text-lg font-semibold text-[#234222]">Stock Focus</h3>
+                            </div>
+                            <Link class="text-sm font-medium text-[#3c8a39] hover:text-[#2f6f2d]" :href="route('assets.index')">Open assets</Link>
+                        </div>
+
+                        <div class="mt-5 space-y-3">
+                            <article
+                                v-for="item in dashboardAttentionItems"
+                                :key="item.id"
+                                class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-4"
+                            >
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-[#234222]">{{ item.item_code }}</p>
+                                        <p class="mt-1 text-xs leading-5 text-[#6c8c69]">{{ item.description }}</p>
+                                    </div>
+                                    <span class="inline-flex w-fit rounded-full border border-[#d8e7d4] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4f9f4a]">
+                                        {{ item.category }}
+                                    </span>
+                                </div>
+                                <div class="mt-4 grid gap-3 text-xs sm:grid-cols-3">
+                                    <div class="rounded-xl border border-[#edf3eb] bg-white px-3 py-3">
+                                        <p class="text-[#7f9a7a]">Opening</p>
+                                        <p class="mt-1 text-[#234222]">{{ formatNumber(item.opening_stock) }}</p>
+                                    </div>
+                                    <div class="rounded-xl border border-[#edf3eb] bg-white px-3 py-3">
+                                        <p class="text-[#7f9a7a]">Current</p>
+                                        <p class="mt-1 text-[#3c8a39]">{{ formatNumber(item.current_stock) }}</p>
+                                    </div>
+                                    <div class="rounded-xl border border-[#edf3eb] bg-white px-3 py-3">
+                                        <p class="text-[#7f9a7a]">Minimum</p>
+                                        <p class="mt-1 text-[#234222]">{{ formatNumber(item.minimum_stock) }}</p>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
+                </div>
+
+                <section class="mt-6 rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="min-w-0">
+                            <p class="text-sm text-[#7f9a7a]">COG Control</p>
+                            <h3 class="text-lg font-semibold text-[#234222]">Issued And Received References</h3>
+                        </div>
+                        <span class="inline-flex w-fit rounded-full border border-[#d8e7d4] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3c8a39]">
+                            COG
+                        </span>
+                    </div>
+
+                    <div class="mt-5 grid gap-4 2xl:grid-cols-[0.78fr,1.22fr]">
+                        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                            <div class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-4">
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">COG Issued Out</p>
+                                <p class="mt-2 text-xl font-semibold text-[#3c8a39] sm:text-2xl">{{ dashboardCogSummary.issuedCount }}</p>
+                            </div>
+                            <div class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-4">
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">COG Received</p>
+                                <p class="mt-2 text-xl font-semibold text-[#2f6f2d] sm:text-2xl">{{ dashboardCogSummary.receivedCount }}</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <article
+                                v-for="entry in dashboardCogEntries"
+                                :key="entry.id"
+                                class="rounded-2xl border border-[#d8e7d4] bg-[#fbfefa] px-4 py-4"
+                            >
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-[#234222]">{{ entry.item_code }}</p>
+                                        <p class="mt-1 text-xs leading-5 text-[#6c8c69]">{{ entry.description }}</p>
+                                    </div>
+                                    <span class="inline-flex w-fit rounded-full border border-[#b8e0ae] bg-[#eef8ea] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]" :class="movementState(entry.transaction_type).tone">
+                                        {{ movementState(entry.transaction_type).label }}
+                                    </span>
+                                </div>
+
+                                <div class="mt-4 grid gap-3 text-xs md:grid-cols-3">
+                                    <div class="rounded-xl border border-[#edf3eb] bg-white px-3 py-3">
+                                        <p class="text-[#7f9a7a]">Date</p>
+                                        <p class="mt-1 text-[#234222]">{{ entry.transaction_date }}</p>
+                                    </div>
+                                    <div class="rounded-xl border border-[#edf3eb] bg-white px-3 py-3">
+                                        <p class="text-[#7f9a7a]">COG Issued</p>
+                                        <p class="mt-1 text-[#3c8a39]">{{ entry.cog_issued_out || '-' }}</p>
+                                    </div>
+                                    <div class="rounded-xl border border-[#edf3eb] bg-white px-3 py-3">
+                                        <p class="text-[#7f9a7a]">COG Received</p>
+                                        <p class="mt-1 text-[#2f6f2d]">{{ entry.cog_received || '-' }}</p>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </section>
+            </section>
+        </div>
+    </AuthenticatedLayout>
+</template>
