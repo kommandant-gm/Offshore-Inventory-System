@@ -1,161 +1,181 @@
 <script setup>
-    import { Head, Link, useForm } from '@inertiajs/vue3';
-    import { 
-        UserIcon,
-        LockClosedIcon, 
-        ArrowRightIcon 
-    } from '@heroicons/vue/24/outline';
-    import Checkbox from '@/Components/Checkbox.vue';
-    
-    defineProps({
-        canResetPassword: {
-            type: Boolean,
-        },
-        status: {
-            type: String,
-        },
+import { Head, useForm } from '@inertiajs/vue3';
+import {
+    UserIcon,
+    LockClosedIcon,
+    ArrowRightIcon,
+} from '@heroicons/vue/24/outline';
+import Checkbox from '@/Components/Checkbox.vue';
+
+defineProps({
+    canResetPassword: {
+        type: Boolean,
+    },
+    status: {
+        type: String,
+    },
+});
+
+const form = useForm({
+    username: '',
+    password: '',
+    remember: false,
+});
+
+const submit = () => {
+    form.post(route('login'), {
+        onFinish: () => form.reset('password'),
     });
-    
-    const form = useForm({
-        username: '',
-        password: '',
-        remember: false,
-    });
-    
-    const submit = () => {
-        form.post(route('login'), {
-            onFinish: () => form.reset('password'),
-        });
-    };
-    </script>
-    
-    <template>
-        <Head title="Log in" />
-    
-        <div class="min-h-screen flex font-sans text-slate-300">
-            
-            <div class="hidden lg:flex w-1/2 relative bg-[#0f172a] overflow-hidden">
-                <img 
-                    src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop" 
-                    class="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay"
-                    alt="Offshore Rig"
-                />
-                
-                <div class="absolute inset-0 bg-gradient-to-br from-orange-600/20 to-[#0f172a]/90"></div>
-    
-                <div class="relative z-10 w-full flex flex-col justify-between p-16">
+};
+</script>
+
+<template>
+    <Head title="Log in" />
+
+    <div class="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f7fcf5_100%)] font-sans text-[#234222]">
+        <div class="mx-auto flex min-h-screen max-w-[1680px] flex-col lg:grid lg:grid-cols-[1.06fr,0.94fr]">
+            <div class="relative overflow-hidden px-6 pb-10 pt-8 sm:px-8 lg:px-12 lg:pb-14 lg:pt-10">
+                <div class="absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top_left,rgba(111,187,104,0.20),transparent_52%),radial-gradient(circle_at_top_right,rgba(184,224,174,0.28),transparent_36%)]" />
+                <div class="absolute left-[-8%] top-[18%] h-48 w-48 rounded-full bg-[#eef8ea] blur-3xl" />
+                <div class="absolute bottom-[12%] right-[8%] h-56 w-56 rounded-full bg-[#dff1d8] blur-3xl" />
+
+                <div class="relative z-10 flex h-full flex-col justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-900/30 ring-1 ring-white/10">
-                            <span class="font-bold text-xl">D</span>
+                        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#6fbb68] to-[#3c8a39] text-white shadow-[0_14px_30px_rgba(79,159,74,0.22)] ring-1 ring-[#d8e7d4]">
+                            <span class="text-xl font-bold">D</span>
                         </div>
-                        <span class="text-white font-bold text-xl tracking-wide">Dayang Inventory Management System</span>
+                        <div>
+                            <p class="font-bold tracking-wide text-[#234222] sm:text-lg">Dayang Inventory Management System</p>
+                            <p class="text-[11px] uppercase tracking-[0.22em] text-[#7f9a7a]">Operational Access Portal</p>
+                        </div>
                     </div>
-    
-                    <div>
-                        <h1 class="text-5xl font-bold text-white mb-6 leading-tight">
-                            Master Your <br/>
-                            <span class="text-orange-500">Inventory</span> Control.
+
+                    <div class="mt-10 lg:mt-0">
+                        <div class="inline-flex items-center gap-2 rounded-full border border-[#cfe6ca] bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#4f6b4b] shadow-sm">
+                            <span class="h-2 w-2 rounded-full bg-[#4f9f4a]" />
+                            Inventory Control
+                        </div>
+
+                        <h1 class="mt-6 max-w-2xl text-4xl font-semibold leading-tight text-[#234222] sm:text-5xl">
+                            Stock operations with a cleaner,
+                            <span class="text-[#4f9f4a]">faster daily workflow.</span>
                         </h1>
-                        <p class="text-lg text-slate-400 max-w-md">
-                            Securely manage stock items, track inventory movements, and monitor compliance in real-time.
+                        <p class="mt-5 max-w-xl text-base leading-8 text-[#5f7b5e] sm:text-lg">
+                            Track stock items, movement approvals, ledger activity, and location control from one operating surface built for the Dayang process.
                         </p>
+
+                        <div class="mt-8 grid gap-4 sm:grid-cols-3">
+                            <div class="rounded-[1.5rem] border border-[#d8e7d4] bg-white/90 p-4 shadow-[0_14px_30px_rgba(79,159,74,0.08)]">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7f9a7a]">Movement Logs</p>
+                                <p class="mt-2 text-2xl font-semibold text-[#234222]">Live</p>
+                                <p class="mt-1 text-sm text-[#5f7b5e]">Post and review stock movement activity in one place.</p>
+                            </div>
+                            <div class="rounded-[1.5rem] border border-[#d8e7d4] bg-white/90 p-4 shadow-[0_14px_30px_rgba(79,159,74,0.08)]">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7f9a7a]">Ledger Control</p>
+                                <p class="mt-2 text-2xl font-semibold text-[#234222]">Monthly</p>
+                                <p class="mt-1 text-sm text-[#5f7b5e]">Review quantities, values, and supporting references.</p>
+                            </div>
+                            <div class="rounded-[1.5rem] border border-[#d8e7d4] bg-white/90 p-4 shadow-[0_14px_30px_rgba(79,159,74,0.08)]">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7f9a7a]">Access Policy</p>
+                                <p class="mt-2 text-2xl font-semibold text-[#234222]">Managed</p>
+                                <p class="mt-1 text-sm text-[#5f7b5e]">Use local users and LDAP sign-in under the same system.</p>
+                            </div>
+                        </div>
                     </div>
-    
-                    <div class="text-sm text-slate-500">
-                        &copy; 2025 Dayang Inventory Management System. All rights reserved.
+
+                    <div class="mt-10 rounded-[1.75rem] border border-[#d8e7d4] bg-white/85 p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)] backdrop-blur">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Daily Focus</p>
+                        <div class="mt-3 flex flex-col gap-3 text-sm text-[#4f6b4b] sm:flex-row sm:items-center sm:justify-between">
+                            <span>Keep stock movements, COG actions, and ledger reporting aligned before month-end close.</span>
+                            <span class="rounded-full border border-[#cfe6ca] bg-[#eef8ea] px-3 py-1 font-semibold text-[#2f6f2d]">System ready</span>
+                        </div>
                     </div>
                 </div>
             </div>
-    
-            <div class="w-full lg:w-1/2 bg-[#0f172a] flex items-center justify-center p-8 relative">
-                
-                <div class="absolute inset-0 lg:hidden bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5"></div>
-    
-                <div class="w-full max-w-md relative z-10">
-                    
-                    <div class="lg:hidden flex justify-center mb-8">
-                        <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl flex items-center justify-center text-white shadow-lg">
-                            <span class="font-bold text-2xl">D</span>
+
+            <div class="flex items-center justify-center px-6 pb-10 pt-2 sm:px-8 lg:px-12 lg:pb-14 lg:pt-10">
+                <div class="w-full max-w-xl rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_24px_60px_rgba(79,159,74,0.12)] sm:p-8">
+                    <div class="mb-8 flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Secure Sign In</p>
+                            <h2 class="mt-2 text-3xl font-semibold text-[#234222]">Welcome back</h2>
+                            <p class="mt-2 text-sm text-[#5f7b5e]">Use your system username or your LDAP account if directory login is enabled.</p>
+                        </div>
+                        <div class="hidden h-12 w-12 items-center justify-center rounded-2xl border border-[#d8e7d4] bg-[#f7fcf5] text-[#4f9f4a] sm:flex">
+                            <ArrowRightIcon class="h-5 w-5" />
                         </div>
                     </div>
-    
-                    <div class="mb-8">
-                        <h2 class="text-3xl font-bold text-white mb-2">Welcome Back</h2>
-                        <p class="text-slate-500">Please enter your details to sign in.</p>
-                    </div>
-    
-                    <div v-if="status" class="mb-4 text-sm font-medium text-emerald-400 bg-emerald-500/10 p-3 rounded-lg border border-emerald-500/20">
+
+                    <div v-if="status" class="mb-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] p-3 text-sm font-medium text-[#2f6f2d]">
                         {{ status }}
                     </div>
-    
+
                     <form @submit.prevent="submit" class="space-y-5">
-                        
                         <div>
-                            <label for="username" class="block text-sm font-medium text-slate-400 mb-1.5">Username</label>
-                            <div class="relative group">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <UserIcon class="h-5 w-5 text-slate-500 group-focus-within:text-orange-500 transition-colors" />
+                            <label for="username" class="mb-1.5 block text-sm font-medium text-[#4f6b4b]">Username</label>
+                            <div class="group relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <UserIcon class="h-5 w-5 text-[#7f9a7a] transition-colors group-focus-within:text-[#4f9f4a]" />
                                 </div>
-                                <input 
+                                <input
                                     id="username"
                                     type="text"
                                     v-model="form.username"
-                                    required 
-                                    autofocus 
+                                    required
+                                    autofocus
                                     autocomplete="username"
-                                    class="block w-full pl-10 pr-3 py-2.5 bg-[#1e293b] border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm"
+                                    class="block w-full rounded-xl border border-[#d8e7d4] bg-[#fbfefa] py-3 pl-10 pr-3 text-[#234222] shadow-sm transition-all placeholder:text-[#7f9a7a] focus:border-[#86c87b] focus:outline-none focus:ring-2 focus:ring-[#b8e0ae]"
                                     placeholder="marie.sim"
                                 />
                             </div>
-                            <p v-if="form.errors.username" class="mt-2 text-sm text-red-400">{{ form.errors.username }}</p>
+                            <p v-if="form.errors.username" class="mt-2 text-sm text-red-500">{{ form.errors.username }}</p>
                         </div>
-    
+
                         <div>
-                            <label for="password" class="block text-sm font-medium text-slate-400 mb-1.5">Password</label>
-                            <div class="relative group">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <LockClosedIcon class="h-5 w-5 text-slate-500 group-focus-within:text-orange-500 transition-colors" />
+                            <label for="password" class="mb-1.5 block text-sm font-medium text-[#4f6b4b]">Password</label>
+                            <div class="group relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <LockClosedIcon class="h-5 w-5 text-[#7f9a7a] transition-colors group-focus-within:text-[#4f9f4a]" />
                                 </div>
-                                <input 
-                                    id="password" 
-                                    type="password" 
+                                <input
+                                    id="password"
+                                    type="password"
                                     v-model="form.password"
-                                    required 
+                                    required
                                     autocomplete="current-password"
-                                    class="block w-full pl-10 pr-3 py-2.5 bg-[#1e293b] border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm"
-                                    placeholder="••••••••"
+                                    class="block w-full rounded-xl border border-[#d8e7d4] bg-[#fbfefa] py-3 pl-10 pr-3 text-[#234222] shadow-sm transition-all placeholder:text-[#7f9a7a] focus:border-[#86c87b] focus:outline-none focus:ring-2 focus:ring-[#b8e0ae]"
+                                    placeholder="........"
                                 />
                             </div>
-                            <p v-if="form.errors.password" class="mt-2 text-sm text-red-400">{{ form.errors.password }}</p>
+                            <p v-if="form.errors.password" class="mt-2 text-sm text-red-500">{{ form.errors.password }}</p>
                         </div>
-    
+
                         <div class="flex items-center justify-between">
-                            <label class="flex items-center cursor-pointer">
-                                <Checkbox name="remember" v-model:checked="form.remember" class="text-orange-600 bg-[#1e293b] border-slate-700 focus:ring-orange-500" />
-                                <span class="ms-2 text-sm text-slate-400 hover:text-slate-300">Remember me</span>
+                            <label class="flex cursor-pointer items-center">
+                                <Checkbox name="remember" v-model:checked="form.remember" class="border-[#cfe6ca] bg-white text-[#4f9f4a] focus:ring-[#86c87b]" />
+                                <span class="ms-2 text-sm text-[#5f7b5e]">Remember me</span>
                             </label>
-    
-                        
                         </div>
-    
-                        <button 
-                            type="submit" 
-                            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 focus:ring-offset-[#0f172a] transition-all disabled:opacity-50 disabled:cursor-not-allowed items-center gap-2"
+
+                        <button
+                            type="submit"
+                            class="flex w-full items-center justify-center gap-2 rounded-xl border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] px-4 py-3 text-sm font-bold text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] transition-all hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-[#86c87b] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             :disabled="form.processing"
                         >
                             <span v-if="form.processing">Signing in...</span>
                             <span v-else>Sign in to Dashboard</span>
-                            <ArrowRightIcon v-if="!form.processing" class="w-4 h-4" />
+                            <ArrowRightIcon v-if="!form.processing" class="h-4 w-4" />
                         </button>
                     </form>
-    
-                    <div class="mt-8 text-center">
-                        <p class="text-sm text-slate-500">
-                            Don't have an account? 
-                            <a href="#" class="font-medium text-slate-400 hover:text-white transition-colors">Contact Admin</a>
+
+                    <div class="mt-8 border-t border-[#edf3eb] pt-5 text-center">
+                        <p class="text-sm text-[#6f8a6b]">
+                            Need access or first-time credentials?
+                            <a href="#" class="font-medium text-[#3c8a39] transition-colors hover:text-[#2f6f2d]">Contact Admin</a>
                         </p>
                     </div>
                 </div>
             </div>
         </div>
-    </template>
+    </div>
+</template>
