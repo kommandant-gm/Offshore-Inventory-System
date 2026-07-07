@@ -43,76 +43,78 @@ const submit = () => {
 <template>
     <Head title="Log in" />
 
-    <div class="min-h-screen bg-[linear-gradient(180deg,#eef8ea_0%,#f7fcf5_42%,#ffffff_100%)] font-sans text-[#234222]">
-        <div class="mx-auto flex min-h-screen max-w-[1680px] flex-col lg:grid lg:grid-cols-[1.06fr,0.94fr]">
-            <div class="relative overflow-hidden bg-[linear-gradient(145deg,#6fbb68_0%,#4f9f4a_38%,#3c8a39_100%)] px-6 pb-10 pt-8 sm:px-8 lg:px-12 lg:pb-14 lg:pt-10">
-                <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.24),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.14),transparent_28%)]" />
-                <div class="absolute left-[-8%] top-[18%] h-48 w-48 rounded-full bg-white/20 blur-3xl" />
-                <div class="absolute bottom-[12%] right-[8%] h-56 w-56 rounded-full bg-[#d8f0d0]/35 blur-3xl" />
+    <div class="min-h-screen bg-[radial-gradient(circle_at_top_left,#eef7ef_0%,#f6faf6_35%,#ffffff_72%),linear-gradient(180deg,#fbfdfb_0%,#f5faf6_100%)] font-sans text-[#234222]">
+        <div class="mx-auto flex min-h-screen max-w-[1600px] items-center px-4 py-6 sm:px-6 lg:px-10">
+            <div class="grid w-full overflow-hidden rounded-[2.25rem] border border-[#d9e7dc] bg-white/78 shadow-[0_28px_90px_rgba(34,68,44,0.12)] backdrop-blur-xl lg:grid-cols-[1.08fr,0.92fr]">
+                <div class="relative overflow-hidden bg-[linear-gradient(145deg,#214f41_0%,#2c6450_34%,#3f7d60_100%)] px-7 pb-8 pt-7 sm:px-10 lg:px-12 lg:pb-10 lg:pt-9">
+                    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_32%),radial-gradient(circle_at_82%_78%,rgba(155,221,171,0.24),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))]" />
+                    <div class="absolute -left-12 top-16 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
+                    <div class="absolute bottom-10 right-10 h-56 w-56 rounded-full bg-[#9fd6ad]/16 blur-3xl" />
 
-                <div class="relative z-10 flex h-full flex-col justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#6fbb68] to-[#3c8a39] text-white shadow-[0_14px_30px_rgba(79,159,74,0.22)] ring-1 ring-[#d8e7d4]">
-                            <span class="text-xl font-bold">D</span>
-                        </div>
-                        <div>
-                            <p class="font-bold tracking-wide text-white sm:text-lg">Dayang Inventory Management System</p>
-                            <p class="text-[11px] uppercase tracking-[0.22em] text-[#dff1d8]">Operational Access Portal</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-10 lg:mt-0">
-                        <div class="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/14 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white shadow-sm backdrop-blur">
-                            <span class="h-2 w-2 rounded-full bg-white" />
-                            Inventory Control
-                        </div>
-
-                        <h1 class="mt-6 max-w-2xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                            Stock operations with a cleaner,
-                            <span class="text-[#e6f7df]">faster daily workflow.</span>
-                        </h1>
-                        <p class="mt-5 max-w-xl text-base leading-8 text-[#eef8ea] sm:text-lg">
-                            Track stock items, movement approvals, ledger activity, and location control from one operating surface built for the Dayang process.
-                        </p>
-
-                        <div class="mt-8 grid gap-4 sm:grid-cols-3">
-                            <div class="rounded-[1.5rem] border border-white/25 bg-white/12 p-4 shadow-[0_14px_30px_rgba(35,66,34,0.10)] backdrop-blur">
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#dff1d8]">Movement Logs</p>
-                                <p class="mt-2 text-2xl font-semibold text-white">Live</p>
-                                <p class="mt-1 text-sm text-[#eef8ea]">Post and review stock movement activity in one place.</p>
+                    <div class="relative z-10 flex h-full flex-col">
+                        <div class="flex items-center gap-4">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white shadow-[0_18px_38px_rgba(12,34,27,0.28)] backdrop-blur">
+                                <span class="text-xl font-bold">D</span>
                             </div>
-                            <div class="rounded-[1.5rem] border border-white/25 bg-white/12 p-4 shadow-[0_14px_30px_rgba(35,66,34,0.10)] backdrop-blur">
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#dff1d8]">Ledger Control</p>
-                                <p class="mt-2 text-2xl font-semibold text-white">Monthly</p>
-                                <p class="mt-1 text-sm text-[#eef8ea]">Review quantities, values, and supporting references.</p>
-                            </div>
-                            <div class="rounded-[1.5rem] border border-white/25 bg-white/12 p-4 shadow-[0_14px_30px_rgba(35,66,34,0.10)] backdrop-blur">
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#dff1d8]">Access Policy</p>
-                                <p class="mt-2 text-2xl font-semibold text-white">Managed</p>
-                                <p class="mt-1 text-sm text-[#eef8ea]">Use local users and LDAP sign-in under the same system.</p>
+                            <div>
+                                <p class="font-bold tracking-wide text-white sm:text-[1.15rem]">Dayang Inventory Management System</p>
+                                <p class="text-[11px] uppercase tracking-[0.28em] text-[#d7efe0]">Operational Access Portal</p>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="mt-10 rounded-[1.75rem] border border-white/25 bg-white/14 p-5 shadow-[0_18px_45px_rgba(35,66,34,0.10)] backdrop-blur">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#dff1d8]">Daily Focus</p>
-                        <div class="mt-3 flex flex-col gap-3 text-sm text-[#eef8ea] sm:flex-row sm:items-center sm:justify-between">
-                            <span>Keep stock movements, COG actions, and ledger reporting aligned before month-end close.</span>
-                            <span
-                                class="rounded-full border px-3 py-1 font-semibold"
-                                :class="authStatus.tone === 'warning'
-                                    ? 'border-[#f7dfbb] bg-[#fff6e7] text-[#9a5d10]'
-                                    : 'border-white/25 bg-white/90 text-[#2f6f2d]'"
-                            >
-                                {{ authStatus.label }}
-                            </span>
+                        <div class="mt-14 max-w-2xl">
+                            <div class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/90 backdrop-blur">
+                                <span class="h-2 w-2 rounded-full bg-[#c9f0d4]" />
+                                Inventory Control
+                            </div>
+
+                            <h1 class="mt-7 max-w-xl text-4xl font-semibold leading-tight text-white sm:text-[3.25rem]">
+                                Secure stock operations
+                                <span class="block text-[#d8f5df]">with a cleaner, faster workflow.</span>
+                            </h1>
+                            <p class="mt-5 max-w-lg text-base leading-8 text-[#e7f5eb] sm:text-lg">
+                                Track stock items, movement approvals, ledger activity, and location control from one operating surface built for the Dayang process.
+                            </p>
+
+                            <div class="mt-10 grid gap-4 sm:grid-cols-3">
+                                <div class="rounded-[1.6rem] border border-white/14 bg-white/8 p-5 shadow-[0_16px_40px_rgba(12,34,27,0.16)] backdrop-blur">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#d7efe0]">Movement Logs</p>
+                                    <p class="mt-3 text-2xl font-semibold text-white">Live</p>
+                                    <p class="mt-2 text-sm leading-6 text-[#edf8f0]">Post and review stock movement activity in one place.</p>
+                                </div>
+                                <div class="rounded-[1.6rem] border border-white/14 bg-white/8 p-5 shadow-[0_16px_40px_rgba(12,34,27,0.16)] backdrop-blur">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#d7efe0]">Ledger Control</p>
+                                    <p class="mt-3 text-2xl font-semibold text-white">Monthly</p>
+                                    <p class="mt-2 text-sm leading-6 text-[#edf8f0]">Review quantities, values, and supporting references.</p>
+                                </div>
+                                <div class="rounded-[1.6rem] border border-white/14 bg-white/8 p-5 shadow-[0_16px_40px_rgba(12,34,27,0.16)] backdrop-blur">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#d7efe0]">Access Policy</p>
+                                    <p class="mt-3 text-2xl font-semibold text-white">Managed</p>
+                                    <p class="mt-2 text-sm leading-6 text-[#edf8f0]">Use local users and LDAP sign-in under the same system.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-10 rounded-[1.9rem] border border-white/16 bg-white/10 p-5 shadow-[0_18px_48px_rgba(12,34,27,0.16)] backdrop-blur">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#d7efe0]">Daily Focus</p>
+                            <div class="mt-3 flex flex-col gap-3 text-sm text-[#edf8f0] sm:flex-row sm:items-center sm:justify-between">
+                                <span>Keep stock movements, COG actions, and ledger reporting aligned before month-end close.</span>
+                                <span
+                                    class="rounded-full border px-3 py-1 font-semibold"
+                                    :class="authStatus.tone === 'warning'
+                                        ? 'border-[#f7dfbb] bg-[#fff6e7] text-[#9a5d10]'
+                                        : 'border-white/18 bg-white text-[#2f6f2d]'"
+                                >
+                                    {{ authStatus.label }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="flex items-center justify-center px-6 pb-10 pt-2 sm:px-8 lg:px-12 lg:pb-14 lg:pt-10">
-                <div class="w-full max-w-xl rounded-[2rem] border border-[#deebda] bg-white p-6 shadow-[0_24px_60px_rgba(79,159,74,0.08)] sm:p-8">
+                <div class="relative flex items-center justify-center bg-[linear-gradient(180deg,#ffffff_0%,#fbfdfb_100%)] px-6 py-8 sm:px-8 lg:px-12">
+                    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(127,180,144,0.10),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(207,230,202,0.22),transparent_26%)]" />
+                    <div class="relative w-full max-w-xl rounded-[2rem] border border-[#e2ece3] bg-white/92 p-6 shadow-[0_22px_60px_rgba(26,51,38,0.08)] backdrop-blur sm:p-8">
                     <div class="mb-8 flex items-start justify-between gap-4">
                         <div>
                             <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Secure Sign In</p>
