@@ -32,12 +32,12 @@ const submit = () => {
 <template>
     <Head title="Log in" />
 
-    <div class="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f7fcf5_100%)] font-sans text-[#234222]">
+    <div class="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#fcfefb_52%,#f7fcf5_100%)] font-sans text-[#234222]">
         <div class="mx-auto flex min-h-screen max-w-[1680px] flex-col lg:grid lg:grid-cols-[1.06fr,0.94fr]">
             <div class="relative overflow-hidden px-6 pb-10 pt-8 sm:px-8 lg:px-12 lg:pb-14 lg:pt-10">
-                <div class="absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top_left,rgba(111,187,104,0.20),transparent_52%),radial-gradient(circle_at_top_right,rgba(184,224,174,0.28),transparent_36%)]" />
-                <div class="absolute left-[-8%] top-[18%] h-48 w-48 rounded-full bg-[#eef8ea] blur-3xl" />
-                <div class="absolute bottom-[12%] right-[8%] h-56 w-56 rounded-full bg-[#dff1d8] blur-3xl" />
+                <div class="absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top_left,rgba(111,187,104,0.12),transparent_56%),radial-gradient(circle_at_top_right,rgba(184,224,174,0.18),transparent_38%)]" />
+                <div class="absolute left-[-8%] top-[18%] h-48 w-48 rounded-full bg-[#f4fbf1] blur-3xl" />
+                <div class="absolute bottom-[12%] right-[8%] h-56 w-56 rounded-full bg-[#edf8e9] blur-3xl" />
 
                 <div class="relative z-10 flex h-full flex-col justify-between">
                     <div class="flex items-center gap-3">
@@ -65,17 +65,17 @@ const submit = () => {
                         </p>
 
                         <div class="mt-8 grid gap-4 sm:grid-cols-3">
-                            <div class="rounded-[1.5rem] border border-[#d8e7d4] bg-white/90 p-4 shadow-[0_14px_30px_rgba(79,159,74,0.08)]">
+                            <div class="rounded-[1.5rem] border border-[#deebda] bg-white p-4 shadow-[0_14px_30px_rgba(79,159,74,0.05)]">
                                 <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7f9a7a]">Movement Logs</p>
                                 <p class="mt-2 text-2xl font-semibold text-[#234222]">Live</p>
                                 <p class="mt-1 text-sm text-[#5f7b5e]">Post and review stock movement activity in one place.</p>
                             </div>
-                            <div class="rounded-[1.5rem] border border-[#d8e7d4] bg-white/90 p-4 shadow-[0_14px_30px_rgba(79,159,74,0.08)]">
+                            <div class="rounded-[1.5rem] border border-[#deebda] bg-white p-4 shadow-[0_14px_30px_rgba(79,159,74,0.05)]">
                                 <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7f9a7a]">Ledger Control</p>
                                 <p class="mt-2 text-2xl font-semibold text-[#234222]">Monthly</p>
                                 <p class="mt-1 text-sm text-[#5f7b5e]">Review quantities, values, and supporting references.</p>
                             </div>
-                            <div class="rounded-[1.5rem] border border-[#d8e7d4] bg-white/90 p-4 shadow-[0_14px_30px_rgba(79,159,74,0.08)]">
+                            <div class="rounded-[1.5rem] border border-[#deebda] bg-white p-4 shadow-[0_14px_30px_rgba(79,159,74,0.05)]">
                                 <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7f9a7a]">Access Policy</p>
                                 <p class="mt-2 text-2xl font-semibold text-[#234222]">Managed</p>
                                 <p class="mt-1 text-sm text-[#5f7b5e]">Use local users and LDAP sign-in under the same system.</p>
@@ -83,7 +83,7 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <div class="mt-10 rounded-[1.75rem] border border-[#d8e7d4] bg-white/85 p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)] backdrop-blur">
+                    <div class="mt-10 rounded-[1.75rem] border border-[#deebda] bg-white/95 p-5 shadow-[0_18px_45px_rgba(79,159,74,0.06)] backdrop-blur">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Daily Focus</p>
                         <div class="mt-3 flex flex-col gap-3 text-sm text-[#4f6b4b] sm:flex-row sm:items-center sm:justify-between">
                             <span>Keep stock movements, COG actions, and ledger reporting aligned before month-end close.</span>
@@ -94,19 +94,19 @@ const submit = () => {
             </div>
 
             <div class="flex items-center justify-center px-6 pb-10 pt-2 sm:px-8 lg:px-12 lg:pb-14 lg:pt-10">
-                <div class="w-full max-w-xl rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_24px_60px_rgba(79,159,74,0.12)] sm:p-8">
+                <div class="w-full max-w-xl rounded-[2rem] border border-[#deebda] bg-white p-6 shadow-[0_24px_60px_rgba(79,159,74,0.08)] sm:p-8">
                     <div class="mb-8 flex items-start justify-between gap-4">
                         <div>
                             <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Secure Sign In</p>
                             <h2 class="mt-2 text-3xl font-semibold text-[#234222]">Welcome back</h2>
                             <p class="mt-2 text-sm text-[#5f7b5e]">Use your system username or your LDAP account if directory login is enabled.</p>
                         </div>
-                        <div class="hidden h-12 w-12 items-center justify-center rounded-2xl border border-[#d8e7d4] bg-[#f7fcf5] text-[#4f9f4a] sm:flex">
+                        <div class="hidden h-12 w-12 items-center justify-center rounded-2xl border border-[#deebda] bg-[#fbfefa] text-[#4f9f4a] sm:flex">
                             <ArrowRightIcon class="h-5 w-5" />
                         </div>
                     </div>
 
-                    <div v-if="status" class="mb-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] p-3 text-sm font-medium text-[#2f6f2d]">
+                    <div v-if="status" class="mb-4 rounded-xl border border-[#b8e0ae] bg-[#f3fbef] p-3 text-sm font-medium text-[#2f6f2d]">
                         {{ status }}
                     </div>
 
@@ -124,7 +124,7 @@ const submit = () => {
                                     required
                                     autofocus
                                     autocomplete="username"
-                                    class="block w-full rounded-xl border border-[#d8e7d4] bg-[#fbfefa] py-3 pl-10 pr-3 text-[#234222] shadow-sm transition-all placeholder:text-[#7f9a7a] focus:border-[#86c87b] focus:outline-none focus:ring-2 focus:ring-[#b8e0ae]"
+                                    class="block w-full rounded-xl border border-[#d8e7d4] bg-white py-3 pl-10 pr-3 text-[#234222] shadow-sm transition-all placeholder:text-[#7f9a7a] focus:border-[#86c87b] focus:outline-none focus:ring-2 focus:ring-[#cfe6ca]"
                                     placeholder="marie.sim"
                                 />
                             </div>
@@ -143,7 +143,7 @@ const submit = () => {
                                     v-model="form.password"
                                     required
                                     autocomplete="current-password"
-                                    class="block w-full rounded-xl border border-[#d8e7d4] bg-[#fbfefa] py-3 pl-10 pr-3 text-[#234222] shadow-sm transition-all placeholder:text-[#7f9a7a] focus:border-[#86c87b] focus:outline-none focus:ring-2 focus:ring-[#b8e0ae]"
+                                    class="block w-full rounded-xl border border-[#d8e7d4] bg-white py-3 pl-10 pr-3 text-[#234222] shadow-sm transition-all placeholder:text-[#7f9a7a] focus:border-[#86c87b] focus:outline-none focus:ring-2 focus:ring-[#cfe6ca]"
                                     placeholder="........"
                                 />
                             </div>
