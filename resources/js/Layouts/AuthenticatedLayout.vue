@@ -1,7 +1,7 @@
 <script setup>
-    import { computed, ref } from 'vue';
+    import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
     import AssistantWidget from '@/Components/AssistantWidget.vue';
-    import { Link, usePage } from '@inertiajs/vue3';
+    import { Link, router, usePage } from '@inertiajs/vue3';
     import { 
         Squares2X2Icon, ArchiveBoxIcon, MapIcon, TruckIcon,
         ClipboardDocumentCheckIcon, ChartBarIcon, ChatBubbleLeftRightIcon,
@@ -12,6 +12,12 @@
 
     const isSidebarOpen = ref(false);
     const page = usePage();
+    const quickSearch = ref('');
+    const quickSearchResults = ref([]);
+    const quickSearchOpen = ref(false);
+    const quickSearchLoading = ref(false);
+    const notificationsOpen = ref(false);
+    let quickSearchTimer = null;
 
     const navItems = [
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'dashboard' },
@@ -27,7 +33,100 @@
     ];
 
     const currentUser = page.props.auth.user;
+    const notifications = computed(() => page.props.ui?.notifications?.items ?? []);
+    const notificationCount = computed(() => page.props.ui?.notifications?.unread_count ?? 0);
+    const currentUserInitials = computed(() => {
+        const name = currentUser?.name ?? 'User';
+
+        return name
+            .split(' ')
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((value) => value[0]?.toUpperCase() ?? '')
+            .join('');
+    });
     const isSettingsRoute = computed(() => route().current('settings.index') || route().current('settings.*'));
+
+    const runQuickSearch = async () => {
+        const term = quickSearch.value.trim();
+
+        if (term.length < 2) {
+            quickSearchResults.value = [];
+            quickSearchOpen.value = false;
+            quickSearchLoading.value = false;
+            return;
+        }
+
+        quickSearchLoading.value = true;
+
+        try {
+            const response = await fetch(`${route('quick-search')}?q=${encodeURIComponent(term)}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('Quick search request failed.');
+            }
+
+            const payload = await response.json();
+            quickSearchResults.value = payload.items ?? [];
+            quickSearchOpen.value = true;
+        } catch (error) {
+            quickSearchResults.value = [];
+            quickSearchOpen.value = true;
+        } finally {
+            quickSearchLoading.value = false;
+        }
+    };
+
+    const submitQuickSearch = () => {
+        if (quickSearchResults.value[0]?.href) {
+            router.visit(quickSearchResults.value[0].href);
+            quickSearchOpen.value = false;
+            return;
+        }
+
+        if (quickSearch.value.trim()) {
+            router.get(route('assets.index'));
+        }
+    };
+
+    const openSearchResult = (href) => {
+        quickSearchOpen.value = false;
+        router.visit(href);
+    };
+
+    const toggleNotifications = () => {
+        notificationsOpen.value = !notificationsOpen.value;
+    };
+
+    const closeOverlays = (event) => {
+        if (!event.target.closest('[data-topbar-search]')) {
+            quickSearchOpen.value = false;
+        }
+
+        if (!event.target.closest('[data-notification-menu]')) {
+            notificationsOpen.value = false;
+        }
+    };
+
+    watch(quickSearch, () => {
+        clearTimeout(quickSearchTimer);
+        quickSearchTimer = setTimeout(runQuickSearch, 180);
+    });
+
+    onMounted(() => {
+        document.addEventListener('click', closeOverlays);
+    });
+
+    onBeforeUnmount(() => {
+        clearTimeout(quickSearchTimer);
+        document.removeEventListener('click', closeOverlays);
+    });
     </script>
     
     <template>
@@ -48,15 +147,64 @@
                     </div>
     
                     <div class="ml-3 flex items-center gap-2 sm:gap-4">
-                        <div class="relative hidden group md:flex">
+                        <div class="relative hidden group md:flex" data-topbar-search>
                             <MagnifyingGlassIcon class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f9a7a] group-focus-within:text-[#4f9f4a] transition-colors" />
-                            <input type="text" placeholder="Search item, ID, or zone..." class="input input-sm h-10 w-56 rounded-lg border border-[#d8e7d4] bg-white pl-10 text-sm text-[#234222] placeholder:text-[#7f9a7a] shadow-sm transition-all focus:border-[#4f9f4a] focus:outline-none lg:w-64" />
+                            <input
+                                v-model="quickSearch"
+                                type="text"
+                                placeholder="Search item, ID, or zone..."
+                                class="input input-sm h-10 w-56 rounded-lg border border-[#d8e7d4] bg-white pl-10 text-sm text-[#234222] placeholder:text-[#7f9a7a] shadow-sm transition-all focus:border-[#4f9f4a] focus:outline-none lg:w-64"
+                                @focus="quickSearchOpen = quickSearchResults.length > 0"
+                                @keydown.enter.prevent="submitQuickSearch"
+                            />
+                            <div v-if="quickSearchOpen" class="absolute top-full z-20 mt-2 w-full overflow-hidden rounded-2xl border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+                                <div v-if="quickSearchLoading" class="px-4 py-3 text-sm text-[#6f8a6b]">Searching...</div>
+                                <div v-else-if="quickSearchResults.length === 0" class="px-4 py-3 text-sm text-[#6f8a6b]">No matching items found.</div>
+                                <button
+                                    v-for="result in quickSearchResults"
+                                    :key="result.id"
+                                    type="button"
+                                    class="flex w-full items-start justify-between gap-3 border-t border-[#edf3eb] px-4 py-3 text-left first:border-t-0 hover:bg-[#f7fcf5]"
+                                    @click="openSearchResult(result.href)"
+                                >
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-[#234222]">{{ result.title }}</p>
+                                        <p class="mt-1 truncate text-xs text-[#6f8a6b]">{{ result.subtitle }}</p>
+                                    </div>
+                                    <span class="rounded-full border border-[#d8e7d4] bg-[#fbfefa] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#5f7b5e]">
+                                        {{ result.type }}
+                                    </span>
+                                </button>
+                            </div>
                         </div>
     
-                        <button class="btn btn-circle btn-sm relative border border-[#d8e7d4] bg-white text-[#2f6f2d] shadow-sm transition-all hover:border-[#86c87b] hover:bg-[#eef8ea]">
-                            <BellIcon class="w-5 h-5" />
-                            <span class="absolute top-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white bg-[#4f9f4a] animate-pulse"></span>
-                        </button>
+                        <div class="relative" data-notification-menu>
+                            <button class="btn btn-circle btn-sm relative border border-[#d8e7d4] bg-white text-[#2f6f2d] shadow-sm transition-all hover:border-[#86c87b] hover:bg-[#eef8ea]" @click.stop="toggleNotifications">
+                                <BellIcon class="w-5 h-5" />
+                                <span v-if="notificationCount > 0" class="absolute top-0 right-0 min-w-[1rem] rounded-full border-2 border-white bg-[#4f9f4a] px-1 text-[9px] font-bold leading-4 text-white">
+                                    {{ notificationCount }}
+                                </span>
+                            </button>
+                            <div v-if="notificationsOpen" class="absolute right-0 top-full z-20 mt-2 w-80 overflow-hidden rounded-2xl border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+                                <div class="border-b border-[#edf3eb] px-4 py-3">
+                                    <p class="text-sm font-semibold text-[#234222]">Notifications</p>
+                                    <p class="mt-1 text-xs text-[#6f8a6b]">Live operational items that may need attention.</p>
+                                </div>
+                                <div v-if="notifications.length === 0" class="px-4 py-4 text-sm text-[#6f8a6b]">
+                                    No notifications right now.
+                                </div>
+                                <Link
+                                    v-for="notification in notifications"
+                                    :key="notification.id"
+                                    :href="notification.href"
+                                    class="block border-t border-[#edf3eb] px-4 py-3 first:border-t-0 hover:bg-[#f7fcf5]"
+                                    @click="notificationsOpen = false"
+                                >
+                                    <p class="text-sm font-semibold text-[#234222]">{{ notification.title }}</p>
+                                    <p class="mt-1 text-xs text-[#6f8a6b]">{{ notification.description }}</p>
+                                </Link>
+                            </div>
+                        </div>
     
                     </div>
                 </div>
@@ -112,9 +260,9 @@
     
                     <div class="p-4 bg-white">
                         <div class="flex items-center gap-3 rounded-xl border border-[#d8e7d4] bg-[#fbfefa] p-3 shadow-sm transition-all cursor-pointer group hover:border-[#b8e0ae] hover:bg-[#f4fbf1]">
-                            <div class="avatar">
-                                <div class="w-10 rounded-full ring ring-[#d8e7d4] group-hover:ring-[#86c87b] transition-all">
-                                    <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name ?? 'User')}&background=fb923c&color=fff&bold=true`" :alt="currentUser?.name ?? 'User'" />
+                            <div class="avatar relative">
+                                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#6fbb68] to-[#3c8a39] text-sm font-bold text-white ring ring-[#d8e7d4] transition-all group-hover:ring-[#86c87b]">
+                                    {{ currentUserInitials }}
                                 </div>
                                 <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white bg-[#4f9f4a]"></span>
                             </div>

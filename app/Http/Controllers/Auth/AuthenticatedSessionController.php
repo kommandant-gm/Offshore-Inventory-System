@@ -18,9 +18,17 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): Response
     {
+        $ldapEnabled = (bool) config('ldap.enabled', false);
+        $ldapReady = $ldapEnabled && function_exists('ldap_connect');
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'supportEmail' => config('mail.from.address'),
+            'authStatus' => [
+                'label' => $ldapReady ? 'Local + LDAP ready' : ($ldapEnabled ? 'Local ready, LDAP unavailable' : 'Local authentication ready'),
+                'tone' => $ldapReady ? 'ready' : ($ldapEnabled ? 'warning' : 'ready'),
+            ],
         ]);
     }
 

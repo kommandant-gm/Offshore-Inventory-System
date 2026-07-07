@@ -4,6 +4,7 @@ use App\Domain\Inventory\InventoryBalance;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CogApprovalController;
 use App\Http\Controllers\CogController;
+use App\Http\Controllers\QuickSearchController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\AssetLedgerController;
 use App\Http\Controllers\AssistantController;
@@ -166,6 +167,7 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/quick-search', QuickSearchController::class)->name('quick-search');
     Route::get('/assistant', [AssistantController::class, 'index'])->name('assistant.index');
     Route::post('/assistant/query', [AssistantController::class, 'query'])->name('assistant.query');
     Route::get('/stock-anomalies', [StockAnomalyController::class, 'index'])->name('anomalies.index');

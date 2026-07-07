@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Cog;
+use App\Models\InventoryTransaction;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -54,6 +56,62 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
             ],
+            'ui' => $request->user() ? [
+                'notifications' => fn () => $this->notifications($request),
+            ] : null,
+        ];
+    }
+
+    private function notifications(Request $request): array
+    {
+        $user = $request->user();
+        $items = collect();
+
+        if ($user?->canRead('movements')) {
+            $movementCountToday = InventoryTransaction::query()
+                ->whereDate('transaction_date', today())
+                ->count();
+
+            if ($movementCountToday > 0) {
+                $items->push([
+                    'id' => 'movements-today',
+                    'title' => "{$movementCountToday} movement(s) logged today",
+                    'description' => 'Review today\'s stock movements.',
+                    'href' => route('asset-movements.index'),
+                    'tone' => 'success',
+                ]);
+            }
+        }
+
+        if ($user?->canRead('cogs')) {
+            $pendingApprovals = Cog::query()
+                ->where('status', 'pending_approval')
+                ->count();
+
+            if ($pendingApprovals > 0) {
+                $items->push([
+                    'id' => 'pending-cogs',
+                    'title' => "{$pendingApprovals} COG approval(s) pending",
+                    'description' => 'Open COG control to review pending approvals.',
+                    'href' => route('cogs.index'),
+                    'tone' => 'warning',
+                ]);
+            }
+        }
+
+        if ($user?->canRead('anomalies')) {
+            $items->push([
+                'id' => 'anomalies-review',
+                'title' => 'Run anomaly review',
+                'description' => 'Check stock anomalies for exceptions that need action.',
+                'href' => route('anomalies.index'),
+                'tone' => 'neutral',
+            ]);
+        }
+
+        return [
+            'items' => $items->take(5)->values()->all(),
+            'unread_count' => $items->count(),
         ];
     }
 }
