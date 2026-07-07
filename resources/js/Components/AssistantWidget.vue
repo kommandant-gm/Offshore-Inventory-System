@@ -1,11 +1,14 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { ChatBubbleLeftRightIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { nextTick, ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 
 const open = ref(false);
 const input = ref('');
 const loading = ref(false);
+const page = usePage();
 const messages = ref([
     {
         role: 'assistant',
@@ -14,16 +17,7 @@ const messages = ref([
 ]);
 const bodyRef = ref(null);
 
-const prompts = [
-    'Where is CON-Y1-0001?',
-    'What is the current stock for CAT-ROPE-001?',
-    'Show anomalies',
-    'Show critical anomalies',
-    'Why is CON-Y1-0001 flagged?',
-    'Show last movement for CAT-HOSE-009.',
-    'How many items are in Labuan Inventory?',
-    'Show anomalies for Consumables',
-];
+const prompts = computed(() => page.props.ui?.assistant_prompts ?? []);
 
 const scrollToBottom = async () => {
     await nextTick();

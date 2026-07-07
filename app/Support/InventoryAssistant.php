@@ -130,7 +130,13 @@ class InventoryAssistant
         $normalized = Str::lower($search);
 
         $items = InventoryItem::query()
-            ->with(['defaultLocation', 'category'])
+            ->with([
+                'defaultLocation',
+                'category',
+                'transactions.location',
+                'transactions.sourceLocation',
+                'transactions.destinationLocation',
+            ])
             ->where(function ($query) use ($search) {
                 $query
                     ->where('item_code', 'like', "%{$search}%")
@@ -435,7 +441,13 @@ class InventoryAssistant
         }
 
         $items = InventoryItem::query()
-            ->with(['category', 'defaultLocation'])
+            ->with([
+                'category',
+                'defaultLocation',
+                'transactions.location',
+                'transactions.sourceLocation',
+                'transactions.destinationLocation',
+            ])
             ->orderBy('item_code')
             ->get()
             ->map(function (InventoryItem $item) {
@@ -525,6 +537,16 @@ class InventoryAssistant
 
     private function latestMovement(InventoryItem $item): ?InventoryTransaction
     {
+        if ($item->relationLoaded('transactions')) {
+            return $item->transactions
+                ->sortByDesc(fn (InventoryTransaction $transaction) => sprintf(
+                    '%s-%010d',
+                    $transaction->transaction_date?->format('Ymd') ?? '00000000',
+                    $transaction->id
+                ))
+                ->first();
+        }
+
         return $item->transactions()
             ->with(['location', 'sourceLocation', 'destinationLocation'])
             ->latest('transaction_date')
@@ -553,7 +575,13 @@ class InventoryAssistant
     private function mappedItems(): Collection
     {
         return InventoryItem::query()
-            ->with(['category', 'defaultLocation'])
+            ->with([
+                'category',
+                'defaultLocation',
+                'transactions.location',
+                'transactions.sourceLocation',
+                'transactions.destinationLocation',
+            ])
             ->orderBy('item_code')
             ->get()
             ->map(function (InventoryItem $item) {
@@ -615,6 +643,9 @@ class InventoryAssistant
     {
         $normalized = Str::lower(trim(preg_replace('/[?.,!]+$/', '', $message) ?? ''));
         $patterns = [
+            '/^show\s+critical\s+anomal(?:y|ies)(?:\s+for)?\s+/',
+            '/^show\s+anomal(?:y|ies)(?:\s+for)?\s+/',
+            '/^stock\s+anomal(?:y|ies)(?:\s+for)?\s+/',
             '/^which\s+items\s+are\s+in\s+/',
             '/^what\s+items\s+are\s+in\s+/',
             '/^items\s+in\s+/',

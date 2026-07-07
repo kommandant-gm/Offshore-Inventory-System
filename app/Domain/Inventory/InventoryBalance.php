@@ -10,8 +10,11 @@ class InventoryBalance
 {
     public static function currentQuantity(InventoryItem $item): float
     {
-        return (float) $item->transactions()
-            ->get()
+        $transactions = $item->relationLoaded('transactions')
+            ? $item->transactions
+            : $item->transactions()->get();
+
+        return (float) $transactions
             ->sum(fn (InventoryTransaction $transaction) => self::signedQuantity($transaction));
     }
 

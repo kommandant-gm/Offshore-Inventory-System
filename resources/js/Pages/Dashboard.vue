@@ -47,142 +47,6 @@ const page = usePage();
 const canReadMovements = computed(() => page.props.auth?.user?.can?.movements_read);
 const canEditMovements = computed(() => page.props.auth?.user?.can?.movements_edit);
 
-const previewFeaturedMovement = {
-    item_code: 'CAT-RACK-012',
-    description: 'Cylinder Rack 4x4x5',
-    transaction_type: 'interloc_transfer',
-    transaction_date: '2026-06-04',
-    quantity: 4,
-    total_value: 3200,
-    source_location: 'Yard Zone A',
-    destination_location: 'Project DESB',
-    created_by: 'Ops Control',
-};
-
-const previewRecentMovements = [
-    previewFeaturedMovement,
-    {
-        id: 'preview-2',
-        item_code: 'CAT-ROPE-001',
-        description: 'Polyamide Rope 1/2" x 200 MTR',
-        transaction_type: 'issue',
-        transaction_date: '2026-06-03',
-        quantity: 20,
-        total_value: 2800,
-        source_location: 'Main Store',
-        destination_location: 'Offshore Base',
-        created_by: 'Inventory Team',
-    },
-    {
-        id: 'preview-3',
-        item_code: 'CAT-HOSE-009',
-        description: 'Air Hose 2"',
-        transaction_type: 'receive',
-        transaction_date: '2026-06-02',
-        quantity: 12,
-        total_value: 1440,
-        source_location: 'Vendor',
-        destination_location: 'Receiving Bay',
-        created_by: 'Store Clerk',
-    },
-    {
-        id: 'preview-4',
-        item_code: 'CAT-PAINT-005',
-        description: 'Dog Leg Paint Brush 2"',
-        transaction_type: 'material_return',
-        transaction_date: '2026-06-01',
-        quantity: 6,
-        total_value: 63,
-        source_location: 'Maintenance Team',
-        destination_location: 'General Store',
-        created_by: 'Maintenance Lead',
-    },
-];
-
-const previewMovementMix = [
-    { type: 'interloc_transfer', label: 'Interloc Transfer', total: 14 },
-    { type: 'issue', label: 'Issue', total: 11 },
-    { type: 'receive', label: 'Receive', total: 8 },
-    { type: 'material_return', label: 'Material Return', total: 5 },
-    { type: 'physical_adjustment', label: 'Physical Adjustment', total: 3 },
-];
-
-const previewWeeklyActivity = [
-    { label: 'Mon', count: 3 },
-    { label: 'Tue', count: 6 },
-    { label: 'Wed', count: 4 },
-    { label: 'Thu', count: 8 },
-    { label: 'Fri', count: 5 },
-    { label: 'Sat', count: 7 },
-    { label: 'Sun', count: 4 },
-];
-
-const previewAttentionItems = [
-    {
-        id: 'preview-item-1',
-        item_code: 'CAT-ROPE-001',
-        description: 'Polyamide Rope 1/2" x 200 MTR',
-        category: 'General Store',
-        location: 'Main Store',
-        opening_stock: 24,
-        current_stock: 20,
-        minimum_stock: 10,
-    },
-    {
-        id: 'preview-item-2',
-        item_code: 'CAT-RACK-012',
-        description: 'Cylinder Rack 4x4x5',
-        category: 'Equipment',
-        location: 'Yard Zone A',
-        opening_stock: 12,
-        current_stock: 8,
-        minimum_stock: 4,
-    },
-    {
-        id: 'preview-item-3',
-        item_code: 'CAT-HOSE-009',
-        description: 'Air Hose 2"',
-        category: 'General Store',
-        location: 'Receiving Bay',
-        opening_stock: 18,
-        current_stock: 12,
-        minimum_stock: 6,
-    },
-];
-
-const previewCogEntries = [
-    {
-        id: 'preview-cog-1',
-        item_code: 'CAT-RACK-012',
-        description: 'Cylinder Rack 4x4x5',
-        transaction_date: '2026-06-04',
-        transaction_type: 'interloc_transfer',
-        cog_issued_out: 'COG-OPS-1042',
-        cog_received: '',
-        total_value: 3200,
-    },
-    {
-        id: 'preview-cog-2',
-        item_code: 'CAT-ROPE-001',
-        description: 'Polyamide Rope 1/2" x 200 MTR',
-        transaction_date: '2026-06-03',
-        transaction_type: 'issue',
-        cog_issued_out: 'COG-MAR-881',
-        cog_received: '',
-        total_value: 2800,
-    },
-    {
-        id: 'preview-cog-3',
-        item_code: 'CAT-HOSE-009',
-        description: 'Air Hose 2"',
-        transaction_date: '2026-06-02',
-        transaction_type: 'material_return',
-        cog_issued_out: '',
-        cog_received: 'COG-RET-223',
-        total_value: 1440,
-    },
-];
-
 const overviewCards = computed(() => [
     { label: 'Stock Items', value: props.stats.assetItems, tone: 'text-[#2f6f2d]', href: route('assets.index') },
     { label: 'Movements Logged', value: props.stats.assetTransactions, tone: 'text-[#4f9f4a]', href: route('asset-movements.index') },
@@ -190,19 +54,13 @@ const overviewCards = computed(() => [
     { label: 'Locations', value: props.stats.locations, tone: 'text-[#3c8a39]', href: route('locations.index') },
 ]);
 
-const hasLiveMovements = computed(() => props.recentMovements.length > 0);
-const hasLiveCharts = computed(() => props.weeklyActivity.some((entry) => Number(entry.count ?? 0) > 0));
-const hasLiveAttention = computed(() => props.attentionItems.length > 0);
-const hasLiveCog = computed(() => props.cogEntries.length > 0);
-
-const dashboardFeaturedMovement = computed(() => props.featuredMovement ?? previewFeaturedMovement);
-const dashboardRecentMovements = computed(() => hasLiveMovements.value ? props.recentMovements : previewRecentMovements);
-const dashboardMovementMix = computed(() => props.movementMix.length > 0 ? props.movementMix : previewMovementMix);
-const dashboardWeeklyActivity = computed(() => hasLiveCharts.value ? props.weeklyActivity : previewWeeklyActivity);
-const dashboardAttentionItems = computed(() => hasLiveAttention.value ? props.attentionItems : previewAttentionItems);
-const dashboardCogEntries = computed(() => hasLiveCog.value ? props.cogEntries : previewCogEntries);
-const dashboardCogSummary = computed(() => hasLiveCog.value ? props.cogSummary : { issuedCount: 2, receivedCount: 1 });
-const showPreviewBanner = computed(() => !hasLiveMovements.value || !hasLiveCharts.value || !hasLiveAttention.value || !hasLiveCog.value);
+const dashboardFeaturedMovement = computed(() => props.featuredMovement);
+const dashboardRecentMovements = computed(() => props.recentMovements);
+const dashboardMovementMix = computed(() => props.movementMix);
+const dashboardWeeklyActivity = computed(() => props.weeklyActivity);
+const dashboardAttentionItems = computed(() => props.attentionItems);
+const dashboardCogEntries = computed(() => props.cogEntries);
+const dashboardCogSummary = computed(() => props.cogSummary);
 
 const weeklyPeak = computed(() => Math.max(...dashboardWeeklyActivity.value.map((entry) => Number(entry.count ?? 0)), 1));
 const chartPalette = ['#4f9f4a', '#6fbb68', '#86c87b', '#b8e0ae', '#d8e7d4'];
@@ -307,10 +165,6 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
             </div>
         </PageHeader>
 
-        <div v-if="showPreviewBanner" class="rounded-[1.5rem] border border-[#cfe6ca] bg-[linear-gradient(180deg,#ffffff_0%,#eef8ea_100%)] px-5 py-4 text-sm text-[#355733] shadow-[0_18px_40px_rgba(79,159,74,0.10)]">
-            Showing dashboard preview data for sections that do not have enough live records yet. Real movements and stock activity will replace these previews automatically.
-        </div>
-
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Link
                 v-for="card in overviewCards"
@@ -394,6 +248,9 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                 </div>
                             </div>
                         </template>
+                        <div v-else class="flex min-h-[21rem] items-center justify-center rounded-[1.4rem] border border-dashed border-[#d8e7d4] bg-white/70 px-6 text-center text-sm text-[#6c8c69]">
+                            No movement records are available yet. Post a stock movement to populate the live tracking highlight.
+                        </div>
                     </article>
 
                     <div class="space-y-5">
@@ -408,7 +265,7 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                 </span>
                             </div>
 
-                            <div class="mt-5 space-y-4">
+                            <div v-if="dashboardMovementMix.length > 0" class="mt-5 space-y-4">
                                 <div v-for="entry in dashboardMovementMix" :key="entry.type" class="space-y-2">
                                     <div class="flex items-start justify-between gap-4 text-sm">
                                         <span class="min-w-0 break-words text-[#5f7b5e]">{{ entry.label }}</span>
@@ -418,6 +275,9 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                         <div class="h-full rounded-full bg-[linear-gradient(90deg,#86c87b_0%,#4f9f4a_100%)]" :style="{ width: `${(entry.total / Math.max(...dashboardMovementMix.map(item => item.total), 1)) * 100}%` }" />
                                     </div>
                                 </div>
+                            </div>
+                            <div v-else class="mt-5 rounded-2xl border border-dashed border-[#d8e7d4] bg-white/70 px-4 py-6 text-sm text-[#6c8c69]">
+                                No movement type data is available yet.
                             </div>
                         </section>
 
@@ -456,7 +316,7 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                 </div>
 
                 <div class="rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
-                        <div class="flex h-52 items-end gap-2 sm:gap-4">
+                    <div class="flex h-52 items-end gap-2 sm:gap-4">
                         <div v-for="entry in dashboardWeeklyActivity" :key="entry.label" class="flex flex-1 flex-col items-center gap-3">
                             <div class="flex w-full items-end justify-center rounded-t-[1rem] bg-[#edf4ea] px-2 pt-2" style="height: 170px;">
                                 <div
@@ -499,7 +359,7 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                 </div>
                             </div>
 
-                            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div v-if="inventoryDistribution.segments.length > 0" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                                 <div v-for="segment in inventoryDistribution.segments" :key="segment.label" class="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[#edf3eb] bg-[#fbfefa] px-4 py-3">
                                     <div class="flex min-w-0 items-center gap-3">
                                         <span class="h-3 w-3 rounded-full" :style="{ backgroundColor: segment.color }" />
@@ -507,6 +367,9 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                     </div>
                                     <span class="text-sm font-semibold text-[#234222]">{{ segment.share }}%</span>
                                 </div>
+                            </div>
+                            <div v-else class="rounded-xl border border-dashed border-[#d8e7d4] bg-[#fbfefa] px-4 py-6 text-sm text-[#6c8c69]">
+                                No inventory records are available yet.
                             </div>
                         </div>
                     </div>
@@ -556,7 +419,7 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                 </div>
                             </div>
 
-                            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                            <div v-if="movementDonutSegments.segments.length > 0" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                 <div v-for="segment in movementDonutSegments.segments" :key="segment.label" class="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[#edf3eb] bg-[#fbfefa] px-4 py-3">
                                     <div class="flex min-w-0 items-center gap-3">
                                         <span class="h-3 w-3 rounded-full" :style="{ backgroundColor: segment.color }" />
@@ -564,6 +427,9 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                     </div>
                                     <span class="text-sm font-semibold text-[#234222]">{{ segment.value }}</span>
                                 </div>
+                            </div>
+                            <div v-else class="rounded-xl border border-dashed border-[#d8e7d4] bg-[#fbfefa] px-4 py-6 text-sm text-[#6c8c69]">
+                                No movement allocation is available until transactions are posted.
                             </div>
                         </div>
                     </div>
@@ -579,7 +445,7 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                             <Link class="text-sm font-medium text-[#3c8a39] hover:text-[#2f6f2d]" :href="route('asset-movements.index')">View all</Link>
                         </div>
 
-                        <div class="mt-5 space-y-3">
+                        <div v-if="dashboardRecentMovements.length > 0" class="mt-5 space-y-3">
                             <article
                                 v-for="movement in dashboardRecentMovements"
                                 :key="movement.id"
@@ -600,6 +466,9 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                 </div>
                             </article>
                         </div>
+                        <div v-else class="mt-5 rounded-2xl border border-dashed border-[#d8e7d4] bg-white/70 px-4 py-6 text-sm text-[#6c8c69]">
+                            No movement logs have been posted yet.
+                        </div>
                     </section>
 
                     <section class="rounded-[1.7rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] p-5">
@@ -611,7 +480,7 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                             <Link class="text-sm font-medium text-[#3c8a39] hover:text-[#2f6f2d]" :href="route('assets.index')">Open assets</Link>
                         </div>
 
-                        <div class="mt-5 space-y-3">
+                        <div v-if="dashboardAttentionItems.length > 0" class="mt-5 space-y-3">
                             <article
                                 v-for="item in dashboardAttentionItems"
                                 :key="item.id"
@@ -642,6 +511,9 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                 </div>
                             </article>
                         </div>
+                        <div v-else class="mt-5 rounded-2xl border border-dashed border-[#d8e7d4] bg-white/70 px-4 py-6 text-sm text-[#6c8c69]">
+                            No stock items currently require attention from live inventory thresholds.
+                        </div>
                     </section>
                 </div>
 
@@ -668,7 +540,7 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                             </div>
                         </div>
 
-                        <div class="space-y-3">
+                        <div v-if="dashboardCogEntries.length > 0" class="space-y-3">
                             <article
                                 v-for="entry in dashboardCogEntries"
                                 :key="entry.id"
@@ -699,6 +571,9 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
                                     </div>
                                 </div>
                             </article>
+                        </div>
+                        <div v-else class="rounded-2xl border border-dashed border-[#d8e7d4] bg-white/70 px-4 py-6 text-sm text-[#6c8c69]">
+                            No COG-issued or COG-received movement references are available yet.
                         </div>
                     </div>
                 </section>

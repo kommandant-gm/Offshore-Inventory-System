@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Cog;
 use App\Models\InventoryTransaction;
+use App\Support\AssistantPrompts;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -58,6 +59,9 @@ class HandleInertiaRequests extends Middleware
             ],
             'ui' => $request->user() ? [
                 'notifications' => fn () => $this->notifications($request),
+                'assistant_prompts' => fn () => $request->user()->canRead('assistant')
+                    ? AssistantPrompts::defaults()
+                    : [],
             ] : null,
         ];
     }
