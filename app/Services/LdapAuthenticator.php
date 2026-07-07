@@ -54,6 +54,63 @@ class LdapAuthenticator
         }
     }
 
+    public function testConnection(?string $lookupUsername = null): array
+    {
+        $result = [
+            'enabled' => $this->enabled(),
+            'extension_loaded' => function_exists('ldap_connect'),
+            'host' => (string) config('ldap.host'),
+            'port' => (int) config('ldap.port', 389),
+            'base_dn' => (string) config('ldap.base_dn'),
+            'bind_dn' => (string) config('ldap.username'),
+            'bind_password_configured' => config('ldap.password') !== null && config('ldap.password') !== '',
+            'connected' => false,
+            'search_bind_ok' => false,
+            'lookup_username' => $lookupUsername,
+            'lookup_found' => false,
+            'lookup_dn' => null,
+            'lookup_name' => null,
+            'lookup_email' => null,
+        ];
+
+        if (! $result['enabled'] || ! $result['extension_loaded']) {
+            return $result;
+        }
+
+        $connection = $this->connect();
+
+        if (! $connection) {
+            return $result;
+        }
+
+        $result['connected'] = true;
+
+        try {
+            $this->configureConnection($connection);
+
+            if (! $this->bindForSearch($connection)) {
+                return $result;
+            }
+
+            $result['search_bind_ok'] = true;
+
+            if ($lookupUsername) {
+                $entry = $this->findDirectoryUser($connection, $lookupUsername);
+
+                if ($entry && ! empty($entry['dn'])) {
+                    $result['lookup_found'] = true;
+                    $result['lookup_dn'] = $entry['dn'];
+                    $result['lookup_name'] = $this->attribute($entry, 'displayname') ?: $this->attribute($entry, 'cn');
+                    $result['lookup_email'] = $this->attribute($entry, 'mail');
+                }
+            }
+
+            return $result;
+        } finally {
+            @ldap_unbind($connection);
+        }
+    }
+
     protected function connect()
     {
         $host = (string) config('ldap.host');
