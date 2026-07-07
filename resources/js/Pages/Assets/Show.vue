@@ -2,11 +2,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 
 defineProps({
     item: Object,
 });
+
+const page = usePage();
 </script>
 
 <template>
@@ -14,7 +16,7 @@ defineProps({
 
     <AuthenticatedLayout>
         <PageHeader :title="item.item_code" :description="item.description">
-            <Link class="btn bg-orange-600 text-white hover:bg-orange-700" :href="route('asset-movements.create')">Log Movement</Link>
+            <Link v-if="page.props.auth?.user?.can?.movements_edit" class="btn bg-orange-600 text-white hover:bg-orange-700" :href="route('asset-movements.create')">Log Movement</Link>
         </PageHeader>
 
         <div class="grid gap-6 xl:grid-cols-[380px,1fr]">

@@ -18,12 +18,12 @@
         { name: 'Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read' },
         { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read' },
         { name: 'Stock Items', icon: ArchiveBoxIcon, route: 'assets.index' },
-        { name: 'Stock Movements', icon: TruckIcon, route: 'asset-movements.index' },
+        { name: 'Stock Movements', icon: TruckIcon, route: 'asset-movements.index', can: 'movements_read' },
         { name: 'Stock Ledger', icon: ChartBarIcon, route: 'asset-ledger.index' },
         { name: 'COG Control', icon: ClipboardDocumentCheckIcon, route: 'cogs.index' },
         { name: 'Categories', icon: TagIcon, route: 'categories.index' },
         { name: 'Locations', icon: MapIcon, route: 'locations.index' },
-        { name: 'Receive / Issue', icon: BuildingStorefrontIcon, route: 'asset-movements.create' },
+        { name: 'Receive / Issue', icon: BuildingStorefrontIcon, route: 'asset-movements.create', can: 'movements_edit' },
     ];
 
     const currentUser = page.props.auth.user;

@@ -43,6 +43,8 @@ class HandleInertiaRequests extends Middleware
                         'can' => [
                             'assistant_read' => $request->user()->canRead('assistant'),
                             'anomalies_read' => $request->user()->canRead('anomalies'),
+                            'movements_read' => $request->user()->canRead('movements'),
+                            'movements_edit' => $request->user()->canEdit('movements'),
                             'settings_read' => $request->user()->canRead('settings'),
                             'settings_edit' => $request->user()->canEdit('settings'),
                         ],

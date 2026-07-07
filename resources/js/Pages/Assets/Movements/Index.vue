@@ -1,15 +1,17 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
     transactions: Object,
 });
 
+const page = usePage();
 const activeTab = ref('live');
 const search = ref('');
+const canEditMovements = computed(() => page.props.auth?.user?.can?.movements_edit);
 
 const previewTransactions = [
     {
@@ -116,7 +118,7 @@ const progressWidth = (type) => `${trackingState(type).progress}%`;
 
     <AuthenticatedLayout>
         <PageHeader title="Stock Item Movement Tracking" description="Movement cards and live tracking panels styled like an operations monitor, mapped to your stock item workflow.">
-            <Link class="btn w-full border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95 sm:w-auto" :href="route('asset-movements.create')">
+            <Link v-if="canEditMovements" class="btn w-full border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95 sm:w-auto" :href="route('asset-movements.create')">
                 New Movement
             </Link>
         </PageHeader>

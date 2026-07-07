@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -42,6 +42,10 @@ const props = defineProps({
         required: true,
     },
 });
+
+const page = usePage();
+const canReadMovements = computed(() => page.props.auth?.user?.can?.movements_read);
+const canEditMovements = computed(() => page.props.auth?.user?.can?.movements_edit);
 
 const previewFeaturedMovement = {
     item_code: 'CAT-RACK-012',
@@ -298,8 +302,8 @@ const formatMoney = (value) => Number(value ?? 0).toFixed(2);
             description="High-level stock item control with movement tracking, activity charts, and inventory attention points."
         >
             <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-                <Link class="btn w-full border border-[#d8e7d4] bg-white text-[#234222] shadow-sm hover:bg-[#eef8ea] sm:w-auto" :href="route('asset-movements.index')">Open Tracking</Link>
-                <Link class="btn w-full border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95 sm:w-auto" :href="route('asset-movements.create')">New Movement</Link>
+                <Link v-if="canReadMovements" class="btn w-full border border-[#d8e7d4] bg-white text-[#234222] shadow-sm hover:bg-[#eef8ea] sm:w-auto" :href="route('asset-movements.index')">Open Tracking</Link>
+                <Link v-if="canEditMovements" class="btn w-full border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95 sm:w-auto" :href="route('asset-movements.create')">New Movement</Link>
             </div>
         </PageHeader>
 
