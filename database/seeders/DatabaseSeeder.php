@@ -20,17 +20,9 @@ class DatabaseSeeder extends Seeder
         $defaultPassword = Hash::make('Dayang@123');
         $adminPermissions = AccessMatrix::permissionsForRole('admin');
 
-        User::updateOrCreate(
-            ['email' => 'admin@admin.com'],
-            [
-                'name' => 'Admin',
-                'username' => 'admin',
-                'role' => 'admin',
-                'permissions' => $adminPermissions,
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-            ]
-        );
+        User::query()
+            ->where('email', 'admin@admin.com')
+            ->delete();
 
         User::updateOrCreate(
             ['username' => 'codex'],

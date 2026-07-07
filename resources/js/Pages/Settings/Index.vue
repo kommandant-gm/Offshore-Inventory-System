@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { reactive } from 'vue';
+import { computed, reactive } from 'vue';
 
 const props = defineProps({
     stats: Object,
@@ -58,6 +58,27 @@ const userForms = reactive(
         ]),
     ),
 );
+
+const accessSummary = (userId) => {
+    const levels = Object.values(userForms[userId].permissions);
+
+    return {
+        edit: levels.filter((level) => level === 'edit').length,
+        read: levels.filter((level) => level === 'read').length,
+        none: levels.filter((level) => level === 'none').length,
+    };
+};
+
+const permissionModuleChunks = computed(() => {
+    const chunkSize = 5;
+    const chunks = [];
+
+    for (let index = 0; index < props.permissionModules.length; index += chunkSize) {
+        chunks.push(props.permissionModules.slice(index, index + chunkSize));
+    }
+
+    return chunks;
+});
 
 const applyRolePreset = (userId) => {
     const form = userForms[userId];
@@ -165,30 +186,36 @@ const saveAccess = (userId) => {
                 <div>
                     <p class="text-sm text-[#6f8a6b]">Role Permissions</p>
                     <h2 class="text-xl font-semibold text-[#234222]">Administrative access matrix</h2>
+                    <p class="mt-1 text-sm text-[#6f8a6b]">Compact role controls with direct module-level overrides.</p>
                 </div>
                 <span class="rounded-full border border-[#b8d7b1] bg-[#eef8ea] px-4 py-1 text-xs font-semibold text-[#3c8a39]">
                     {{ users.length }} users
                 </span>
             </div>
 
-            <div class="space-y-5">
+            <div class="space-y-4">
                 <article
                     v-for="user in users"
                     :key="user.id"
-                    class="rounded-[1.6rem] border border-[#d8e7d4] bg-[#fbfefa] p-5"
+                    class="rounded-[1.6rem] border border-[#d8e7d4] bg-[#fbfefa] p-4"
                 >
-                    <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                        <div>
-                            <p class="text-lg font-semibold text-[#234222]">{{ user.name }}</p>
-                            <p class="mt-1 text-sm text-[#6f8a6b]">{{ user.email }}</p>
+                    <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="text-lg font-semibold text-[#234222]">{{ user.name }}</p>
+                                <span class="rounded-full border border-[#d8e7d4] bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f8a6b]">
+                                    {{ user.username }}
+                                </span>
+                            </div>
+                            <p class="mt-1 truncate text-sm text-[#6f8a6b]">{{ user.email }}</p>
                         </div>
 
-                        <div class="grid gap-4 md:grid-cols-2 xl:min-w-[420px]">
-                            <div class="rounded-[1.25rem] border border-[#d8e7d4] bg-white p-4">
-                                <label class="mb-2 block text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Role</label>
+                        <div class="grid gap-3 md:grid-cols-[minmax(0,220px)_1fr_auto] xl:min-w-[760px]">
+                            <div class="rounded-[1.15rem] border border-[#d8e7d4] bg-white p-3">
+                                <label class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Role</label>
                                 <select
                                     v-model="userForms[user.id].role"
-                                    class="select w-full border-[#cfe6c8] bg-white text-[#234222]"
+                                    class="select select-sm w-full border-[#cfe6c8] bg-white text-[#234222]"
                                     :disabled="!canEditSettings || userForms[user.id].saving"
                                     @change="applyRolePreset(user.id)"
                                 >
@@ -196,51 +223,91 @@ const saveAccess = (userId) => {
                                 </select>
                             </div>
 
-                            <div class="rounded-[1.25rem] border border-[#d8e7d4] bg-white p-4">
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Access Summary</p>
-                                <p class="mt-2 text-sm text-[#4f6b4b]">
-                                    Choose a role preset, then refine each module below to No Access, Read Only, or Edit.
-                                </p>
+                            <div class="rounded-[1.15rem] border border-[#d8e7d4] bg-white p-3">
+                                <p class="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Access Summary</p>
+                                <div class="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+                                    <span class="rounded-full border border-[#b8e0ae] bg-[#eef8ea] px-3 py-1 text-[#2f6f2d]">{{ accessSummary(user.id).edit }} edit</span>
+                                    <span class="rounded-full border border-[#d8e7d4] bg-[#f8fbf7] px-3 py-1 text-[#5f7b5e]">{{ accessSummary(user.id).read }} read</span>
+                                    <span class="rounded-full border border-[#e8ede6] bg-white px-3 py-1 text-[#7f9a7a]">{{ accessSummary(user.id).none }} none</span>
+                                </div>
+                                <p class="mt-2 text-xs text-[#6f8a6b]">Choose a preset, then fine-tune individual modules below.</p>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="btn btn-sm self-start border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95"
+                                :disabled="!canEditSettings || userForms[user.id].saving"
+                                @click="saveAccess(user.id)"
+                            >
+                                {{ userForms[user.id].saving ? 'Saving...' : 'Save' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 overflow-hidden rounded-[1.25rem] border border-[#d8e7d4] bg-white">
+                        <div class="hidden bg-[#f7fbf5] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a] xl:grid xl:grid-cols-[160px_repeat(5,minmax(0,1fr))] xl:gap-3">
+                            <span>Module Row</span>
+                            <span v-for="module in permissionModuleChunks[0]" :key="`header-${module.value}`">{{ module.label }}</span>
+                        </div>
+
+                        <div
+                            v-for="(moduleRow, rowIndex) in permissionModuleChunks"
+                            :key="`row-${rowIndex}`"
+                            class="border-t border-[#edf3eb] first:border-t-0"
+                        >
+                            <div class="hidden items-center gap-3 px-4 py-3 xl:grid xl:grid-cols-[160px_repeat(5,minmax(0,1fr))]">
+                                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#7f9a7a]">Row {{ rowIndex + 1 }}</span>
+                                <div
+                                    v-for="module in moduleRow"
+                                    :key="`${user.id}-${module.value}`"
+                                    class="min-w-0"
+                                >
+                                    <label class="mb-1 block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7f9a7a]">{{ module.label }}</label>
+                                    <select
+                                        v-model="userForms[user.id].permissions[module.value]"
+                                        class="select select-sm w-full border-[#cfe6c8] bg-white text-[#234222]"
+                                        :disabled="!canEditSettings || userForms[user.id].saving"
+                                    >
+                                        <option
+                                            v-for="level in permissionLevels"
+                                            :key="`${module.value}-${level.value}`"
+                                            :value="level.value"
+                                        >
+                                            {{ level.label }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
+                                <div
+                                    v-for="module in moduleRow"
+                                    :key="`${user.id}-${module.value}-mobile`"
+                                    class="rounded-xl border border-[#edf3eb] bg-[#fbfefa] p-3"
+                                >
+                                    <label class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7f9a7a]">{{ module.label }}</label>
+                                    <select
+                                        v-model="userForms[user.id].permissions[module.value]"
+                                        class="select select-sm w-full border-[#cfe6c8] bg-white text-[#234222]"
+                                        :disabled="!canEditSettings || userForms[user.id].saving"
+                                    >
+                                        <option
+                                            v-for="level in permissionLevels"
+                                            :key="`${module.value}-${level.value}-mobile`"
+                                            :value="level.value"
+                                        >
+                                            {{ level.label }}
+                                        </option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div
-                            v-for="module in permissionModules"
-                            :key="`${user.id}-${module.value}`"
-                            class="rounded-[1.25rem] border border-[#d8e7d4] bg-white p-4"
-                        >
-                            <label class="mb-2 block text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">{{ module.label }}</label>
-                            <select
-                                v-model="userForms[user.id].permissions[module.value]"
-                                class="select w-full border-[#cfe6c8] bg-white text-[#234222]"
-                                :disabled="!canEditSettings || userForms[user.id].saving"
-                            >
-                                <option
-                                    v-for="level in permissionLevels"
-                                    :key="`${module.value}-${level.value}`"
-                                    :value="level.value"
-                                >
-                                    {{ level.label }}
-                                </option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-                        <p class="text-sm text-[#6f8a6b]">
-                            Settings read access allows viewing this screen. Settings edit access allows updating user roles and permissions.
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        <p class="text-xs text-[#6f8a6b]">
+                            Settings read allows viewing this screen. Settings edit allows updating roles and permissions.
                         </p>
-
-                        <button
-                            type="button"
-                            class="btn border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95"
-                            :disabled="!canEditSettings || userForms[user.id].saving"
-                            @click="saveAccess(user.id)"
-                        >
-                            {{ userForms[user.id].saving ? 'Saving...' : 'Save Access' }}
-                        </button>
                     </div>
                 </article>
             </div>
