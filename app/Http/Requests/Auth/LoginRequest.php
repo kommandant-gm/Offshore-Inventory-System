@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Services\LdapAuthenticator;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +50,18 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only('username', 'password'), $this->boolean('remember'))) {
+            $ldapUser = app(LdapAuthenticator::class)->attempt(
+                $this->string('username')->value(),
+                $this->string('password')->value(),
+            );
+
+            if ($ldapUser) {
+                Auth::login($ldapUser, $this->boolean('remember'));
+                RateLimiter::clear($this->throttleKey());
+
+                return;
+            }
+
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
