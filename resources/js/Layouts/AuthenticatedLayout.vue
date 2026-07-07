@@ -260,8 +260,8 @@
     
                     <div class="p-4 bg-white">
                         <div class="flex items-center gap-3 rounded-xl border border-[#d8e7d4] bg-[#fbfefa] p-3 shadow-sm transition-all cursor-pointer group hover:border-[#b8e0ae] hover:bg-[#f4fbf1]">
-                            <div class="avatar relative">
-                                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#6fbb68] to-[#3c8a39] text-sm font-bold text-white ring ring-[#d8e7d4] transition-all group-hover:ring-[#86c87b]">
+                            <div class="relative shrink-0">
+                                <div class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#6fbb68] to-[#3c8a39] text-sm font-bold text-white ring ring-[#d8e7d4] transition-all group-hover:ring-[#86c87b]">
                                     {{ currentUserInitials }}
                                 </div>
                                 <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white bg-[#4f9f4a]"></span>
