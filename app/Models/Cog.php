@@ -30,6 +30,7 @@ class Cog extends Model
         'status',
         'approval_token',
         'approval_sent_at',
+        'approval_expires_at',
         'approved_at',
         'rejected_at',
         'receiver_remarks',
@@ -44,6 +45,7 @@ class Cog extends Model
             'document_date' => 'date',
             'cc_emails' => 'array',
             'approval_sent_at' => 'datetime',
+            'approval_expires_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
         ];

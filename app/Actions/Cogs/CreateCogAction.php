@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 
 class CreateCogAction
 {
+    private const APPROVAL_TOKEN_TTL_DAYS = 7;
+
     public function execute(array $validated, ?int $userId = null): Cog
     {
         $cog = DB::transaction(fn () => $this->persist($validated, $userId));
@@ -30,6 +32,7 @@ class CreateCogAction
             'status' => $shouldSendApproval ? 'pending_approval' : 'draft',
             'approval_token' => $shouldSendApproval ? Str::uuid()->toString() : null,
             'approval_sent_at' => $shouldSendApproval ? now() : null,
+            'approval_expires_at' => $shouldSendApproval ? now()->addDays(self::APPROVAL_TOKEN_TTL_DAYS) : null,
             'created_by' => $userId,
             'updated_by' => $userId,
         ]);
