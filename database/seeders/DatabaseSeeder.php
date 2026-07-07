@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\AccessMatrix;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -17,13 +18,28 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $defaultPassword = Hash::make('Dayang@123');
+        $adminPermissions = AccessMatrix::permissionsForRole('admin');
 
         User::updateOrCreate(
             ['email' => 'admin@admin.com'],
             [
                 'name' => 'Admin',
                 'username' => 'admin',
+                'role' => 'admin',
+                'permissions' => $adminPermissions,
                 'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+
+        User::updateOrCreate(
+            ['username' => 'codex'],
+            [
+                'name' => 'Codex',
+                'email' => 'codex@local.test',
+                'role' => 'admin',
+                'permissions' => $adminPermissions,
+                'password' => Hash::make('Codex@123'),
                 'email_verified_at' => now(),
             ]
         );
@@ -41,6 +57,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'name' => $user['name'],
                     'username' => $user['username'],
+                    'role' => 'viewer',
                     'password' => $defaultPassword,
                     'email_verified_at' => now(),
                 ]
