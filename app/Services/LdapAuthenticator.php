@@ -71,6 +71,7 @@ class LdapAuthenticator
             'lookup_dn' => null,
             'lookup_name' => null,
             'lookup_email' => null,
+            'last_error' => null,
         ];
 
         if (! $result['enabled'] || ! $result['extension_loaded']) {
@@ -89,6 +90,8 @@ class LdapAuthenticator
             $this->configureConnection($connection);
 
             if (! $this->bindForSearch($connection)) {
+                $result['last_error'] = $this->ldapError($connection);
+
                 return $result;
             }
 
@@ -159,6 +162,17 @@ class LdapAuthenticator
         }
 
         return true;
+    }
+
+    protected function ldapError($connection): ?string
+    {
+        if (! function_exists('ldap_error')) {
+            return null;
+        }
+
+        $error = @ldap_error($connection);
+
+        return is_string($error) && $error !== '' ? $error : null;
     }
 
     protected function findDirectoryUser($connection, string $username): ?array

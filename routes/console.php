@@ -28,6 +28,7 @@ Artisan::command('ldap:test {username? : Optional LDAP username to look up or ve
             ['Bind password configured', $result['bind_password_configured'] ? 'yes' : 'no'],
             ['Connection created', $result['connected'] ? 'yes' : 'no'],
             ['Search bind', $result['search_bind_ok'] ? 'ok' : 'failed'],
+            ['LDAP error', $result['last_error'] ?: '-'],
         ]
     );
 
