@@ -1,7 +1,7 @@
 <script setup>
     import { Head, Link, useForm } from '@inertiajs/vue3';
     import { 
-        EnvelopeIcon, 
+        UserIcon,
         LockClosedIcon, 
         ArrowRightIcon 
     } from '@heroicons/vue/24/outline';
@@ -17,7 +17,7 @@
     });
     
     const form = useForm({
-        email: '',
+        username: '',
         password: '',
         remember: false,
     });
@@ -91,23 +91,23 @@
                     <form @submit.prevent="submit" class="space-y-5">
                         
                         <div>
-                            <label for="email" class="block text-sm font-medium text-slate-400 mb-1.5">Email Address</label>
+                            <label for="username" class="block text-sm font-medium text-slate-400 mb-1.5">Username</label>
                             <div class="relative group">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <EnvelopeIcon class="h-5 w-5 text-slate-500 group-focus-within:text-orange-500 transition-colors" />
+                                    <UserIcon class="h-5 w-5 text-slate-500 group-focus-within:text-orange-500 transition-colors" />
                                 </div>
                                 <input 
-                                    id="email" 
-                                    type="email" 
-                                    v-model="form.email"
+                                    id="username"
+                                    type="text"
+                                    v-model="form.username"
                                     required 
                                     autofocus 
                                     autocomplete="username"
                                     class="block w-full pl-10 pr-3 py-2.5 bg-[#1e293b] border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm"
-                                    placeholder="name@company.com"
+                                    placeholder="marie.sim"
                                 />
                             </div>
-                            <p v-if="form.errors.email" class="mt-2 text-sm text-red-400">{{ form.errors.email }}</p>
+                            <p v-if="form.errors.username" class="mt-2 text-sm text-red-400">{{ form.errors.username }}</p>
                         </div>
     
                         <div>

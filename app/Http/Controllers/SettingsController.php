@@ -51,6 +51,7 @@ class SettingsController extends Controller
                 ->map(fn (User $user) => [
                     'id' => $user->id,
                     'name' => $user->name,
+                    'username' => $user->username,
                     'email' => $user->email,
                     'role' => $user->role ?? 'viewer',
                     'permissions' => $user->resolvedPermissions(),
