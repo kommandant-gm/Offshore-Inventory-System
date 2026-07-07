@@ -34,10 +34,10 @@ const submit = () => {
 
     <div class="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#fcfefb_52%,#f7fcf5_100%)] font-sans text-[#234222]">
         <div class="mx-auto flex min-h-screen max-w-[1680px] flex-col lg:grid lg:grid-cols-[1.06fr,0.94fr]">
-            <div class="relative overflow-hidden px-6 pb-10 pt-8 sm:px-8 lg:px-12 lg:pb-14 lg:pt-10">
-                <div class="absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top_left,rgba(111,187,104,0.12),transparent_56%),radial-gradient(circle_at_top_right,rgba(184,224,174,0.18),transparent_38%)]" />
-                <div class="absolute left-[-8%] top-[18%] h-48 w-48 rounded-full bg-[#f4fbf1] blur-3xl" />
-                <div class="absolute bottom-[12%] right-[8%] h-56 w-56 rounded-full bg-[#edf8e9] blur-3xl" />
+            <div class="relative overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(252,254,251,0.98)_100%)] px-6 pb-10 pt-8 sm:px-8 lg:px-12 lg:pb-14 lg:pt-10">
+                <div class="absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top_left,rgba(111,187,104,0.06),transparent_58%),radial-gradient(circle_at_top_right,rgba(184,224,174,0.10),transparent_40%)]" />
+                <div class="absolute left-[-8%] top-[18%] h-48 w-48 rounded-full bg-[#f9fdf8] blur-3xl" />
+                <div class="absolute bottom-[12%] right-[8%] h-56 w-56 rounded-full bg-[#f4fbf1] blur-3xl" />
 
                 <div class="relative z-10 flex h-full flex-col justify-between">
                     <div class="flex items-center gap-3">
