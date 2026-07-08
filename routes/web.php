@@ -12,6 +12,7 @@ use App\Http\Controllers\AuditTrailController;
 use App\Http\Controllers\StockAnomalyController;
 use App\Http\Controllers\StocktakeController;
 use App\Http\Controllers\InventoryItemController;
+use App\Http\Controllers\InventoryImportController;
 use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingsController;
@@ -47,6 +48,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/assets', [InventoryItemController::class, 'index'])->name('assets.index');
     Route::get('/assets/create', [InventoryItemController::class, 'create'])->name('assets.create');
+    Route::get('/assets/import', [InventoryImportController::class, 'create'])->name('assets.import.create');
+    Route::post('/assets/import', [InventoryImportController::class, 'store'])->name('assets.import.store');
     Route::post('/assets', [InventoryItemController::class, 'store'])->name('assets.store');
     Route::get('/assets/{item}', [InventoryItemController::class, 'show'])->name('assets.show');
     Route::patch('/assets/{item}', [InventoryItemController::class, 'update'])->name('assets.update');

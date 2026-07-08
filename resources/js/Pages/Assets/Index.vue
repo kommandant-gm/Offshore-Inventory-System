@@ -137,6 +137,12 @@ const fmt = (value) => Number(value ?? 0).toFixed(2).replace('.00', '');
                             >
                                 Open Ledger
                             </Link>
+                            <Link
+                                class="btn w-full border-[#b8d7b1] bg-white text-[#2f6f2d] hover:bg-[#eef8ea] sm:w-auto"
+                                :href="route('assets.import.create')"
+                            >
+                                Import CSV
+                            </Link>
                         </div>
 
                         <p v-if="!selectedCategoryId" class="mt-3 text-xs font-medium text-[#4f9f4a]">
