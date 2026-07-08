@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class InventoryItem extends Model
 {
@@ -48,5 +49,19 @@ class InventoryItem extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(InventoryTransaction::class, 'item_id');
+    }
+
+    public function latestTransaction(): HasOne
+    {
+        return $this->hasOne(InventoryTransaction::class, 'item_id')
+            ->ofMany([
+                'transaction_date' => 'max',
+                'id' => 'max',
+            ]);
+    }
+
+    public function locationBalances(): HasMany
+    {
+        return $this->hasMany(InventoryLocationBalance::class);
     }
 }

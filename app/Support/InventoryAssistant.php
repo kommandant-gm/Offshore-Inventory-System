@@ -2,13 +2,12 @@
 
 namespace App\Support;
 
-use App\Domain\Inventory\InventoryBalance;
 use App\Models\Category;
-use App\Enums\InventoryTransactionType;
 use App\Models\InventoryItem;
 use App\Models\InventoryTransaction;
 use App\Models\Location;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -16,6 +15,7 @@ class InventoryAssistant
 {
     public function __construct(
         private readonly StockAnomalyAgent $stockAnomalyAgent,
+        private readonly InventoryItemProjector $itemProjector,
     ) {
     }
 
@@ -130,13 +130,7 @@ class InventoryAssistant
         $normalized = Str::lower($search);
 
         $items = InventoryItem::query()
-            ->with([
-                'defaultLocation',
-                'category',
-                'transactions.location',
-                'transactions.sourceLocation',
-                'transactions.destinationLocation',
-            ])
+            ->with($this->itemReadRelations(includeLatestMovement: true))
             ->where(function ($query) use ($search) {
                 $query
                     ->where('item_code', 'like', "%{$search}%")
@@ -361,7 +355,7 @@ class InventoryAssistant
     {
         $movement = $this->latestMovement($item);
         $location = $this->currentLocationLabel($item, $movement);
-        $currentStock = round((float) $item->opening_stock + InventoryBalance::currentQuantity($item), 2);
+        $currentStock = $this->itemProjector->currentStock($item);
 
         $answer = $location
             ? "Item {$item->item_code} is currently at {$location}."
@@ -382,7 +376,7 @@ class InventoryAssistant
 
     private function stockResponse(InventoryItem $item): array
     {
-        $currentStock = round((float) $item->opening_stock + InventoryBalance::currentQuantity($item), 2);
+        $currentStock = $this->itemProjector->currentStock($item);
         $movement = $this->latestMovement($item);
         $location = $this->currentLocationLabel($item, $movement) ?? 'location pending';
 
@@ -420,7 +414,7 @@ class InventoryAssistant
     {
         $movement = $this->latestMovement($item);
         $location = $this->currentLocationLabel($item, $movement) ?? 'location pending';
-        $currentStock = round((float) $item->opening_stock + InventoryBalance::currentQuantity($item), 2);
+        $currentStock = $this->itemProjector->currentStock($item);
 
         return [
             'intent' => 'summary',
@@ -440,31 +434,10 @@ class InventoryAssistant
             ];
         }
 
-        $items = InventoryItem::query()
-            ->with([
-                'category',
-                'defaultLocation',
-                'transactions.location',
-                'transactions.sourceLocation',
-                'transactions.destinationLocation',
-            ])
+        $items = $this->mappedItems(location: $location, limit: 8)
             ->orderBy('item_code')
             ->get()
-            ->map(function (InventoryItem $item) {
-                $movement = $this->latestMovement($item);
-                $currentLocation = $this->currentLocationLabel($item, $movement);
-                $currentStock = round((float) $item->opening_stock + InventoryBalance::currentQuantity($item), 2);
-
-                return [
-                    'item' => $item,
-                    'current_location' => $currentLocation,
-                    'current_stock' => $currentStock,
-                ];
-            })
-            ->filter(function (array $entry) use ($location) {
-                return Str::lower((string) $entry['current_location']) === Str::lower($location->name);
-            })
-            ->take(8)
+            ->map(fn (InventoryItem $item) => $this->mappedItemPayload($item))
             ->values();
 
         if ($items->isEmpty()) {
@@ -505,15 +478,10 @@ class InventoryAssistant
     private function countResponse(string $message, string $intent): array
     {
         $filters = $this->extractCountFilters($message);
-        $items = $this->mappedItems();
-
-        if ($filters['category']) {
-            $items = $items->filter(fn (array $entry) => $entry['category'] && Str::lower($entry['category']) === Str::lower($filters['category']->name));
-        }
-
-        if ($filters['location']) {
-            $items = $items->filter(fn (array $entry) => $entry['current_location'] && Str::lower($entry['current_location']) === Str::lower($filters['location']->name));
-        }
+        $items = $this->mappedItems(
+            category: $filters['category'],
+            location: $filters['location'],
+        )->get()->map(fn (InventoryItem $item) => $this->mappedItemPayload($item));
 
         $itemCount = $items->count();
         $stockTotal = $items->sum(fn (array $entry) => $entry['current_stock']);
@@ -537,65 +505,50 @@ class InventoryAssistant
 
     private function latestMovement(InventoryItem $item): ?InventoryTransaction
     {
-        if ($item->relationLoaded('transactions')) {
-            return $item->transactions
-                ->sortByDesc(fn (InventoryTransaction $transaction) => sprintf(
-                    '%s-%010d',
-                    $transaction->transaction_date?->format('Ymd') ?? '00000000',
-                    $transaction->id
-                ))
-                ->first();
+        if ($item->relationLoaded('latestTransaction')) {
+            return $item->latestTransaction;
         }
 
-        return $item->transactions()
+        return $item->latestTransaction()
             ->with(['location', 'sourceLocation', 'destinationLocation'])
-            ->latest('transaction_date')
-            ->latest('id')
             ->first();
     }
 
     private function currentLocationLabel(InventoryItem $item, ?InventoryTransaction $movement): ?string
     {
-        if (! $movement) {
-            return $item->defaultLocation?->name;
-        }
-
-        return match ($movement->transaction_type) {
-            InventoryTransactionType::Issue,
-            InventoryTransactionType::InterlocTransfer => $movement->destinationLocation?->name ?? $movement->location?->name ?? $item->defaultLocation?->name,
-            InventoryTransactionType::Receive,
-            InventoryTransactionType::Opening,
-            InventoryTransactionType::MaterialReturn,
-            InventoryTransactionType::PhysicalAdjustment,
-            InventoryTransactionType::OtherMisc,
-            InventoryTransactionType::PriceAdjustment => $movement->location?->name ?? $movement->destinationLocation?->name ?? $item->defaultLocation?->name,
-        };
+        return $this->itemProjector->currentLocation($item);
     }
 
-    private function mappedItems(): Collection
+    private function mappedItems(?Category $category = null, ?Location $location = null, ?int $limit = null): Builder
     {
-        return InventoryItem::query()
-            ->with([
-                'category',
-                'defaultLocation',
-                'transactions.location',
-                'transactions.sourceLocation',
-                'transactions.destinationLocation',
-            ])
-            ->orderBy('item_code')
-            ->get()
-            ->map(function (InventoryItem $item) {
-                $movement = $this->latestMovement($item);
-                $currentLocation = $this->currentLocationLabel($item, $movement);
-                $currentStock = round((float) $item->opening_stock + InventoryBalance::currentQuantity($item), 2);
+        $query = InventoryItem::query()
+            ->with($this->itemReadRelations())
+            ->orderBy('item_code');
 
-                return [
-                    'item' => $item,
-                    'category' => $item->category?->name,
-                    'current_location' => $currentLocation,
-                    'current_stock' => $currentStock,
-                ];
+        if ($category) {
+            $query->where('category_id', $category->id);
+        }
+
+        if ($location) {
+            $query->where(function (Builder $builder) use ($location) {
+                $builder
+                    ->whereHas('locationBalances', fn (Builder $balanceQuery) => $balanceQuery
+                        ->where('location_id', $location->id)
+                        ->where('quantity', '>', 0))
+                    ->orWhere(function (Builder $fallbackQuery) use ($location) {
+                        $fallbackQuery
+                            ->where('default_location_id', $location->id)
+                            ->where('opening_stock', '>', 0)
+                            ->whereDoesntHave('locationBalances');
+                    });
             });
+        }
+
+        if ($limit !== null) {
+            $query->limit($limit);
+        }
+
+        return $query;
     }
 
     private function extractCountFilters(string $message): array
@@ -711,17 +664,39 @@ class InventoryAssistant
 
     private function itemPayload(InventoryItem $item, array $extra = []): array
     {
-        return array_merge([
-            'id' => $item->id,
-            'item_code' => $item->item_code,
-            'description' => $item->description,
-            'category' => $item->category?->name,
-            'href' => route('assets.show', $item),
-        ], $extra);
+        return $this->itemProjector->basePayload($item, $extra);
     }
 
     private function formatNumber(float|int|string|null $value): string
     {
         return rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.');
+    }
+
+    private function mappedItemPayload(InventoryItem $item): array
+    {
+        return [
+            'item' => $item,
+            'category' => $item->category?->name,
+            'location_names' => \App\Domain\Inventory\InventoryBalance::positiveLocationNames($item),
+            'current_location' => $this->itemProjector->currentLocation($item),
+            'current_stock' => $this->itemProjector->currentStock($item),
+        ];
+    }
+
+    private function itemReadRelations(bool $includeLatestMovement = false): array
+    {
+        $relations = [
+            'category',
+            'defaultLocation',
+            'locationBalances.location',
+        ];
+
+        if ($includeLatestMovement) {
+            $relations[] = 'latestTransaction.location';
+            $relations[] = 'latestTransaction.sourceLocation';
+            $relations[] = 'latestTransaction.destinationLocation';
+        }
+
+        return $relations;
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\LocationType;
 use App\Http\Requests\StoreLocationRequest;
 use App\Http\Requests\UpdateLocationRequest;
 use App\Models\Location;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,16 +40,36 @@ class LocationController extends Controller
         ]);
     }
 
-    public function store(StoreLocationRequest $request): RedirectResponse
+    public function store(StoreLocationRequest $request, AuditLogger $auditLogger): RedirectResponse
     {
-        Location::create($request->validated());
+        $location = Location::create($request->validated());
+        $auditLogger->record(
+            module: 'locations',
+            event: 'created',
+            summary: "Created location {$location->code}.",
+            auditable: $location,
+            after: $location->only(['code', 'name', 'type', 'parent_id', 'active']),
+            user: $request->user(),
+            request: $request,
+        );
 
         return back()->with('success', 'Location created.');
     }
 
-    public function update(UpdateLocationRequest $request, Location $location): RedirectResponse
+    public function update(UpdateLocationRequest $request, Location $location, AuditLogger $auditLogger): RedirectResponse
     {
+        $before = $location->only(['code', 'name', 'type', 'parent_id', 'active']);
         $location->update($request->validated());
+        $auditLogger->record(
+            module: 'locations',
+            event: 'updated',
+            summary: "Updated location {$location->code}.",
+            auditable: $location,
+            before: $before,
+            after: $location->fresh()->only(['code', 'name', 'type', 'parent_id', 'active']),
+            user: $request->user(),
+            request: $request,
+        );
 
         return back()->with('success', 'Location updated.');
     }

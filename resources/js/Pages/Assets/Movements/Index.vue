@@ -12,59 +12,7 @@ const page = usePage();
 const activeTab = ref('live');
 const search = ref('');
 const canEditMovements = computed(() => page.props.auth?.user?.can?.movements_edit);
-
-const previewTransactions = [
-    {
-        id: 'preview-1',
-        transaction_date: '2026-06-04',
-        item_code: 'CAT-ROPE-001',
-        description: 'Polyamide Rope 1/2" x 200 MTR',
-        transaction_type: 'interloc_transfer',
-        quantity: '20',
-        total_value: '2800.00',
-        source_location: 'Main Store',
-        destination_location: 'Offshore Base',
-        created_by: 'Inventory Team',
-    },
-    {
-        id: 'preview-2',
-        transaction_date: '2026-06-03',
-        item_code: 'CAT-RACK-012',
-        description: 'Cylinder Rack 4x4x5',
-        transaction_type: 'issue',
-        quantity: '4',
-        total_value: '3200.00',
-        source_location: 'Yard Zone A',
-        destination_location: 'Project DESB',
-        created_by: 'Ops Control',
-    },
-    {
-        id: 'preview-3',
-        transaction_date: '2026-06-02',
-        item_code: 'CAT-HOSE-009',
-        description: 'Air Hose 2"',
-        transaction_type: 'receive',
-        quantity: '12',
-        total_value: '1440.00',
-        source_location: 'Vendor',
-        destination_location: 'Receiving Bay',
-        created_by: 'Store Clerk',
-    },
-    {
-        id: 'preview-4',
-        transaction_date: '2026-06-01',
-        item_code: 'CAT-PAINT-005',
-        description: 'Dog Leg Paint Brush 2"',
-        transaction_type: 'material_return',
-        quantity: '6',
-        total_value: '63.00',
-        source_location: 'Maintenance Team',
-        destination_location: 'General Store',
-        created_by: 'Maintenance Lead',
-    },
-];
-
-const allTransactions = computed(() => props.transactions.data.length ? props.transactions.data : previewTransactions);
+const allTransactions = computed(() => props.transactions.data ?? []);
 
 const filteredTransactions = computed(() => {
     const term = search.value.trim().toLowerCase();
@@ -87,7 +35,7 @@ const liveTransactions = computed(() => filteredTransactions.value.slice(0, 4));
 const historyTransactions = computed(() => filteredTransactions.value.slice(4));
 const visibleTransactions = computed(() => activeTab.value === 'live' ? liveTransactions.value : historyTransactions.value);
 const heroTransaction = computed(() => liveTransactions.value[0] ?? filteredTransactions.value[0] ?? null);
-const usesPreview = computed(() => props.transactions.data.length === 0);
+const hasTransactions = computed(() => allTransactions.value.length > 0);
 
 const trackingState = (type) => {
     switch (type) {
@@ -123,8 +71,8 @@ const progressWidth = (type) => `${trackingState(type).progress}%`;
             </Link>
         </PageHeader>
 
-        <div v-if="usesPreview" class="rounded-[1.5rem] border border-[#cfe6c8] bg-[linear-gradient(180deg,#fbfefa_0%,#eef8ea_100%)] px-5 py-4 text-sm text-[#5f7b5e] shadow-[0_18px_40px_rgba(79,159,74,0.10)]">
-            Showing preview movement cards because there are no recorded stock item movements yet. The layout will use your real movement data automatically once transactions exist.
+        <div v-if="!hasTransactions" class="rounded-[1.5rem] border border-[#cfe6c8] bg-[linear-gradient(180deg,#fbfefa_0%,#eef8ea_100%)] px-5 py-4 text-sm text-[#5f7b5e] shadow-[0_18px_40px_rgba(79,159,74,0.10)]">
+            No stock item movements have been recorded yet. Create the first movement to populate this tracking view with live data.
         </div>
 
         <div class="grid gap-6 xl:grid-cols-[0.92fr,1.08fr]">

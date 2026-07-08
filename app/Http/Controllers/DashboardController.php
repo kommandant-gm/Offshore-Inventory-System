@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Inventory\InventoryBalance;
 use App\Models\Category;
 use App\Models\InventoryItem;
 use App\Models\InventoryTransaction;
 use App\Models\Location;
+use App\Support\InventoryItemProjector;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -14,12 +14,14 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(): Response
+    public function __invoke(InventoryItemProjector $itemProjector): Response
     {
         abort_unless(request()->user()?->canRead('dashboard'), 403);
 
         $today = Carbon::today();
         $weekStart = $today->copy()->subDays(6);
+        $weekStartDate = $weekStart->toDateString();
+        $todayDate = $today->toDateString();
 
         $latestTransactions = InventoryTransaction::query()
             ->with(['item', 'sourceLocation', 'destinationLocation', 'location', 'creator'])
@@ -30,7 +32,7 @@ class DashboardController extends Controller
 
         $dailyCounts = InventoryTransaction::query()
             ->selectRaw('DATE(transaction_date) as movement_day, COUNT(*) as total')
-            ->whereDate('transaction_date', '>=', $weekStart)
+            ->whereBetween('transaction_date', [$weekStartDate, $todayDate])
             ->groupBy('movement_day')
             ->pluck('total', 'movement_day');
 
@@ -60,26 +62,17 @@ class DashboardController extends Controller
             ->with([
                 'category',
                 'defaultLocation',
-                'transactions.location',
-                'transactions.sourceLocation',
-                'transactions.destinationLocation',
+                'locationBalances.location',
             ])
             ->where('active', true)
             ->get()
-            ->map(function (InventoryItem $item) {
-                $currentStock = round((float) $item->opening_stock + InventoryBalance::currentQuantity($item), 2);
+            ->map(function (InventoryItem $item) use ($itemProjector) {
+                $currentStock = $itemProjector->currentStock($item);
                 $minimumStock = $item->minimum_stock !== null ? (float) $item->minimum_stock : null;
                 $stockGap = $minimumStock !== null ? $minimumStock - $currentStock : null;
 
                 return [
-                    'id' => $item->id,
-                    'item_code' => $item->item_code,
-                    'description' => $item->description,
-                    'category' => $item->category?->name,
-                    'location' => $item->defaultLocation?->name,
-                    'opening_stock' => $item->opening_stock,
-                    'current_stock' => $currentStock,
-                    'minimum_stock' => $item->minimum_stock,
+                    ...$itemProjector->listPayload($item),
                     'stock_gap' => $stockGap,
                 ];
             })
@@ -160,7 +153,7 @@ class DashboardController extends Controller
                 'total_value' => $transaction->total_value,
             ]),
             'systemHealth' => [
-                'movementCountToday' => InventoryTransaction::query()->whereDate('transaction_date', $today)->count(),
+                'movementCountToday' => InventoryTransaction::query()->where('transaction_date', $todayDate)->count(),
                 'activeItems' => InventoryItem::query()->where('active', true)->count(),
             ],
         ]);

@@ -4,6 +4,8 @@ namespace App\Actions\Cogs;
 
 use App\Mail\CogApprovalMail;
 use App\Models\Cog;
+use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -12,6 +14,11 @@ use Illuminate\Support\Str;
 class CreateCogAction
 {
     private const APPROVAL_TOKEN_TTL_DAYS = 7;
+
+    public function __construct(
+        private readonly AuditLogger $auditLogger,
+    ) {
+    }
 
     public function execute(array $validated, ?int $userId = null): Cog
     {
@@ -40,6 +47,19 @@ class CreateCogAction
         foreach ($validated['items'] as $item) {
             $cog->items()->create($item);
         }
+
+        $this->auditLogger->record(
+            module: 'cogs',
+            event: 'created',
+            summary: "Created COG {$cog->cog_no}.",
+            auditable: $cog,
+            after: [
+                'status' => $cog->status,
+                'receiver_email' => $cog->receiver_email,
+                'items_count' => count($validated['items']),
+            ],
+            user: $userId ? User::query()->find($userId) : null,
+        );
 
         return $cog->load('items');
     }

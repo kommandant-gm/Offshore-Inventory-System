@@ -25,7 +25,7 @@ class StoreInventoryTransactionRequest extends FormRequest
             'source_location_id' => ['nullable', 'exists:locations,id'],
             'destination_location_id' => ['nullable', 'exists:locations,id'],
             'transaction_type' => ['required', Rule::enum(InventoryTransactionType::class)],
-            'quantity' => ['required', 'numeric', 'gt:0'],
+            'quantity' => ['required', 'numeric', 'not_in:0'],
             'unit_cost' => ['required', 'numeric', 'min:0'],
             'po_no' => ['nullable', 'string', 'max:255'],
             'do_no' => ['nullable', 'string', 'max:255'],
@@ -65,6 +65,50 @@ class StoreInventoryTransactionRequest extends FormRequest
             function ($validator) {
                 if ($this->boolean('generate_cog') && $this->input('transaction_type') !== InventoryTransactionType::Issue->value) {
                     $validator->errors()->add('generate_cog', 'COG can only be generated for issue movements.');
+                }
+
+                $type = $this->input('transaction_type');
+                $quantity = (float) $this->input('quantity');
+
+                if (in_array($type, [
+                    InventoryTransactionType::Opening->value,
+                    InventoryTransactionType::Receive->value,
+                    InventoryTransactionType::Issue->value,
+                    InventoryTransactionType::InterlocTransfer->value,
+                    InventoryTransactionType::MaterialReturn->value,
+                ], true) && $quantity <= 0) {
+                    $validator->errors()->add('quantity', 'This movement type requires a positive quantity.');
+                }
+
+                if ($type === InventoryTransactionType::InterlocTransfer->value) {
+                    if (! $this->filled('source_location_id')) {
+                        $validator->errors()->add('source_location_id', 'A source location is required for transfer movements.');
+                    }
+
+                    if (! $this->filled('destination_location_id')) {
+                        $validator->errors()->add('destination_location_id', 'A destination location is required for transfer movements.');
+                    }
+
+                    if ($this->filled('source_location_id') && $this->filled('destination_location_id')
+                        && (int) $this->input('source_location_id') === (int) $this->input('destination_location_id')) {
+                        $validator->errors()->add('destination_location_id', 'Transfer destination must be different from the source location.');
+                    }
+                }
+
+                if ($type === InventoryTransactionType::Issue->value
+                    && ! $this->filled('source_location_id')
+                    && ! $this->filled('location_id')) {
+                    $validator->errors()->add('source_location_id', 'A source or primary location is required for issue movements.');
+                }
+
+                if (in_array($type, [
+                    InventoryTransactionType::Opening->value,
+                    InventoryTransactionType::Receive->value,
+                    InventoryTransactionType::MaterialReturn->value,
+                    InventoryTransactionType::PhysicalAdjustment->value,
+                    InventoryTransactionType::OtherMisc->value,
+                ], true) && ! $this->filled('location_id')) {
+                    $validator->errors()->add('location_id', 'A primary location is required for this movement type.');
                 }
             },
         ];

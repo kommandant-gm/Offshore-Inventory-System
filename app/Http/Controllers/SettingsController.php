@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateUserAccessRequest;
 use App\Models\Category;
+use App\Models\AuditLog;
 use App\Models\InventoryItem;
 use App\Models\InventoryTransaction;
 use App\Models\Location;
+use App\Models\Stocktake;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Support\AccessMatrix;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -31,6 +34,8 @@ class SettingsController extends Controller
                 'locations' => Location::count(),
                 'items' => InventoryItem::count(),
                 'movements' => InventoryTransaction::count(),
+                'stocktakes' => Stocktake::count(),
+                'audits' => AuditLog::count(),
             ],
             'latestMovementDate' => $latestMovement?->transaction_date?->format('Y-m-d'),
             'canEditSettings' => request()->user()?->canEdit('settings') ?? false,
@@ -59,8 +64,13 @@ class SettingsController extends Controller
         ]);
     }
 
-    public function updateUserAccess(UpdateUserAccessRequest $request, User $user): RedirectResponse
+    public function updateUserAccess(UpdateUserAccessRequest $request, User $user, AuditLogger $auditLogger): RedirectResponse
     {
+        $before = [
+            'role' => $user->role,
+            'permissions' => $user->resolvedPermissions(),
+        ];
+
         $user->update([
             'role' => $request->string('role')->value(),
             'permissions' => AccessMatrix::normalizePermissions(
@@ -68,6 +78,20 @@ class SettingsController extends Controller
                 $request->string('role')->value()
             ),
         ]);
+
+        $auditLogger->record(
+            module: 'settings',
+            event: 'access_updated',
+            summary: "Updated access for {$user->name}.",
+            auditable: $user,
+            before: $before,
+            after: [
+                'role' => $user->role,
+                'permissions' => $user->resolvedPermissions(),
+            ],
+            user: $request->user(),
+            request: $request,
+        );
 
         return back()->with('success', "Access updated for {$user->name}.");
     }

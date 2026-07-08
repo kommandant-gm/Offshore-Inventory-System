@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Assistant;
 
+use App\Enums\CategoryType;
+use App\Enums\LocationType;
 use App\Enums\InventoryTransactionType;
 use App\Models\Category;
 use App\Models\InventoryItem;
@@ -24,21 +26,21 @@ class InventoryAssistantTest extends TestCase
         $labuan = Location::query()->create([
             'code' => 'LAB',
             'name' => 'Labuan Inventory',
-            'type' => 'warehouse',
+            'type' => LocationType::Yard,
             'active' => true,
         ]);
 
         $miri = Location::query()->create([
             'code' => 'MRI',
             'name' => 'Miri Inventory',
-            'type' => 'warehouse',
+            'type' => LocationType::Yard,
             'active' => true,
         ]);
 
         $category = Category::query()->create([
             'code' => 'CON',
             'name' => 'Consumables',
-            'type' => 'stock',
+            'type' => CategoryType::Inventory,
             'active' => true,
         ]);
 
@@ -87,14 +89,14 @@ class InventoryAssistantTest extends TestCase
         $location = Location::query()->create([
             'code' => 'LAB',
             'name' => 'Labuan Inventory',
-            'type' => 'warehouse',
+            'type' => LocationType::Yard,
             'active' => true,
         ]);
 
         $category = Category::query()->create([
             'code' => 'CON',
             'name' => 'Consumables',
-            'type' => 'stock',
+            'type' => CategoryType::Inventory,
             'active' => true,
         ]);
 
@@ -130,6 +132,83 @@ class InventoryAssistantTest extends TestCase
 
         $this->assertStringContainsString('There are 1 items in Labuan Inventory', $response->json('answer'));
         $this->assertStringContainsString('5 units', $response->json('answer'));
+    }
+
+    public function test_movement_queries_use_the_latest_recorded_transaction(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'viewer',
+        ]);
+
+        $creator = User::factory()->create();
+
+        $source = Location::query()->create([
+            'code' => 'LAB',
+            'name' => 'Labuan Inventory',
+            'type' => LocationType::Yard,
+            'active' => true,
+        ]);
+
+        $destination = Location::query()->create([
+            'code' => 'MRI',
+            'name' => 'Miri Inventory',
+            'type' => LocationType::Offshore,
+            'active' => true,
+        ]);
+
+        $category = Category::query()->create([
+            'code' => 'CON',
+            'name' => 'Consumables',
+            'type' => CategoryType::Inventory,
+            'active' => true,
+        ]);
+
+        $item = InventoryItem::query()->create([
+            'item_code' => 'MOVE-001',
+            'description' => 'Moved item',
+            'category_id' => $category->id,
+            'uom' => 'EA',
+            'default_location_id' => $source->id,
+            'opening_stock' => 10,
+            'minimum_stock' => 1,
+            'active' => true,
+        ]);
+
+        InventoryTransaction::query()->create([
+            'transaction_date' => now()->subDay()->toDateString(),
+            'item_id' => $item->id,
+            'location_id' => $source->id,
+            'transaction_type' => InventoryTransactionType::Receive,
+            'quantity' => 2,
+            'unit_cost' => 0,
+            'total_value' => 0,
+            'created_by' => $creator->id,
+        ]);
+
+        InventoryTransaction::query()->create([
+            'transaction_date' => now()->toDateString(),
+            'item_id' => $item->id,
+            'location_id' => $source->id,
+            'source_location_id' => $source->id,
+            'destination_location_id' => $destination->id,
+            'transaction_type' => InventoryTransactionType::InterlocTransfer,
+            'quantity' => 3,
+            'unit_cost' => 0,
+            'total_value' => 0,
+            'created_by' => $creator->id,
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('assistant.query'), [
+            'message' => 'Last movement for MOVE-001',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('intent', 'movement');
+
+        $this->assertStringContainsString('Interloc Transfer', $response->json('answer'));
+        $this->assertStringContainsString('Labuan Inventory', $response->json('answer'));
+        $this->assertStringContainsString('Miri Inventory', $response->json('answer'));
     }
 
     public function test_assistant_query_requires_assistant_permission(): void

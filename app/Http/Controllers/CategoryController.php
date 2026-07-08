@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,19 +30,40 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function store(StoreCategoryRequest $request): RedirectResponse
+    public function store(StoreCategoryRequest $request, AuditLogger $auditLogger): RedirectResponse
     {
-        Category::create([
+        $category = Category::create([
             ...$request->validated(),
             'code' => $this->generateCategoryCode(),
         ]);
 
+        $auditLogger->record(
+            module: 'categories',
+            event: 'created',
+            summary: "Created category {$category->code}.",
+            auditable: $category,
+            after: $category->only(['code', 'name', 'type', 'active']),
+            user: $request->user(),
+            request: $request,
+        );
+
         return back()->with('success', 'Category created.');
     }
 
-    public function update(UpdateCategoryRequest $request, Category $category): RedirectResponse
+    public function update(UpdateCategoryRequest $request, Category $category, AuditLogger $auditLogger): RedirectResponse
     {
+        $before = $category->only(['code', 'name', 'type', 'active']);
         $category->update($request->validated());
+        $auditLogger->record(
+            module: 'categories',
+            event: 'updated',
+            summary: "Updated category {$category->code}.",
+            auditable: $category,
+            before: $before,
+            after: $category->fresh()->only(['code', 'name', 'type', 'active']),
+            user: $request->user(),
+            request: $request,
+        );
 
         return back()->with('success', 'Category updated.');
     }

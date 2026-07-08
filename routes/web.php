@@ -8,7 +8,9 @@ use App\Http\Controllers\QuickSearchController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\AssetLedgerController;
 use App\Http\Controllers\AssistantController;
+use App\Http\Controllers\AuditTrailController;
 use App\Http\Controllers\StockAnomalyController;
+use App\Http\Controllers\StocktakeController;
 use App\Http\Controllers\InventoryItemController;
 use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\ProfileController;
@@ -30,6 +32,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/stock-anomalies', [StockAnomalyController::class, 'index'])->name('anomalies.index');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::patch('/settings/users/{user}/access', [SettingsController::class, 'updateUserAccess'])->name('settings.users.update');
+    Route::get('/audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -51,6 +54,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/asset-movements', [InventoryTransactionController::class, 'index'])->name('asset-movements.index');
     Route::get('/asset-movements/create', [InventoryTransactionController::class, 'create'])->name('asset-movements.create');
     Route::post('/asset-movements', [InventoryTransactionController::class, 'store'])->name('asset-movements.store');
+    Route::get('/stocktakes', [StocktakeController::class, 'index'])->name('stocktakes.index');
+    Route::get('/stocktakes/create', [StocktakeController::class, 'create'])->name('stocktakes.create');
+    Route::post('/stocktakes', [StocktakeController::class, 'store'])->name('stocktakes.store');
+    Route::get('/stocktakes/{stocktake}', [StocktakeController::class, 'show'])->name('stocktakes.show');
     Route::get('/asset-ledger', [AssetLedgerController::class, 'index'])->name('asset-ledger.index');
 });
 

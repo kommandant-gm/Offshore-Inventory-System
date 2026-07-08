@@ -25,7 +25,7 @@ const page = usePage();
                 <dl class="mt-4 space-y-3 text-sm">
                     <div class="flex justify-between gap-4"><dt class="text-slate-400">Category</dt><dd class="text-white">{{ item.category }}</dd></div>
                     <div class="flex justify-between gap-4"><dt class="text-slate-400">Unit</dt><dd class="text-white">{{ item.uom }}</dd></div>
-                    <div class="flex justify-between gap-4"><dt class="text-slate-400">Default Location</dt><dd class="text-white">{{ item.location ?? '-' }}</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-400">Current Location</dt><dd class="text-white">{{ item.location ?? '-' }}</dd></div>
                     <div class="flex justify-between gap-4"><dt class="text-slate-400">Opening Stock</dt><dd class="text-white">{{ item.opening_stock }}</dd></div>
                     <div class="flex justify-between gap-4"><dt class="text-slate-400">Current Stock</dt><dd class="text-white">{{ item.current_stock }}</dd></div>
                     <div class="flex justify-between gap-4"><dt class="text-slate-400">Unit Cost</dt><dd class="text-white">{{ item.standard_cost }}</dd></div>
@@ -35,6 +35,17 @@ const page = usePage();
 
                 <div class="mt-5 rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 text-sm text-slate-300">
                     {{ item.remarks || 'No remarks recorded for this stock item.' }}
+                </div>
+
+                <div class="mt-5 rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 text-sm text-slate-300">
+                    <p class="font-semibold text-white">Location Balances</p>
+                    <div v-if="item.location_balances?.length" class="mt-3 space-y-2">
+                        <div v-for="balance in item.location_balances" :key="`${balance.location}-${balance.quantity}`" class="flex justify-between gap-4">
+                            <span class="text-slate-400">{{ balance.location }}</span>
+                            <span class="text-white">{{ balance.quantity }}</span>
+                        </div>
+                    </div>
+                    <p v-else class="mt-3 text-slate-400">No location balance available.</p>
                 </div>
             </div>
 
@@ -60,7 +71,7 @@ const page = usePage();
                             </div>
 
                             <div class="text-sm text-slate-400">
-                                <p>{{ movement.movement_date }}</p>
+                                <p>{{ movement.transaction_date }}</p>
                                 <p>{{ movement.created_by || 'System' }}</p>
                             </div>
                         </div>

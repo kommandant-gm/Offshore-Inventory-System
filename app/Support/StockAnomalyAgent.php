@@ -2,8 +2,6 @@
 
 namespace App\Support;
 
-use App\Domain\Inventory\InventoryBalance;
-use App\Enums\InventoryTransactionType;
 use App\Models\InventoryItem;
 use App\Models\InventoryTransaction;
 use Carbon\Carbon;
@@ -14,12 +12,24 @@ class StockAnomalyAgent
 {
     private const STALE_DAYS = 90;
 
+    public function __construct(
+        private readonly InventoryItemProjector $itemProjector,
+    ) {
+    }
+
     public function report(): array
     {
         $generatedAt = now();
 
         $entries = InventoryItem::query()
-            ->with(['category', 'defaultLocation', 'transactions.location', 'transactions.sourceLocation', 'transactions.destinationLocation'])
+            ->with([
+                'category',
+                'defaultLocation',
+                'locationBalances.location',
+                'latestTransaction.location',
+                'latestTransaction.sourceLocation',
+                'latestTransaction.destinationLocation',
+            ])
             ->orderBy('item_code')
             ->get()
             ->flatMap(fn (InventoryItem $item) => $this->detectForItem($item, $generatedAt))
@@ -40,9 +50,9 @@ class StockAnomalyAgent
 
     private function detectForItem(InventoryItem $item, Carbon $generatedAt): array
     {
-        $currentStock = round((float) $item->opening_stock + InventoryBalance::currentQuantity($item), 2);
+        $currentStock = $this->itemProjector->currentStock($item);
         $latestMovement = $this->latestMovement($item);
-        $currentLocation = $this->currentLocationLabel($item, $latestMovement);
+        $currentLocation = $this->itemProjector->currentLocation($item);
         $defaultLocation = $item->defaultLocation?->name;
         $entries = [];
 
@@ -183,11 +193,7 @@ class StockAnomalyAgent
             'detail' => $detail,
             'recommendation' => $recommendation,
             'item' => [
-                'id' => $item->id,
-                'item_code' => $item->item_code,
-                'description' => $item->description,
-                'category' => $item->category?->name,
-                'href' => route('assets.show', $item),
+                ...$this->itemProjector->basePayload($item),
             ],
             'current_stock' => $this->formatNumber($currentStock),
             'minimum_stock' => $item->minimum_stock !== null ? $this->formatNumber($item->minimum_stock) : null,
@@ -203,31 +209,13 @@ class StockAnomalyAgent
 
     private function latestMovement(InventoryItem $item): ?InventoryTransaction
     {
-        return $item->transactions
-            ->sortByDesc(fn (InventoryTransaction $transaction) => sprintf(
-                '%s-%010d',
-                $transaction->transaction_date?->format('Ymd') ?? '00000000',
-                $transaction->id
-            ))
-            ->first();
-    }
-
-    private function currentLocationLabel(InventoryItem $item, ?InventoryTransaction $movement): ?string
-    {
-        if (! $movement) {
-            return $item->defaultLocation?->name;
+        if ($item->relationLoaded('latestTransaction')) {
+            return $item->latestTransaction;
         }
 
-        return match ($movement->transaction_type) {
-            InventoryTransactionType::Issue,
-            InventoryTransactionType::InterlocTransfer => $movement->destinationLocation?->name ?? $movement->location?->name ?? $item->defaultLocation?->name,
-            InventoryTransactionType::Receive,
-            InventoryTransactionType::Opening,
-            InventoryTransactionType::MaterialReturn,
-            InventoryTransactionType::PhysicalAdjustment,
-            InventoryTransactionType::OtherMisc,
-            InventoryTransactionType::PriceAdjustment => $movement->location?->name ?? $movement->destinationLocation?->name ?? $item->defaultLocation?->name,
-        };
+        return $item->latestTransaction()
+            ->with(['location', 'sourceLocation', 'destinationLocation'])
+            ->first();
     }
 
     private function formatNumber(float|int|string|null $value): string

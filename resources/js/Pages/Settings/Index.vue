@@ -30,6 +30,7 @@ const adminGroups = [
         description: 'Administrative entry points for transaction control and monthly reporting.',
         items: [
             { name: 'Movements', href: route('asset-movements.index'), key: 'movements', summary: 'Record and review stock movement activity.' },
+            { name: 'Stocktakes', href: route('stocktakes.index'), key: 'stocktakes', summary: 'Run physical counts and post variance adjustments by location.' },
             { name: 'Monthly Ledger', href: route('asset-ledger.index'), key: 'movements', summary: 'Review period totals and valuation rollups.' },
             { name: 'COG Control', href: route('cogs.index'), key: 'movements', summary: 'Track consignment note preparation and approvals.' },
             { name: 'Stock Anomalies', href: route('anomalies.index'), key: 'movements', summary: 'Review rule-based stock exceptions that need operator attention.' },
@@ -42,6 +43,7 @@ const adminGroups = [
             { name: 'Profile', href: route('profile.edit'), key: 'users', summary: 'Update your login profile and account details.' },
             { name: 'Dashboard', href: route('dashboard'), key: 'users', summary: 'Return to the operations summary and activity feed.' },
             { name: 'Assistant', href: route('assistant.index'), key: 'users', summary: 'Ask live inventory questions from stock and movement records.' },
+            { name: 'Audit Trail', href: route('audit-trail.index'), key: 'audits', summary: 'Review write history across stock, approvals, and permissions.' },
         ],
     },
 ];
@@ -130,7 +132,7 @@ const saveAccess = (userId) => {
                     </span>
                 </div>
 
-                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
                     <article class="rounded-[1.5rem] border border-[#e1efdc] bg-[#fbfefa] p-5">
                         <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Users</p>
                         <p class="mt-2 text-3xl font-bold text-[#234222]">{{ stats.users }}</p>
@@ -150,6 +152,10 @@ const saveAccess = (userId) => {
                     <article class="rounded-[1.5rem] border border-[#e1efdc] bg-[#fbfefa] p-5">
                         <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Movements</p>
                         <p class="mt-2 text-3xl font-bold text-[#4f9f4a]">{{ stats.movements }}</p>
+                    </article>
+                    <article class="rounded-[1.5rem] border border-[#e1efdc] bg-[#fbfefa] p-5">
+                        <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Stocktakes</p>
+                        <p class="mt-2 text-3xl font-bold text-[#234222]">{{ stats.stocktakes }}</p>
                     </article>
                 </div>
             </section>

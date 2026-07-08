@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CogApprovalDecisionRequest;
 use App\Models\Cog;
+use App\Services\AuditLogger;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response as HttpResponse;
@@ -22,7 +23,7 @@ class CogApprovalController extends Controller
         ]);
     }
 
-    public function approve(CogApprovalDecisionRequest $request, string $token): RedirectResponse
+    public function approve(CogApprovalDecisionRequest $request, string $token, AuditLogger $auditLogger): RedirectResponse
     {
         $cog = $this->resolvePendingCogByToken($token);
 
@@ -37,10 +38,23 @@ class CogApprovalController extends Controller
             'rejected_at' => null,
         ]);
 
+        $auditLogger->record(
+            module: 'cogs',
+            event: 'approved',
+            summary: "Approved COG {$cog->cog_no}.",
+            auditable: $cog,
+            after: [
+                'status' => $cog->status,
+                'receiver_name' => $cog->receiver_name,
+                'receiver_designation' => $cog->receiver_designation,
+            ],
+            request: $request,
+        );
+
         return back()->with('status', 'approved');
     }
 
-    public function reject(CogApprovalDecisionRequest $request, string $token): RedirectResponse
+    public function reject(CogApprovalDecisionRequest $request, string $token, AuditLogger $auditLogger): RedirectResponse
     {
         $cog = $this->resolvePendingCogByToken($token);
 
@@ -54,6 +68,19 @@ class CogApprovalController extends Controller
             'rejected_at' => now(),
             'approved_at' => null,
         ]);
+
+        $auditLogger->record(
+            module: 'cogs',
+            event: 'rejected',
+            summary: "Rejected COG {$cog->cog_no}.",
+            auditable: $cog,
+            after: [
+                'status' => $cog->status,
+                'receiver_name' => $cog->receiver_name,
+                'receiver_designation' => $cog->receiver_designation,
+            ],
+            request: $request,
+        );
 
         return back()->with('status', 'rejected');
     }

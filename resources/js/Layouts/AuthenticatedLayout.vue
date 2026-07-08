@@ -7,7 +7,7 @@
         ClipboardDocumentCheckIcon, ChartBarIcon, ChatBubbleLeftRightIcon,
         Cog6ToothIcon, BellIcon, MagnifyingGlassIcon,
         ExclamationTriangleIcon,
-        Bars3Icon, ArrowRightStartOnRectangleIcon, TagIcon, BuildingStorefrontIcon
+        Bars3Icon, ArrowRightStartOnRectangleIcon, TagIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon
     } from '@heroicons/vue/24/outline';
 
     const isSidebarOpen = ref(false);
@@ -25,6 +25,7 @@
         { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read' },
         { name: 'Stock Items', icon: ArchiveBoxIcon, route: 'assets.index' },
         { name: 'Stock Movements', icon: TruckIcon, route: 'asset-movements.index', can: 'movements_read' },
+        { name: 'Stocktakes', icon: ClipboardDocumentListIcon, route: 'stocktakes.index', can: 'movements_read' },
         { name: 'Stock Ledger', icon: ChartBarIcon, route: 'asset-ledger.index' },
         { name: 'COG Control', icon: ClipboardDocumentCheckIcon, route: 'cogs.index' },
         { name: 'Categories', icon: TagIcon, route: 'categories.index' },
@@ -45,7 +46,7 @@
             .map((value) => value[0]?.toUpperCase() ?? '')
             .join('');
     });
-    const isSettingsRoute = computed(() => route().current('settings.index') || route().current('settings.*'));
+    const isSettingsRoute = computed(() => route().current('settings.index') || route().current('settings.*') || route().current('audit-trail.index'));
 
     const runQuickSearch = async () => {
         const term = quickSearch.value.trim();

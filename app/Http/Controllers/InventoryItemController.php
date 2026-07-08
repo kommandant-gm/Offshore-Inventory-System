@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Inventory\InventoryBalance;
 use App\Http\Requests\StoreInventoryItemRequest;
 use App\Http\Requests\UpdateInventoryItemRequest;
 use App\Models\Category;
 use App\Models\InventoryItem;
 use App\Models\Location;
+use App\Services\AuditLogger;
+use App\Services\InventoryLocationBalanceService;
+use App\Support\InventoryItemProjector;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -41,7 +43,7 @@ class InventoryItemController extends Controller
         ]);
     }
 
-    public function index(Request $request): Response
+    public function index(Request $request, InventoryItemProjector $itemProjector): Response
     {
         abort_unless($request->user()?->canRead('assets'), 403);
 
@@ -55,25 +57,12 @@ class InventoryItemController extends Controller
             ?? $categories->first();
 
         $items = InventoryItem::query()
-                ->with(['category', 'defaultLocation'])
+                ->with(['category', 'defaultLocation', 'locationBalances.location'])
                 ->when($selectedCategory, fn ($query) => $query->where('category_id', $selectedCategory->id))
                 ->orderBy('description')
                 ->paginate(15)
                 ->withQueryString()
-                ->through(fn (InventoryItem $item) => [
-                    'id' => $item->id,
-                    'item_code' => $item->item_code,
-                    'description' => $item->description,
-                    'category' => $item->category->name,
-                    'uom' => $item->uom,
-                    'location' => $item->defaultLocation?->name,
-                    'opening_stock' => $item->opening_stock,
-                    'current_stock' => round((float) $item->opening_stock + InventoryBalance::currentQuantity($item), 2),
-                    'standard_cost' => $item->standard_cost,
-                    'minimum_stock' => $item->minimum_stock,
-                    'rack_no' => $item->rack_no,
-                    'active' => $item->active,
-                ]);
+                ->through(fn (InventoryItem $item) => $itemProjector->listPayload($item));
 
         return Inertia::render('Assets/Index', [
             'categories' => $categories->map(fn (Category $category) => [
@@ -88,47 +77,104 @@ class InventoryItemController extends Controller
         ]);
     }
 
-    public function store(StoreInventoryItemRequest $request): RedirectResponse
+    public function store(
+        StoreInventoryItemRequest $request,
+        InventoryLocationBalanceService $locationBalanceService,
+        AuditLogger $auditLogger,
+    ): RedirectResponse
     {
         $item = InventoryItem::create($request->validated());
+        $locationBalanceService->initializeItem($item->fresh(['locationBalances']));
+        $auditLogger->record(
+            module: 'assets',
+            event: 'created',
+            summary: "Created stock item {$item->item_code}.",
+            auditable: $item,
+            after: $item->fresh()->only([
+                'item_code',
+                'description',
+                'category_id',
+                'default_location_id',
+                'opening_stock',
+                'standard_cost',
+                'minimum_stock',
+                'rack_no',
+                'active',
+            ]),
+            user: $request->user(),
+            request: $request,
+        );
 
         return redirect()
             ->route('assets.index', ['category' => $item->category_id])
             ->with('success', 'Stock item created.');
     }
 
-    public function update(UpdateInventoryItemRequest $request, InventoryItem $item): RedirectResponse
+    public function update(
+        UpdateInventoryItemRequest $request,
+        InventoryItem $item,
+        InventoryLocationBalanceService $locationBalanceService,
+        AuditLogger $auditLogger,
+    ): RedirectResponse
     {
+        $before = $item->only([
+            'item_code',
+            'description',
+            'category_id',
+            'default_location_id',
+            'opening_stock',
+            'standard_cost',
+            'minimum_stock',
+            'rack_no',
+            'active',
+        ]);
+
         $item->update($request->validated());
+        $locationBalanceService->syncItem($item->fresh(['transactions', 'locationBalances']));
+        $auditLogger->record(
+            module: 'assets',
+            event: 'updated',
+            summary: "Updated stock item {$item->item_code}.",
+            auditable: $item,
+            before: $before,
+            after: $item->fresh()->only([
+                'item_code',
+                'description',
+                'category_id',
+                'default_location_id',
+                'opening_stock',
+                'standard_cost',
+                'minimum_stock',
+                'rack_no',
+                'active',
+            ]),
+            user: $request->user(),
+            request: $request,
+        );
 
         return back()->with('success', 'Stock item updated.');
     }
 
-    public function show(InventoryItem $item): Response
+    public function show(InventoryItem $item, InventoryItemProjector $itemProjector): Response
     {
         abort_unless(request()->user()?->canRead('assets'), 403);
 
-        $item->load(['category', 'defaultLocation', 'transactions.location', 'transactions.sourceLocation', 'transactions.destinationLocation', 'transactions.creator']);
+        $item->load([
+            'category',
+            'defaultLocation',
+            'locationBalances.location',
+            'transactions' => fn ($query) => $query
+                ->with(['location', 'sourceLocation', 'destinationLocation', 'creator'])
+                ->latest('transaction_date')
+                ->latest('id'),
+        ]);
 
         return Inertia::render('Assets/Show', [
             'item' => [
-                'id' => $item->id,
-                'item_code' => $item->item_code,
-                'description' => $item->description,
-                'category' => $item->category->name,
-                'uom' => $item->uom,
-                'location' => $item->defaultLocation?->name,
-                'opening_stock' => $item->opening_stock,
-                'current_stock' => round((float) $item->opening_stock + InventoryBalance::currentQuantity($item), 2),
-                'standard_cost' => $item->standard_cost,
-                'minimum_stock' => $item->minimum_stock,
-                'rack_no' => $item->rack_no,
+                ...$itemProjector->listPayload($item),
+                'location_balances' => $itemProjector->locationBalancePayload($item),
                 'remarks' => $item->remarks,
-                'transactions' => $item->transactions()
-                    ->with(['location', 'sourceLocation', 'destinationLocation', 'creator'])
-                    ->latest('transaction_date')
-                    ->latest('id')
-                    ->get()
+                'transactions' => $item->transactions
                     ->map(fn ($transaction) => [
                         'id' => $transaction->id,
                         'transaction_date' => $transaction->transaction_date->format('Y-m-d'),
