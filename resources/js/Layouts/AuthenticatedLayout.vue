@@ -186,7 +186,7 @@
                                     {{ notificationCount }}
                                 </span>
                             </button>
-                            <div v-if="notificationsOpen" class="absolute right-0 top-full z-20 mt-2 w-80 overflow-hidden rounded-2xl border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+                            <div v-if="notificationsOpen" class="absolute right-0 top-full z-20 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
                                 <div class="border-b border-[#edf3eb] px-4 py-3">
                                     <p class="text-sm font-semibold text-[#234222]">Notifications</p>
                                     <p class="mt-1 text-xs text-[#6f8a6b]">Live operational items that may need attention.</p>

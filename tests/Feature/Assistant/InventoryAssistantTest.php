@@ -134,6 +134,60 @@ class InventoryAssistantTest extends TestCase
         $this->assertStringContainsString('5 units', $response->json('answer'));
     }
 
+    public function test_category_count_queries_accept_singular_natural_language(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'viewer',
+        ]);
+
+        $location = Location::query()->create([
+            'code' => 'LAB',
+            'name' => 'Labuan Inventory',
+            'type' => LocationType::Yard,
+            'active' => true,
+        ]);
+
+        $category = Category::query()->create([
+            'code' => 'CON',
+            'name' => 'Consumables',
+            'type' => CategoryType::Inventory,
+            'active' => true,
+        ]);
+
+        InventoryItem::query()->create([
+            'item_code' => 'CON-001',
+            'description' => 'Gloves',
+            'category_id' => $category->id,
+            'uom' => 'EA',
+            'default_location_id' => $location->id,
+            'opening_stock' => 3,
+            'minimum_stock' => 1,
+            'active' => true,
+        ]);
+
+        InventoryItem::query()->create([
+            'item_code' => 'CON-002',
+            'description' => 'Masking Tape',
+            'category_id' => $category->id,
+            'uom' => 'EA',
+            'default_location_id' => $location->id,
+            'opening_stock' => 7,
+            'minimum_stock' => 1,
+            'active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('assistant.query'), [
+            'message' => 'how many item in consumable category ?',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('intent', 'count_items');
+
+        $this->assertStringContainsString('There are 2 items in Consumables', $response->json('answer'));
+        $this->assertStringContainsString('10 units', $response->json('answer'));
+    }
+
     public function test_movement_queries_use_the_latest_recorded_transaction(): void
     {
         $user = User::factory()->create([

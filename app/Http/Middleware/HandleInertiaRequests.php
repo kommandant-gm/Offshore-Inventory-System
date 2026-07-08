@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Cog;
 use App\Models\InventoryTransaction;
 use App\Support\AssistantPrompts;
+use App\Support\StockAnomalyAgent;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -104,13 +105,18 @@ class HandleInertiaRequests extends Middleware
         }
 
         if ($user?->canRead('anomalies')) {
+            $anomalySummary = app(StockAnomalyAgent::class)->report()['summary'];
+            $anomalyCount = (int) ($anomalySummary['total'] ?? 0);
+
+            if ($anomalyCount > 0) {
             $items->push([
                 'id' => 'anomalies-review',
-                'title' => 'Run anomaly review',
-                'description' => 'Check stock anomalies for exceptions that need action.',
+                'title' => "{$anomalyCount} stock anomaly alert(s)",
+                'description' => 'Review flagged inventory exceptions that need action.',
                 'href' => route('anomalies.index'),
                 'tone' => 'neutral',
             ]);
+            }
         }
 
         return [

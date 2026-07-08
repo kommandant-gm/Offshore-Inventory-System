@@ -122,17 +122,17 @@ const saveAccess = (userId) => {
 
         <div class="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
-                <div class="mb-5 flex items-center justify-between">
+                <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p class="text-sm text-[#6f8a6b]">Administration Overview</p>
                         <h2 class="text-xl font-semibold text-[#234222]">System Control Center</h2>
                     </div>
-                    <span class="rounded-full border border-[#b8d7b1] bg-[#eef8ea] px-4 py-1 text-xs font-semibold text-[#3c8a39]">
+                    <span class="w-fit rounded-full border border-[#b8d7b1] bg-[#eef8ea] px-4 py-1 text-xs font-semibold text-[#3c8a39]">
                         Admin use
                     </span>
                 </div>
 
-                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                     <article class="rounded-[1.5rem] border border-[#e1efdc] bg-[#fbfefa] p-5">
                         <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Users</p>
                         <p class="mt-2 text-3xl font-bold text-[#234222]">{{ stats.users }}</p>
@@ -241,7 +241,7 @@ const saveAccess = (userId) => {
 
                 <div v-if="selectedUser" class="rounded-[1.6rem] border border-[#d8e7d4] bg-[#fbfefa]">
                     <div class="border-b border-[#d8e7d4] bg-white px-4 py-4 sm:px-5">
-                        <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                        <div class="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <h3 class="text-lg font-semibold text-[#234222]">{{ selectedUser.name }}</h3>
@@ -253,7 +253,7 @@ const saveAccess = (userId) => {
                             </div>
 
                             <div class="flex flex-wrap items-center gap-3">
-                                <div class="w-full sm:w-[220px]">
+                                <div class="w-full md:w-[220px]">
                                     <label class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Role</label>
                                     <select
                                         v-model="userForms[selectedUser.id].role"
@@ -267,7 +267,7 @@ const saveAccess = (userId) => {
 
                                 <button
                                     type="button"
-                                    class="btn btn-sm mt-6 border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95"
+                                    class="btn btn-sm w-full md:mt-6 md:w-auto border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95"
                                     :disabled="!canEditSettings || userForms[selectedUser.id].saving"
                                     @click="saveAccess(selectedUser.id)"
                                 >
@@ -276,7 +276,7 @@ const saveAccess = (userId) => {
                             </div>
                         </div>
 
-                        <div class="mt-4 grid gap-3 lg:grid-cols-[1fr,auto] lg:items-end">
+                        <div class="mt-4 grid gap-3 xl:grid-cols-[1fr,auto] xl:items-end">
                             <div>
                                 <label class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Search Permissions</label>
                                 <input
@@ -347,7 +347,7 @@ const saveAccess = (userId) => {
             </div>
         </section>
 
-        <div class="grid gap-6 xl:grid-cols-3">
+        <div class="grid gap-6 2xl:grid-cols-3">
             <section
                 v-for="group in adminGroups"
                 :key="group.title"

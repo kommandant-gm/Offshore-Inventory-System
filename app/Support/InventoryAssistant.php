@@ -84,7 +84,13 @@ class InventoryAssistant
             return 'anomalies';
         }
 
-        if (Str::contains($value, ['how many items', 'count items', 'number of items'])) {
+        if (
+            Str::contains($value, ['how many items', 'how many item', 'count items', 'count item', 'number of items', 'number of item'])
+            || (
+                Str::contains($value, ['how many', 'count', 'number of'])
+                && Str::contains($value, ['category', 'categories', 'location', 'locations', 'stock'])
+            )
+        ) {
             return 'count_items';
         }
 
@@ -562,6 +568,8 @@ class InventoryAssistant
     private function findCategory(string $message): ?Category
     {
         $normalized = Str::lower(trim(preg_replace('/[?.,!]+$/', '', $message) ?? ''));
+        $normalized = preg_replace('/\bcategory\b|\bcategories\b/', '', $normalized) ?? $normalized;
+        $normalized = trim(preg_replace('/\s+/', ' ', $normalized) ?? $normalized);
 
         $categories = Category::query()
             ->orderBy('name')
@@ -574,17 +582,20 @@ class InventoryAssistant
         return $categories
             ->filter(function (Category $category) use ($normalized) {
                 $name = Str::lower($category->name);
+                $nameVariants = $this->categoryNameVariants($name);
                 $code = Str::lower($category->code);
 
-                return Str::contains($normalized, $name) || ($code !== '' && Str::contains($normalized, $code));
+                return collect($nameVariants)->contains(fn (string $variant) => Str::contains($normalized, $variant))
+                    || ($code !== '' && Str::contains($normalized, $code));
             })
             ->sortByDesc(function (Category $category) use ($normalized) {
                 $name = Str::lower($category->name);
+                $nameVariants = $this->categoryNameVariants($name);
                 $code = Str::lower($category->code);
 
                 return match (true) {
-                    $name === $normalized => 100,
-                    Str::contains($normalized, $name) => 90,
+                    collect($nameVariants)->contains($normalized) => 100,
+                    collect($nameVariants)->contains(fn (string $variant) => Str::contains($normalized, $variant)) => 90,
                     $code !== '' && Str::contains($normalized, $code) => 80,
                     default => 50,
                 };
@@ -698,5 +709,24 @@ class InventoryAssistant
         }
 
         return $relations;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function categoryNameVariants(string $name): array
+    {
+        $variants = [$name];
+
+        if (Str::endsWith($name, 's')) {
+            $variants[] = Str::singular($name);
+        } else {
+            $variants[] = Str::plural($name);
+        }
+
+        return array_values(array_unique(array_filter(array_map(
+            static fn (string $value) => trim($value),
+            $variants,
+        ))));
     }
 }

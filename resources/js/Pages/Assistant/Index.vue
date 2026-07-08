@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { Head } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     prompts: {
@@ -13,12 +13,14 @@ const props = defineProps({
 
 const input = ref('');
 const loading = ref(false);
+const showAllPrompts = ref(false);
 const messages = ref([
     {
         role: 'assistant',
         text: 'Ask about item location, current stock, last movement, or stock anomalies. I answer from live inventory records.',
     },
 ]);
+const visiblePrompts = computed(() => showAllPrompts.value ? props.prompts : props.prompts.slice(0, 6));
 
 const sendMessage = async (preset = null) => {
     const message = (preset ?? input.value).trim();
@@ -68,7 +70,7 @@ const sendMessage = async (preset = null) => {
             description="Ask simple inventory questions using live stock item and movement records."
         />
 
-        <div class="grid gap-6 xl:grid-cols-[0.7fr,1.3fr]">
+        <div class="grid gap-6 2xl:grid-cols-[0.7fr,1.3fr]">
             <aside class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
                 <div class="rounded-[1.75rem] border border-[#d8e7d4] bg-[radial-gradient(circle_at_top_left,_rgba(111,187,104,0.16),_transparent_30%),linear-gradient(180deg,_#ffffff_0%,_#f7fcf5_52%,_#eef8ea_100%)] p-5">
                     <p class="text-sm text-[#6f8a6b]">Assistant Scope</p>
@@ -81,7 +83,7 @@ const sendMessage = async (preset = null) => {
                 <div class="mt-5 space-y-3">
                     <p class="text-sm font-semibold text-[#234222]">Try these questions</p>
                     <button
-                        v-for="prompt in prompts"
+                        v-for="prompt in visiblePrompts"
                         :key="prompt"
                         type="button"
                         class="w-full rounded-[1.25rem] border border-[#d8e7d4] bg-[#fbfefa] px-4 py-3 text-left text-sm text-[#355733] transition hover:border-[#b8e0ae] hover:bg-[#eef8ea]"
@@ -89,27 +91,35 @@ const sendMessage = async (preset = null) => {
                     >
                         {{ prompt }}
                     </button>
+                    <button
+                        v-if="prompts.length > 6"
+                        type="button"
+                        class="w-full rounded-[1.25rem] border border-[#cfe6c8] bg-white px-4 py-3 text-left text-sm font-semibold text-[#3c8a39] transition hover:bg-[#eef8ea]"
+                        @click="showAllPrompts = !showAllPrompts"
+                    >
+                        {{ showAllPrompts ? 'Show fewer suggestions' : `Show more suggestions (${prompts.length - 6})` }}
+                    </button>
                 </div>
             </aside>
 
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
-                <div class="flex items-center justify-between gap-3">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p class="text-sm text-[#6f8a6b]">Chat Panel</p>
                         <h2 class="text-2xl font-semibold text-[#234222]">Inventory chat</h2>
                     </div>
-                    <span class="rounded-full border border-[#b8d7b1] bg-[#eef8ea] px-4 py-1 text-xs font-semibold text-[#3c8a39]">
+                    <span class="w-fit rounded-full border border-[#b8d7b1] bg-[#eef8ea] px-4 py-1 text-xs font-semibold text-[#3c8a39]">
                         V1
                     </span>
                 </div>
 
-                <div class="mt-5 h-[32rem] overflow-y-auto rounded-[1.75rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#fbfefa_0%,#ffffff_100%)] p-4">
+                <div class="mt-5 h-[26rem] overflow-y-auto rounded-[1.75rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#fbfefa_0%,#ffffff_100%)] p-4 sm:h-[32rem]">
                     <div class="space-y-4">
                         <article
                             v-for="(message, index) in messages"
                             :key="index"
                             :class="message.role === 'user' ? 'ml-auto bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white' : 'mr-auto border border-[#d8e7d4] bg-white text-[#234222]'"
-                            class="max-w-3xl rounded-[1.5rem] px-4 py-3 shadow-sm"
+                            class="max-w-full sm:max-w-3xl rounded-[1.5rem] px-4 py-3 shadow-sm"
                         >
                             <p class="text-xs font-semibold uppercase tracking-[0.2em]" :class="message.role === 'user' ? 'text-white/80' : 'text-[#7f9a7a]'">
                                 {{ message.role === 'user' ? 'You' : 'Assistant' }}
@@ -134,7 +144,7 @@ const sendMessage = async (preset = null) => {
                             </div>
                         </article>
 
-                        <article v-if="loading" class="mr-auto max-w-3xl rounded-[1.5rem] border border-[#d8e7d4] bg-white px-4 py-3 shadow-sm">
+                        <article v-if="loading" class="mr-auto max-w-full sm:max-w-3xl rounded-[1.5rem] border border-[#d8e7d4] bg-white px-4 py-3 shadow-sm">
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#7f9a7a]">Assistant</p>
                             <p class="mt-2 text-sm text-[#4f6b4b]">Checking live inventory records...</p>
                         </article>

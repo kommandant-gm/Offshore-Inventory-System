@@ -8,6 +8,7 @@ import { usePage } from '@inertiajs/vue3';
 const open = ref(false);
 const input = ref('');
 const loading = ref(false);
+const showAllPrompts = ref(false);
 const page = usePage();
 const messages = ref([
     {
@@ -18,6 +19,7 @@ const messages = ref([
 const bodyRef = ref(null);
 
 const prompts = computed(() => page.props.ui?.assistant_prompts ?? []);
+const visiblePrompts = computed(() => showAllPrompts.value ? prompts.value : prompts.value.slice(0, 4));
 
 const scrollToBottom = async () => {
     await nextTick();
@@ -31,6 +33,7 @@ const toggle = async () => {
     open.value = !open.value;
 
     if (open.value) {
+        showAllPrompts.value = false;
         await scrollToBottom();
     }
 };
@@ -86,7 +89,7 @@ const sendMessage = async (preset = null) => {
         >
             <section
                 v-if="open"
-                class="pointer-events-auto mb-4 w-[min(24rem,calc(100vw-2.5rem))] overflow-hidden rounded-[1.75rem] border border-[#d8e7d4] bg-white shadow-[0_24px_60px_rgba(79,159,74,0.18)]"
+                class="pointer-events-auto mb-4 flex max-h-[calc(100vh-6rem)] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-[1.75rem] border border-[#d8e7d4] bg-white shadow-[0_24px_60px_rgba(79,159,74,0.18)]"
             >
                 <div class="flex items-center justify-between border-b border-[#edf3eb] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] px-4 py-3">
                     <div>
@@ -102,7 +105,7 @@ const sendMessage = async (preset = null) => {
                     </button>
                 </div>
 
-                <div ref="bodyRef" class="max-h-[22rem] space-y-3 overflow-y-auto bg-[#fbfefa] p-4">
+                <div ref="bodyRef" class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#fbfefa] p-4">
                     <article
                         v-for="(message, index) in messages"
                         :key="index"
@@ -141,13 +144,21 @@ const sendMessage = async (preset = null) => {
                 <div class="border-t border-[#edf3eb] bg-white p-4">
                     <div class="mb-3 flex flex-wrap gap-2">
                         <button
-                            v-for="prompt in prompts"
+                            v-for="prompt in visiblePrompts"
                             :key="prompt"
                             type="button"
                             class="rounded-full border border-[#d8e7d4] bg-[#fbfefa] px-3 py-1.5 text-xs text-[#355733] transition hover:bg-[#eef8ea]"
                             @click="sendMessage(prompt)"
                         >
                             {{ prompt }}
+                        </button>
+                        <button
+                            v-if="prompts.length > 4"
+                            type="button"
+                            class="rounded-full border border-[#cfe6c8] bg-white px-3 py-1.5 text-xs font-semibold text-[#3c8a39] transition hover:bg-[#eef8ea]"
+                            @click="showAllPrompts = !showAllPrompts"
+                        >
+                            {{ showAllPrompts ? 'Less suggestions' : `More suggestions (${prompts.length - 4})` }}
                         </button>
                     </div>
 

@@ -141,7 +141,7 @@ const summary = computed(() => filteredTransactions.value.reduce((accumulator, t
                                 <StatusBadge :value="typeMeta(heroTransaction.transaction_type).badge" />
                             </div>
 
-                            <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                            <div class="mt-6 grid gap-3 lg:grid-cols-2">
                                 <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
                                     <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Transaction Type</p>
                                     <p class="mt-2 text-base font-semibold text-[#234222]">{{ typeMeta(heroTransaction.transaction_type).label }}</p>
@@ -154,22 +154,22 @@ const summary = computed(() => filteredTransactions.value.reduce((accumulator, t
                                 </div>
                             </div>
 
-                            <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <div class="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                                 <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
                                     <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Primary Location</p>
-                                    <p class="mt-2 text-sm font-semibold text-[#234222]">{{ primaryLocation(heroTransaction) }}</p>
+                                    <p class="mt-2 break-words text-sm font-semibold text-[#234222]">{{ primaryLocation(heroTransaction) }}</p>
                                 </div>
                                 <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
                                     <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">From Location</p>
-                                    <p class="mt-2 text-sm font-semibold text-[#234222]">{{ fromLocation(heroTransaction) }}</p>
+                                    <p class="mt-2 break-words text-sm font-semibold text-[#234222]">{{ fromLocation(heroTransaction) }}</p>
                                 </div>
                                 <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
                                     <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">To Location</p>
-                                    <p class="mt-2 text-sm font-semibold text-[#234222]">{{ toLocation(heroTransaction) }}</p>
+                                    <p class="mt-2 break-words text-sm font-semibold text-[#234222]">{{ toLocation(heroTransaction) }}</p>
                                 </div>
                                 <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
                                     <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Quantity / Value</p>
-                                    <p class="mt-2 text-lg font-semibold text-[#234222]">{{ formatNumber(heroTransaction.quantity) }} {{ heroTransaction.uom }}</p>
+                                    <p class="mt-2 break-words text-lg font-semibold text-[#234222]">{{ formatNumber(heroTransaction.quantity) }} {{ heroTransaction.uom }}</p>
                                     <p class="mt-1 text-xs text-[#6f8a6b]">RM {{ formatMoney(heroTransaction.total_value) }}</p>
                                 </div>
                             </div>
@@ -187,12 +187,12 @@ const summary = computed(() => filteredTransactions.value.reduce((accumulator, t
                                 <p class="text-sm font-semibold text-[#234222]">Transaction Summary</p>
                                 <p class="mt-1 text-xs text-[#6f8a6b]">Based on the currently filtered movement records.</p>
                             </div>
-                            <div class="inline-flex w-fit rounded-full bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#3c8a39] ring-1 ring-[#cfe6c8]">
+                            <div class="inline-flex max-w-full w-fit rounded-full bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#3c8a39] ring-1 ring-[#cfe6c8]">
                                 {{ summary.total }} records
                             </div>
                         </div>
 
-                        <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="grid gap-3 lg:grid-cols-2">
                             <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
                                 <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Received Qty</p>
                                 <p class="mt-2 text-lg font-semibold text-[#234222]">{{ formatNumber(summary.received) }}</p>
@@ -264,7 +264,7 @@ const summary = computed(() => filteredTransactions.value.reduce((accumulator, t
                                 <StatusBadge :value="typeMeta(movement.transaction_type).badge" />
                             </div>
 
-                            <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div class="mt-5 grid gap-3 lg:grid-cols-2 2xl:grid-cols-4">
                                 <div>
                                     <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">Type / Date</p>
                                     <p class="mt-1 text-base font-semibold text-[#234222]">{{ typeMeta(movement.transaction_type).label }}</p>
@@ -272,17 +272,17 @@ const summary = computed(() => filteredTransactions.value.reduce((accumulator, t
                                 </div>
                                 <div>
                                     <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">Primary / From</p>
-                                    <p class="mt-1 text-sm font-semibold text-[#234222]">{{ primaryLocation(movement) }}</p>
+                                    <p class="mt-1 break-words text-sm font-semibold text-[#234222]">{{ primaryLocation(movement) }}</p>
                                     <p class="mt-1 text-xs text-[#6f8a6b]">From: {{ fromLocation(movement) }}</p>
                                 </div>
                                 <div>
                                     <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">To / Posted By</p>
-                                    <p class="mt-1 text-sm font-semibold text-[#234222]">{{ toLocation(movement) }}</p>
+                                    <p class="mt-1 break-words text-sm font-semibold text-[#234222]">{{ toLocation(movement) }}</p>
                                     <p class="mt-1 text-xs text-[#6f8a6b]">{{ movement.created_by ?? 'System' }}</p>
                                 </div>
                                 <div>
                                     <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">Quantity / Value</p>
-                                    <p class="mt-1 text-base font-semibold text-[#234222]">{{ formatNumber(movement.quantity) }} {{ movement.uom }}</p>
+                                    <p class="mt-1 break-words text-base font-semibold text-[#234222]">{{ formatNumber(movement.quantity) }} {{ movement.uom }}</p>
                                     <p class="mt-1 text-xs text-[#6f8a6b]">RM {{ formatMoney(movement.total_value) }}</p>
                                 </div>
                             </div>
