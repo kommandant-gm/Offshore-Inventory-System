@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
+import StatusBadge from '@/Components/StatusBadge.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -9,7 +10,7 @@ const props = defineProps({
 });
 
 const page = usePage();
-const activeTab = ref('live');
+const activeTab = ref('latest');
 const search = ref('');
 const canEditMovements = computed(() => page.props.auth?.user?.can?.movements_edit);
 const allTransactions = computed(() => props.transactions.data ?? []);
@@ -25,57 +26,93 @@ const filteredTransactions = computed(() => {
         transaction.item_code,
         transaction.description,
         transaction.transaction_type,
+        transaction.location,
         transaction.source_location,
         transaction.destination_location,
         transaction.created_by,
+        transaction.remarks,
     ].some((value) => String(value ?? '').toLowerCase().includes(term)));
 });
 
-const liveTransactions = computed(() => filteredTransactions.value.slice(0, 4));
-const historyTransactions = computed(() => filteredTransactions.value.slice(4));
-const visibleTransactions = computed(() => activeTab.value === 'live' ? liveTransactions.value : historyTransactions.value);
-const heroTransaction = computed(() => liveTransactions.value[0] ?? filteredTransactions.value[0] ?? null);
+const latestTransactions = computed(() => filteredTransactions.value.slice(0, 5));
+const olderTransactions = computed(() => filteredTransactions.value.slice(5));
+const visibleTransactions = computed(() => activeTab.value === 'latest' ? latestTransactions.value : olderTransactions.value);
+const heroTransaction = computed(() => filteredTransactions.value[0] ?? null);
 const hasTransactions = computed(() => allTransactions.value.length > 0);
 
-const trackingState = (type) => {
+const typeMeta = (type) => {
     switch (type) {
         case 'receive':
-            return { label: 'received', tone: 'text-emerald-700', dot: 'bg-emerald-500', progress: 100 };
+            return { label: 'Receive', hint: 'Stock added into a location.', badge: 'active', tone: 'text-emerald-700' };
         case 'issue':
-            return { label: 'issued out', tone: 'text-amber-700', dot: 'bg-amber-500', progress: 72 };
+            return { label: 'Issue', hint: 'Stock issued out from a source location.', badge: 'fair', tone: 'text-amber-700' };
         case 'interloc_transfer':
-            return { label: 'moving', tone: 'text-sky-700', dot: 'bg-sky-500', progress: 58 };
+            return { label: 'Transfer', hint: 'Stock moved between locations with no net quantity change.', badge: 'neutral', tone: 'text-sky-700' };
         case 'material_return':
-            return { label: 'returned', tone: 'text-emerald-700', dot: 'bg-emerald-500', progress: 88 };
+            return { label: 'Material Return', hint: 'Stock returned back into a location.', badge: 'active', tone: 'text-emerald-700' };
         case 'physical_adjustment':
-            return { label: 'adjusted', tone: 'text-orange-700', dot: 'bg-orange-500', progress: 74 };
+            return { label: 'Physical Adjustment', hint: 'Manual quantity correction after count or review.', badge: 'fair', tone: 'text-orange-700' };
         case 'price_adjustment':
-            return { label: 'repriced', tone: 'text-fuchsia-700', dot: 'bg-fuchsia-500', progress: 66 };
+            return { label: 'Price Adjustment', hint: 'Value changed without changing quantity.', badge: 'inactive', tone: 'text-fuchsia-700' };
         case 'other_misc':
-            return { label: 'misc', tone: 'text-slate-700', dot: 'bg-slate-500', progress: 46 };
+            return { label: 'Other Misc', hint: 'Exceptional manual stock posting.', badge: 'inactive', tone: 'text-slate-700' };
         default:
-            return { label: String(type ?? 'tracked').replaceAll('_', ' '), tone: 'text-slate-700', dot: 'bg-slate-500', progress: 40 };
+            return { label: String(type ?? 'movement').replaceAll('_', ' '), hint: 'Recorded stock transaction.', badge: 'inactive', tone: 'text-slate-700' };
     }
 };
 
-const progressWidth = (type) => `${trackingState(type).progress}%`;
+const formatNumber = (value) => Number(value ?? 0).toFixed(2).replace('.00', '');
+const formatMoney = (value) => Number(value ?? 0).toFixed(2);
+const primaryLocation = (transaction) => transaction.location ?? transaction.destination_location ?? transaction.source_location ?? 'No location recorded';
+const fromLocation = (transaction) => transaction.source_location ?? (transaction.transaction_type === 'issue' ? transaction.location : null) ?? 'N/A';
+const toLocation = (transaction) => transaction.destination_location ?? (['receive', 'material_return', 'physical_adjustment', 'other_misc'].includes(transaction.transaction_type) ? transaction.location : null) ?? 'N/A';
+
+const summary = computed(() => filteredTransactions.value.reduce((accumulator, transaction) => {
+    const quantity = Number(transaction.quantity ?? 0);
+
+    accumulator.total += 1;
+
+    if (transaction.transaction_type === 'receive') {
+        accumulator.received += quantity;
+    }
+
+    if (transaction.transaction_type === 'issue') {
+        accumulator.issued += quantity;
+    }
+
+    if (transaction.transaction_type === 'interloc_transfer') {
+        accumulator.transfers += quantity;
+    }
+
+    if (['physical_adjustment', 'price_adjustment', 'other_misc'].includes(transaction.transaction_type)) {
+        accumulator.adjustments += 1;
+    }
+
+    return accumulator;
+}, {
+    total: 0,
+    received: 0,
+    issued: 0,
+    transfers: 0,
+    adjustments: 0,
+}));
 </script>
 
 <template>
-    <Head title="Stock Item Movements" />
+    <Head title="Stock Movements" />
 
     <AuthenticatedLayout>
-        <PageHeader title="Stock Item Movement Tracking" description="Movement cards and live tracking panels styled like an operations monitor, mapped to your stock item workflow.">
+        <PageHeader title="Stock Movements" description="Transaction register for stock received, issued, transferred, returned, and adjusted across locations.">
             <Link v-if="canEditMovements" class="btn w-full border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] hover:opacity-95 sm:w-auto" :href="route('asset-movements.create')">
                 New Movement
             </Link>
         </PageHeader>
 
         <div v-if="!hasTransactions" class="rounded-[1.5rem] border border-[#cfe6c8] bg-[linear-gradient(180deg,#fbfefa_0%,#eef8ea_100%)] px-5 py-4 text-sm text-[#5f7b5e] shadow-[0_18px_40px_rgba(79,159,74,0.10)]">
-            No stock item movements have been recorded yet. Create the first movement to populate this tracking view with live data.
+            No stock movements have been recorded yet. Create the first transaction to populate this register.
         </div>
 
-        <div class="grid gap-6 xl:grid-cols-[0.92fr,1.08fr]">
+        <div class="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
                 <div class="rounded-[1.6rem] border border-[#d8e7d4] bg-[linear-gradient(180deg,#ffffff_0%,#f7fcf5_100%)] p-4 text-[#234222] shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
                     <div class="flex items-center gap-3 rounded-full border border-[#d8e7d4] bg-[#fbfefa] px-4 py-3">
@@ -83,14 +120,14 @@ const progressWidth = (type) => `${trackingState(type).progress}%`;
                         <input
                             v-model="search"
                             type="text"
-                            placeholder="Search item code, description, location"
+                            placeholder="Search item, type, location, or user"
                             class="w-full bg-transparent text-sm text-[#234222] outline-none placeholder:text-[#7f9a7a]"
                         >
                         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[10px] font-semibold uppercase tracking-[0.18em] text-[#4f9f4a] ring-1 ring-[#cfe6c8]">Go</span>
                     </div>
 
                     <div class="mt-5">
-                        <p class="text-lg font-semibold text-[#234222]">Current Movement</p>
+                        <p class="text-lg font-semibold text-[#234222]">Latest Transaction</p>
 
                         <article
                             v-if="heroTransaction"
@@ -101,53 +138,76 @@ const progressWidth = (type) => `${trackingState(type).progress}%`;
                                     <p class="text-sm font-semibold tracking-[0.08em] text-[#2f6f2d]">ITEM : {{ heroTransaction.item_code }}</p>
                                     <p class="mt-1 text-xs text-[#6f8a6b]">{{ heroTransaction.description }}</p>
                                 </div>
-                                <div class="inline-flex w-fit rounded-full border border-[#cfe6c8] bg-[#eef8ea] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3c8a39]">
-                                    {{ trackingState(heroTransaction.transaction_type).label }}
+                                <StatusBadge :value="typeMeta(heroTransaction.transaction_type).badge" />
+                            </div>
+
+                            <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                                <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Transaction Type</p>
+                                    <p class="mt-2 text-base font-semibold text-[#234222]">{{ typeMeta(heroTransaction.transaction_type).label }}</p>
+                                    <p class="mt-1 text-xs text-[#6f8a6b]">{{ typeMeta(heroTransaction.transaction_type).hint }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Transaction Date</p>
+                                    <p class="mt-2 text-base font-semibold text-[#234222]">{{ heroTransaction.transaction_date }}</p>
+                                    <p class="mt-1 text-xs text-[#6f8a6b]">Posted by {{ heroTransaction.created_by ?? 'System' }}</p>
                                 </div>
                             </div>
 
-                            <div class="mt-6 rounded-[1.3rem] border border-[#e1efdc] bg-white px-4 py-4">
-                                <div class="flex flex-col gap-2 text-sm text-[#4f6b4b] sm:flex-row sm:items-center sm:justify-between">
-                                    <span>{{ heroTransaction.source_location ?? 'Source pending' }}</span>
-                                    <span>{{ heroTransaction.destination_location ?? 'Destination pending' }}</span>
+                            <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Primary Location</p>
+                                    <p class="mt-2 text-sm font-semibold text-[#234222]">{{ primaryLocation(heroTransaction) }}</p>
                                 </div>
-
-                                <div class="relative mt-4 h-10">
-                                    <div class="absolute left-0 right-0 top-1/2 h-[2px] -translate-y-1/2 bg-[#d8e7d4]" />
-                                    <div class="absolute left-0 top-1/2 h-[2px] -translate-y-1/2 bg-[#4f9f4a]" :style="{ width: progressWidth(heroTransaction.transaction_type) }" />
-                                    <div class="absolute left-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-[#4f9f4a] bg-white" />
-                                    <div class="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-[#4f9f4a] bg-white" :style="{ left: `calc(${progressWidth(heroTransaction.transaction_type)} - 0.375rem)` }" />
-                                    <div class="absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-[#d8e7d4] bg-white" />
+                                <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">From Location</p>
+                                    <p class="mt-2 text-sm font-semibold text-[#234222]">{{ fromLocation(heroTransaction) }}</p>
                                 </div>
-
-                                <div class="mt-3 flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-[#7f9a7a]">
-                                    <span>Source</span>
-                                    <span>Processing</span>
-                                    <span>{{ trackingState(heroTransaction.transaction_type).label }}</span>
+                                <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">To Location</p>
+                                    <p class="mt-2 text-sm font-semibold text-[#234222]">{{ toLocation(heroTransaction) }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Quantity / Value</p>
+                                    <p class="mt-2 text-lg font-semibold text-[#234222]">{{ formatNumber(heroTransaction.quantity) }} {{ heroTransaction.uom }}</p>
+                                    <p class="mt-1 text-xs text-[#6f8a6b]">RM {{ formatMoney(heroTransaction.total_value) }}</p>
                                 </div>
                             </div>
 
-                            <div class="mt-5 grid gap-3 sm:grid-cols-2">
-                                <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
-                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Quantity</p>
-                                    <p class="mt-2 text-lg font-semibold text-[#234222]">{{ heroTransaction.quantity }}</p>
-                                </div>
-                                <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
-                                    <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Movement Value</p>
-                                    <p class="mt-2 text-lg font-semibold text-[#234222]">RM {{ heroTransaction.total_value }}</p>
-                                </div>
+                            <div v-if="heroTransaction.remarks" class="mt-5 rounded-[1.3rem] border border-[#e1efdc] bg-white px-4 py-4">
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Remarks</p>
+                                <p class="mt-2 text-sm text-[#4f6b4b]">{{ heroTransaction.remarks }}</p>
                             </div>
                         </article>
                     </div>
 
                     <div class="mt-6 rounded-[1.4rem] border border-[#d8e7d4] bg-[#fbfefa] px-4 py-4">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="min-w-0">
-                                <p class="text-sm font-semibold text-[#234222]">Movement Summary</p>
-                                <p class="mt-1 text-xs text-[#6f8a6b]">Live preview of the selected or latest stock item movement route.</p>
+                        <div class="mb-4 flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-[#234222]">Transaction Summary</p>
+                                <p class="mt-1 text-xs text-[#6f8a6b]">Based on the currently filtered movement records.</p>
                             </div>
                             <div class="inline-flex w-fit rounded-full bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#3c8a39] ring-1 ring-[#cfe6c8]">
-                                {{ filteredTransactions.length }} tracked
+                                {{ summary.total }} records
+                            </div>
+                        </div>
+
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Received Qty</p>
+                                <p class="mt-2 text-lg font-semibold text-[#234222]">{{ formatNumber(summary.received) }}</p>
+                            </div>
+                            <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Issued Qty</p>
+                                <p class="mt-2 text-lg font-semibold text-[#234222]">{{ formatNumber(summary.issued) }}</p>
+                            </div>
+                            <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Transfer Qty</p>
+                                <p class="mt-2 text-lg font-semibold text-[#234222]">{{ formatNumber(summary.transfers) }}</p>
+                            </div>
+                            <div class="rounded-2xl border border-[#e1efdc] bg-white px-4 py-3">
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[#7f9a7a]">Adjustment Records</p>
+                                <p class="mt-2 text-lg font-semibold text-[#234222]">{{ summary.adjustments }}</p>
                             </div>
                         </div>
                     </div>
@@ -168,24 +228,24 @@ const progressWidth = (type) => `${trackingState(type).progress}%`;
                     </div>
 
                     <div class="mt-5">
-                        <p class="text-lg font-semibold text-[#234222]">Stock Flow</p>
+                        <p class="text-lg font-semibold text-[#234222]">Movement History</p>
 
                         <div class="mt-4 flex flex-col gap-2 rounded-[1.2rem] border border-[#d8e7d4] bg-[#f4fbf1] p-2 sm:inline-flex sm:flex-row sm:rounded-full sm:p-1">
                             <button
                                 type="button"
                                 class="w-full rounded-full px-6 py-2 text-sm font-semibold transition sm:min-w-[140px] sm:w-auto"
-                                :class="activeTab === 'live' ? 'bg-white text-[#3c8a39] shadow-sm ring-1 ring-[#cfe6c8]' : 'text-[#6f8a6b]'"
-                                @click="activeTab = 'live'"
+                                :class="activeTab === 'latest' ? 'bg-white text-[#3c8a39] shadow-sm ring-1 ring-[#cfe6c8]' : 'text-[#6f8a6b]'"
+                                @click="activeTab = 'latest'"
                             >
-                                Live
+                                Latest
                             </button>
                             <button
                                 type="button"
                                 class="w-full rounded-full px-6 py-2 text-sm font-semibold transition sm:min-w-[140px] sm:w-auto"
-                                :class="activeTab === 'history' ? 'bg-white text-[#3c8a39] shadow-sm ring-1 ring-[#cfe6c8]' : 'text-[#6f8a6b]'"
-                                @click="activeTab = 'history'"
+                                :class="activeTab === 'older' ? 'bg-white text-[#3c8a39] shadow-sm ring-1 ring-[#cfe6c8]' : 'text-[#6f8a6b]'"
+                                @click="activeTab = 'older'"
                             >
-                                History
+                                Older Records
                             </button>
                         </div>
                     </div>
@@ -201,50 +261,45 @@ const progressWidth = (type) => `${trackingState(type).progress}%`;
                                     <p class="text-sm font-semibold tracking-[0.08em] text-[#2f6f2d]">{{ movement.item_code }}</p>
                                     <p class="mt-1 text-xs text-[#6f8a6b]">{{ movement.description }}</p>
                                 </div>
-                                <button type="button" class="w-fit rounded-full border border-[#d8e7d4] p-2 text-[#6f8a6b] transition hover:bg-[#eef8ea]">
-                                    ...
-                                </button>
+                                <StatusBadge :value="typeMeta(movement.transaction_type).badge" />
                             </div>
 
-                            <div class="mt-5 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+                            <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                                 <div>
-                                    <p class="text-base font-semibold text-[#234222]">{{ movement.source_location ?? 'Source pending' }}</p>
+                                    <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">Type / Date</p>
+                                    <p class="mt-1 text-base font-semibold text-[#234222]">{{ typeMeta(movement.transaction_type).label }}</p>
                                     <p class="mt-1 text-xs text-[#6f8a6b]">{{ movement.transaction_date }}</p>
                                 </div>
-
-                                <div class="flex items-center justify-center gap-2 text-[#4f9f4a]">
-                                    <span>&gt;&gt;</span>
+                                <div>
+                                    <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">Primary / From</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#234222]">{{ primaryLocation(movement) }}</p>
+                                    <p class="mt-1 text-xs text-[#6f8a6b]">From: {{ fromLocation(movement) }}</p>
                                 </div>
-
-                                <div class="md:text-right">
-                                    <p class="text-base font-semibold text-[#234222]">{{ movement.destination_location ?? 'Destination pending' }}</p>
+                                <div>
+                                    <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">To / Posted By</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#234222]">{{ toLocation(movement) }}</p>
                                     <p class="mt-1 text-xs text-[#6f8a6b]">{{ movement.created_by ?? 'System' }}</p>
                                 </div>
-                            </div>
-
-                            <div class="mt-5">
-                                <div class="h-[3px] overflow-hidden rounded-full bg-[#d8e7d4]">
-                                    <div class="h-full rounded-full bg-[#4f9f4a]" :style="{ width: progressWidth(movement.transaction_type) }" />
-                                </div>
-                                <div class="mt-2 flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-[#7f9a7a]">
-                                    <span>Movement</span>
-                                    <span>Tracking</span>
-                                    <span :class="trackingState(movement.transaction_type).tone">{{ trackingState(movement.transaction_type).label }}</span>
+                                <div>
+                                    <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">Quantity / Value</p>
+                                    <p class="mt-1 text-base font-semibold text-[#234222]">{{ formatNumber(movement.quantity) }} {{ movement.uom }}</p>
+                                    <p class="mt-1 text-xs text-[#6f8a6b]">RM {{ formatMoney(movement.total_value) }}</p>
                                 </div>
                             </div>
 
-                            <div class="mt-5 flex flex-wrap items-center gap-3 text-xs">
-                                <span class="rounded-full border border-[#d8e7d4] bg-white px-3 py-1.5 text-[#4f6b4b]">Qty {{ movement.quantity }}</span>
-                                <span class="rounded-full border border-[#d8e7d4] bg-white px-3 py-1.5 text-[#4f6b4b]">RM {{ movement.total_value }}</span>
-                                <span class="inline-flex items-center gap-2 rounded-full border border-[#d8e7d4] bg-white px-3 py-1.5" :class="trackingState(movement.transaction_type).tone">
-                                    <span class="h-2 w-2 rounded-full" :class="trackingState(movement.transaction_type).dot" />
-                                    {{ movement.transaction_type.replaceAll('_', ' ') }}
-                                </span>
+                            <div class="mt-5 rounded-[1.2rem] border border-[#e1efdc] bg-white px-4 py-3">
+                                <p class="text-[11px] uppercase tracking-[0.18em] text-[#7f9a7a]">Meaning</p>
+                                <p class="mt-1 text-sm" :class="typeMeta(movement.transaction_type).tone">{{ typeMeta(movement.transaction_type).hint }}</p>
+                            </div>
+
+                            <div v-if="movement.remarks || movement.cog_no" class="mt-4 flex flex-col gap-2 text-sm text-[#4f6b4b]">
+                                <p v-if="movement.remarks"><span class="font-semibold text-[#234222]">Remarks:</span> {{ movement.remarks }}</p>
+                                <p v-if="movement.cog_no"><span class="font-semibold text-[#234222]">COG:</span> {{ movement.cog_no }}</p>
                             </div>
                         </article>
 
                         <div v-if="visibleTransactions.length === 0" class="rounded-[1.6rem] border border-dashed border-[#cfe6c8] bg-[#fbfefa] px-6 py-12 text-center text-sm text-[#6f8a6b]">
-                            No movement cards found for this view.
+                            No movement records found for this view.
                         </div>
                     </div>
                 </div>

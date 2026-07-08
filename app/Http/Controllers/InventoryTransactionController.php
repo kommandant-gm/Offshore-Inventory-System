@@ -33,6 +33,7 @@ class InventoryTransactionController extends Controller
                     'transaction_date' => $transaction->transaction_date->format('Y-m-d'),
                     'item_code' => $transaction->item->item_code,
                     'description' => $transaction->item->description,
+                    'uom' => $transaction->item->uom,
                     'transaction_type' => $transaction->transaction_type->value,
                     'quantity' => $transaction->quantity,
                     'unit_cost' => $transaction->unit_cost,
@@ -43,6 +44,7 @@ class InventoryTransactionController extends Controller
                     'cog_id' => $transaction->cog_id,
                     'cog_no' => $transaction->cog?->cog_no ?? $transaction->cog_issued_out,
                     'created_by' => $transaction->creator?->name,
+                    'remarks' => $transaction->remarks,
                 ]),
         ]);
     }
