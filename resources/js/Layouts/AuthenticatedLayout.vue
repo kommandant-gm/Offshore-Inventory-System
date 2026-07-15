@@ -19,23 +19,45 @@
     const notificationsOpen = ref(false);
     let quickSearchTimer = null;
 
-    const navItems = [
+    const currentUser = page.props.auth.user;
+    const switchBranch = (event) => router.patch(route('branches.activate'), { branch_id: event.target.value }, { preserveScroll: true });
+    const hasBranch = (code) => currentUser?.branches?.some((branch) => branch.code === code);
+    const openBranchRoute = (branchCode, routeName) => {
+        const branch = currentUser?.branches?.find((entry) => entry.code === branchCode);
+        if (!branch) return;
+        if (currentUser?.active_branch?.id === branch.id) {
+            router.visit(route(routeName));
+            return;
+        }
+        router.patch(route('branches.activate'), { branch_id: branch.id }, {
+            preserveScroll: true,
+            onSuccess: () => router.visit(route(routeName)),
+        });
+    };
+    const miriItems = [
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'dashboard' },
-        { name: 'Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read' },
-        { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read' },
-        { name: 'IT Asset Register', icon: ClipboardDocumentCheckIcon, route: 'it-assets.index', can: 'it_assets_read' },
         { name: 'Stock Items', icon: ArchiveBoxIcon, route: 'assets.index' },
         { name: 'Stock Movements', icon: TruckIcon, route: 'asset-movements.index', can: 'movements_read' },
+        { name: 'Receive / Issue', icon: BuildingStorefrontIcon, route: 'asset-movements.create', can: 'movements_edit' },
         { name: 'Stocktakes', icon: ClipboardDocumentListIcon, route: 'stocktakes.index', can: 'movements_read' },
         { name: 'Stock Ledger', icon: ChartBarIcon, route: 'asset-ledger.index' },
         { name: 'COG Control', icon: ClipboardDocumentCheckIcon, route: 'cogs.index' },
+        { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read' },
+    ];
+    const klItems = [
+        { name: 'IT Dashboard', icon: Squares2X2Icon, route: 'it-assets.index', can: 'it_assets_read' },
+        { name: 'IT Asset Register', icon: ClipboardDocumentCheckIcon, route: 'it-assets.index', can: 'it_assets_read' },
+        { name: 'Import Assets', icon: ArchiveBoxIcon, route: 'it-assets.import.create', can: 'it_assets_edit' },
+        { name: 'Assignments / Returns', icon: TruckIcon, route: 'it-assets.index', can: 'it_assets_read' },
+        { name: 'Repairs', icon: ExclamationTriangleIcon, route: 'it-assets.index', can: 'it_assets_read' },
+        { name: 'IT Asset Reports', icon: ChartBarIcon, route: 'it-assets.index', can: 'it_assets_read' },
+    ];
+    const administrationItems = [
         { name: 'Categories', icon: TagIcon, route: 'categories.index' },
         { name: 'Locations', icon: MapIcon, route: 'locations.index' },
-        { name: 'Receive / Issue', icon: BuildingStorefrontIcon, route: 'asset-movements.create', can: 'movements_edit' },
+        { name: 'Users & Branch Access', icon: Cog6ToothIcon, route: 'settings.index', can: 'settings_read' },
+        { name: 'Audit Trail', icon: ClipboardDocumentListIcon, route: 'audit-trail.index', can: 'settings_read' },
     ];
-
-    const currentUser = page.props.auth.user;
-    const switchBranch = (event) => router.patch(route('branches.activate'), { branch_id: event.target.value }, { preserveScroll: true });
     const notifications = computed(() => page.props.ui?.notifications?.items ?? []);
     const notificationCount = computed(() => page.props.ui?.notifications?.unread_count ?? 0);
     const currentUserInitials = computed(() => {
@@ -245,26 +267,27 @@
                         </div>
                     </div>
     
-                    <div class="flex-1 overflow-y-auto py-4 px-4 space-y-1">
-                        <Link v-for="item in navItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="item.name" 
-                            :href="item.route ? route(item.route) : '#'" 
-                            :class="[
-                                item.route && route().current(item.route)
-                                ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_14px_30px_rgba(79,159,74,0.18)] ring-1 ring-[#b8e0ae]' 
-                                : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'
-                            ]" 
-                            class="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 group"
-                        >
-                            <component :is="item.icon" class="w-5 h-5" :class="item.route && route().current(item.route) ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'" />
-                            {{ item.name }}
-                        </Link>
-                    </div>
-    
-                    <div v-if="currentUser?.can?.settings_read" class="px-4 pb-4 border-t border-[#edf3eb] pt-4 bg-white">
-                         <Link :href="route('settings.index')" :class="isSettingsRoute ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-[0_14px_30px_rgba(79,159,74,0.18)] ring-1 ring-[#b8e0ae]' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all">
-                            <Cog6ToothIcon class="w-5 h-5" :class="isSettingsRoute ? 'opacity-100' : 'opacity-70'" />
-                            Settings
-                        </Link>
+                    <div class="flex-1 space-y-5 overflow-y-auto px-4 py-4">
+                        <section v-if="hasBranch('MIRI')">
+                            <p class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7f9a7a]">Miri Inventory</p>
+                            <button v-for="item in miriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                <component :is="item.icon" class="h-4.5 w-4.5 opacity-75" />{{ item.name }}
+                            </button>
+                        </section>
+
+                        <section v-if="hasBranch('KL-IT')">
+                            <p class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7f9a7a]">KL IT Inventory</p>
+                            <button v-for="item in klItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`kl-${item.name}`" type="button" @click="openBranchRoute('KL-IT', item.route)" :class="currentUser?.active_branch?.code === 'KL-IT' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                <component :is="item.icon" class="h-4.5 w-4.5 opacity-75" />{{ item.name }}
+                            </button>
+                        </section>
+
+                        <section>
+                            <p class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7f9a7a]">Administration</p>
+                            <Link v-for="item in administrationItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`admin-${item.name}`" :href="route(item.route)" :class="route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition">
+                                <component :is="item.icon" class="h-4.5 w-4.5 opacity-75" />{{ item.name }}
+                            </Link>
+                        </section>
                     </div>
     
                     <div class="p-4 bg-white">
