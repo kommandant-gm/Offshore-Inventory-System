@@ -271,21 +271,21 @@
                         <section v-if="hasBranch('MIRI')">
                             <p class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7f9a7a]">Miri Inventory</p>
                             <button v-for="item in miriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
-                                <component :is="item.icon" class="h-4.5 w-4.5 opacity-75" />{{ item.name }}
+                                <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
                             </button>
                         </section>
 
                         <section v-if="hasBranch('KL-IT')">
                             <p class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7f9a7a]">KL IT Inventory</p>
                             <button v-for="item in klItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`kl-${item.name}`" type="button" @click="openBranchRoute('KL-IT', item.route)" :class="currentUser?.active_branch?.code === 'KL-IT' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
-                                <component :is="item.icon" class="h-4.5 w-4.5 opacity-75" />{{ item.name }}
+                                <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
                             </button>
                         </section>
 
                         <section>
                             <p class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7f9a7a]">Administration</p>
                             <Link v-for="item in administrationItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`admin-${item.name}`" :href="route(item.route)" :class="route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition">
-                                <component :is="item.icon" class="h-4.5 w-4.5 opacity-75" />{{ item.name }}
+                                <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
                             </Link>
                         </section>
                     </div>
