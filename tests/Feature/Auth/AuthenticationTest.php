@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -50,5 +51,18 @@ class AuthenticationTest extends TestCase
 
         $this->assertGuest();
         $response->assertRedirect(route('login', absolute: false));
+    }
+    public function test_kl_user_is_sent_to_it_dashboard_after_login(): void
+    {
+        $user = User::factory()->create(['username' => 'kl.user']);
+        $kl = Branch::query()->where('code', 'KL-IT')->firstOrFail();
+        $user->branches()->attach($kl, ['access_level' => 'edit', 'is_default' => true]);
+
+        $response = $this->post('/login', [
+            'username' => 'kl.user',
+            'password' => 'password',
+        ]);
+
+        $response->assertRedirect(route('it-assets.dashboard', absolute: false));
     }
 }

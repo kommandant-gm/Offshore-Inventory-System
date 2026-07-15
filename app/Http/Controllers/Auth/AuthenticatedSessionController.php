@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\BranchContext;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -41,7 +42,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $branch = app(BranchContext::class)->branch($request->user());
+        $destination = $branch?->code === 'KL-IT'
+            ? route('it-assets.dashboard', absolute: false)
+            : route('dashboard', absolute: false);
+
+        return redirect()->intended($destination);
     }
 
     /**

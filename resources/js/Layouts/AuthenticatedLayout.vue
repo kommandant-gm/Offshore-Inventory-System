@@ -7,7 +7,7 @@
         ClipboardDocumentCheckIcon, ChartBarIcon, ChatBubbleLeftRightIcon,
         Cog6ToothIcon, BellIcon, MagnifyingGlassIcon,
         ExclamationTriangleIcon,
-        Bars3Icon, ArrowRightStartOnRectangleIcon, TagIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon
+        Bars3Icon, ArrowRightStartOnRectangleIcon, TagIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, ChevronDownIcon
     } from '@heroicons/vue/24/outline';
 
     const isSidebarOpen = ref(false);
@@ -20,6 +20,13 @@
     let quickSearchTimer = null;
 
     const currentUser = page.props.auth.user;
+    const storedSection = (key, fallback) => typeof window === 'undefined' || localStorage.getItem(key) === null
+        ? fallback
+        : localStorage.getItem(key) === 'true';
+    const miriExpanded = ref(storedSection('sidebar.miri.expanded', currentUser?.active_branch?.code === 'MIRI'));
+    const klExpanded = ref(storedSection('sidebar.kl.expanded', currentUser?.active_branch?.code === 'KL-IT'));
+    watch(miriExpanded, (value) => localStorage.setItem('sidebar.miri.expanded', String(value)));
+    watch(klExpanded, (value) => localStorage.setItem('sidebar.kl.expanded', String(value)));
     const switchBranch = (event) => router.patch(route('branches.activate'), { branch_id: event.target.value }, { preserveScroll: true });
     const hasBranch = (code) => currentUser?.branches?.some((branch) => branch.code === code);
     const openBranchRoute = (branchCode, routeName) => {
@@ -45,12 +52,12 @@
         { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read' },
     ];
     const klItems = [
-        { name: 'IT Dashboard', icon: Squares2X2Icon, route: 'it-assets.index', can: 'it_assets_read' },
+        { name: 'IT Dashboard', icon: Squares2X2Icon, route: 'it-assets.dashboard', can: 'it_assets_read' },
         { name: 'IT Asset Register', icon: ClipboardDocumentCheckIcon, route: 'it-assets.index', can: 'it_assets_read' },
         { name: 'Import Assets', icon: ArchiveBoxIcon, route: 'it-assets.import.create', can: 'it_assets_edit' },
-        { name: 'Assignments / Returns', icon: TruckIcon, route: 'it-assets.index', can: 'it_assets_read' },
-        { name: 'Repairs', icon: ExclamationTriangleIcon, route: 'it-assets.index', can: 'it_assets_read' },
-        { name: 'IT Asset Reports', icon: ChartBarIcon, route: 'it-assets.index', can: 'it_assets_read' },
+        { name: 'Assignments / Returns', icon: TruckIcon, route: 'it-assets.assignments', can: 'it_assets_read' },
+        { name: 'Repairs', icon: ExclamationTriangleIcon, route: 'it-assets.repairs', can: 'it_assets_read' },
+        { name: 'IT Asset Reports', icon: ChartBarIcon, route: 'it-assets.reports', can: 'it_assets_read' },
     ];
     const administrationItems = [
         { name: 'Categories', icon: TagIcon, route: 'categories.index' },
@@ -269,17 +276,25 @@
     
                     <div class="flex-1 space-y-5 overflow-y-auto px-4 py-4">
                         <section v-if="hasBranch('MIRI')">
-                            <p class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7f9a7a]">Miri Inventory</p>
-                            <button v-for="item in miriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
-                                <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
+                            <button type="button" class="mb-2 flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.24em] text-[#60745d] hover:bg-[#f2f8ef]" :aria-expanded="miriExpanded" @click="miriExpanded = !miriExpanded">
+                                <span>Miri Inventory</span><ChevronDownIcon class="h-4 w-4 transition-transform" :class="miriExpanded ? 'rotate-180' : ''" />
                             </button>
+                            <div v-show="miriExpanded" class="space-y-0.5">
+                                <button v-for="item in miriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                    <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
+                                </button>
+                            </div>
                         </section>
 
                         <section v-if="hasBranch('KL-IT')">
-                            <p class="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7f9a7a]">KL IT Inventory</p>
-                            <button v-for="item in klItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`kl-${item.name}`" type="button" @click="openBranchRoute('KL-IT', item.route)" :class="currentUser?.active_branch?.code === 'KL-IT' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
-                                <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
+                            <button type="button" class="mb-2 flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.24em] text-[#60745d] hover:bg-[#f2f8ef]" :aria-expanded="klExpanded" @click="klExpanded = !klExpanded">
+                                <span>KL IT Inventory</span><ChevronDownIcon class="h-4 w-4 transition-transform" :class="klExpanded ? 'rotate-180' : ''" />
                             </button>
+                            <div v-show="klExpanded" class="space-y-0.5">
+                                <button v-for="item in klItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`kl-${item.name}`" type="button" @click="openBranchRoute('KL-IT', item.route)" :class="currentUser?.active_branch?.code === 'KL-IT' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                    <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
+                                </button>
+                            </div>
                         </section>
 
                         <section>

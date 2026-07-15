@@ -19,6 +19,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\BranchContextController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\ItAssetImportController;
+use App\Http\Controllers\ItAssetSectionController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -35,6 +36,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/it-assets-import', [ItAssetImportController::class, 'create'])->name('it-assets.import.create');
     Route::post('/it-assets-import/preview', [ItAssetImportController::class, 'preview'])->name('it-assets.import.preview');
     Route::post('/it-assets-import', [ItAssetImportController::class, 'store'])->name('it-assets.import.store');
+    Route::get('/it-dashboard', [ItAssetSectionController::class, 'dashboard'])->name('it-assets.dashboard');
+    Route::get('/it-asset-assignments', [ItAssetSectionController::class, 'assignments'])->name('it-assets.assignments');
+    Route::get('/it-asset-repairs', [ItAssetSectionController::class, 'repairs'])->name('it-assets.repairs');
+    Route::get('/it-asset-reports', [ItAssetSectionController::class, 'reports'])->name('it-assets.reports');
     Route::get('/quick-search', QuickSearchController::class)->name('quick-search');
     Route::get('/assistant', [AssistantController::class, 'index'])->name('assistant.index');
     Route::post('/assistant/query', [AssistantController::class, 'query'])->name('assistant.query');
