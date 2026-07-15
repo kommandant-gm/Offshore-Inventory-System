@@ -5,13 +5,14 @@ namespace App\Models;
 use App\Enums\AssetCondition;
 use App\Enums\AssetMovementType;
 use App\Enums\AssetStatus;
+use App\Models\Concerns\BelongsToBranch;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AssetMovement extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToBranch;
 
     protected $fillable = [
         'movement_date',
@@ -30,6 +31,7 @@ class AssetMovement extends Model
         'project_ref',
         'remarks',
         'created_by',
+        'branch_id',
     ];
 
     protected function casts(): array

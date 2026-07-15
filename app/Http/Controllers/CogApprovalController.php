@@ -8,6 +8,7 @@ use App\Services\AuditLogger;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class CogApprovalController extends Controller
@@ -25,9 +26,9 @@ class CogApprovalController extends Controller
 
     public function approve(CogApprovalDecisionRequest $request, string $token, AuditLogger $auditLogger): RedirectResponse
     {
-        $cog = $this->resolvePendingCogByToken($token);
-
-        $cog->update([
+        $cog = DB::transaction(function () use ($request, $token) {
+            $cog = $this->resolvePendingCogByToken($token, true);
+            $cog->update([
             'status' => 'approved',
             'receiver_name' => $request->validated('receiver_name'),
             'receiver_designation' => $request->validated('receiver_designation'),
@@ -36,7 +37,10 @@ class CogApprovalController extends Controller
             'approval_expires_at' => null,
             'approved_at' => now(),
             'rejected_at' => null,
-        ]);
+            ]);
+
+            return $cog;
+        });
 
         $auditLogger->record(
             module: 'cogs',
@@ -56,9 +60,9 @@ class CogApprovalController extends Controller
 
     public function reject(CogApprovalDecisionRequest $request, string $token, AuditLogger $auditLogger): RedirectResponse
     {
-        $cog = $this->resolvePendingCogByToken($token);
-
-        $cog->update([
+        $cog = DB::transaction(function () use ($request, $token) {
+            $cog = $this->resolvePendingCogByToken($token, true);
+            $cog->update([
             'status' => 'rejected',
             'receiver_name' => $request->validated('receiver_name'),
             'receiver_designation' => $request->validated('receiver_designation'),
@@ -67,7 +71,10 @@ class CogApprovalController extends Controller
             'approval_expires_at' => null,
             'rejected_at' => now(),
             'approved_at' => null,
-        ]);
+            ]);
+
+            return $cog;
+        });
 
         $auditLogger->record(
             module: 'cogs',
@@ -85,11 +92,10 @@ class CogApprovalController extends Controller
         return back()->with('status', 'rejected');
     }
 
-    private function resolvePendingCogByToken(string $token): Cog
+    private function resolvePendingCogByToken(string $token, bool $lock = false): Cog
     {
-        $cog = Cog::query()
-            ->where('approval_token', $token)
-            ->first();
+        $query = Cog::query()->where('approval_token', $token);
+        $cog = ($lock ? $query->lockForUpdate() : $query)->first();
 
         if (! $cog) {
             throw (new ModelNotFoundException())->setModel(Cog::class);

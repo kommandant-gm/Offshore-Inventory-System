@@ -10,9 +10,12 @@ use App\Models\InventoryTransaction;
 use App\Models\Location;
 use App\Models\Stocktake;
 use App\Models\User;
+use App\Models\Branch;
 use App\Services\AuditLogger;
 use App\Support\AccessMatrix;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -50,6 +53,7 @@ class SettingsController extends Controller
                 ->values(),
             'rolePresets' => collect(AccessMatrix::roleOptions())
                 ->mapWithKeys(fn (string $label, string $value) => [$value => AccessMatrix::permissionsForRole($value)]),
+            'branchOptions' => Branch::query()->where('active', true)->orderBy('name')->get(['id', 'code', 'name']),
             'users' => User::query()
                 ->orderBy('name')
                 ->get()
@@ -60,6 +64,8 @@ class SettingsController extends Controller
                     'email' => $user->email,
                     'role' => $user->role ?? 'viewer',
                     'permissions' => $user->resolvedPermissions(),
+                    'branch_access' => $user->branches->mapWithKeys(fn ($branch) => [(string) $branch->id => $branch->pivot->access_level]),
+                    'default_branch_id' => $user->branches->first(fn ($branch) => (bool) $branch->pivot->is_default)?->id,
                 ]),
         ]);
     }
@@ -69,15 +75,43 @@ class SettingsController extends Controller
         $before = [
             'role' => $user->role,
             'permissions' => $user->resolvedPermissions(),
+            'branch_access' => $user->branches()->pluck('access_level', 'branches.id')->all(),
         ];
 
-        $user->update([
-            'role' => $request->string('role')->value(),
-            'permissions' => AccessMatrix::normalizePermissions(
-                $request->input('permissions', []),
-                $request->string('role')->value()
-            ),
-        ]);
+        DB::transaction(function () use ($request, $user) {
+            User::query()->lockForUpdate()->get();
+            $target = User::query()->findOrFail($user->id);
+            $newRole = $request->string('role')->value();
+
+            $adminCount = User::query()->where(fn ($query) => $query
+                ->where('role', 'admin')
+                ->orWhereNull('role')
+                ->orWhere('role', ''))
+                ->count();
+
+            if ($target->isAdmin() && $newRole !== 'admin' && $adminCount <= 1) {
+                throw ValidationException::withMessages(['role' => 'The last administrator cannot be demoted.']);
+            }
+
+            $target->update([
+                'role' => $newRole,
+                'permissions' => AccessMatrix::normalizePermissions($request->input('permissions', []), $newRole),
+            ]);
+
+            $branchAccess = collect($request->validated('branch_access'))->reject(fn ($level) => $level === 'none');
+            if ($branchAccess->isEmpty()) {
+                throw ValidationException::withMessages(['branch_access' => 'Every user must have access to at least one branch.']);
+            }
+            $defaultBranchId = (int) $request->validated('default_branch_id');
+            if (! $branchAccess->has((string) $defaultBranchId) && ! $branchAccess->has($defaultBranchId)) {
+                throw ValidationException::withMessages(['default_branch_id' => 'Default branch must be one of the accessible branches.']);
+            }
+            $target->branches()->sync($branchAccess->mapWithKeys(fn ($level, $branchId) => [(int) $branchId => [
+                'access_level' => $level, 'is_default' => (int) $branchId === $defaultBranchId,
+            ]])->all());
+
+            $user->setRawAttributes($target->getAttributes(), true);
+        });
 
         $auditLogger->record(
             module: 'settings',
@@ -88,6 +122,7 @@ class SettingsController extends Controller
             after: [
                 'role' => $user->role,
                 'permissions' => $user->resolvedPermissions(),
+                'branch_access' => $user->branches()->pluck('access_level', 'branches.id')->all(),
             ],
             user: $request->user(),
             request: $request,

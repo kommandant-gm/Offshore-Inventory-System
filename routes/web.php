@@ -16,6 +16,9 @@ use App\Http\Controllers\InventoryImportController;
 use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\BranchContextController;
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\ItAssetImportController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -27,6 +30,11 @@ Route::post('/cog/approval/{token}/reject', [CogApprovalController::class, 'reje
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::patch('/active-branch', [BranchContextController::class, 'update'])->name('branches.activate');
+    Route::resource('it-assets', AssetController::class)->parameters(['it-assets' => 'asset'])->only(['index', 'create', 'store', 'show', 'update']);
+    Route::get('/it-assets-import', [ItAssetImportController::class, 'create'])->name('it-assets.import.create');
+    Route::post('/it-assets-import/preview', [ItAssetImportController::class, 'preview'])->name('it-assets.import.preview');
+    Route::post('/it-assets-import', [ItAssetImportController::class, 'store'])->name('it-assets.import.store');
     Route::get('/quick-search', QuickSearchController::class)->name('quick-search');
     Route::get('/assistant', [AssistantController::class, 'index'])->name('assistant.index');
     Route::post('/assistant/query', [AssistantController::class, 'query'])->name('assistant.query');

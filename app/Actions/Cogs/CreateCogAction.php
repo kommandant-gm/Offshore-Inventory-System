@@ -6,6 +6,7 @@ use App\Mail\CogApprovalMail;
 use App\Models\Cog;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\DocumentNumberService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -17,6 +18,7 @@ class CreateCogAction
 
     public function __construct(
         private readonly AuditLogger $auditLogger,
+        private readonly DocumentNumberService $documentNumberService,
     ) {
     }
 
@@ -35,7 +37,7 @@ class CreateCogAction
 
         $cog = Cog::create([
             ...Arr::except($validated, ['items']),
-            'cog_no' => $this->draftNumber(),
+            'cog_no' => $this->draftNumber(true),
             'status' => $shouldSendApproval ? 'pending_approval' : 'draft',
             'approval_token' => $shouldSendApproval ? Str::uuid()->toString() : null,
             'approval_sent_at' => $shouldSendApproval ? now() : null,
@@ -80,22 +82,20 @@ class CreateCogAction
         $mail->send(new CogApprovalMail($cog, $approvalUrl));
     }
 
-    public function draftNumber(): string
+    public function draftNumber(bool $reserve = false): string
     {
         $year = now()->format('y');
         $prefix = "IT/{$year}/";
-        $latest = Cog::query()
-            ->where('cog_no', 'like', "{$prefix}%")
-            ->orderByDesc('id')
-            ->value('cog_no');
+        $key = "cog:{$year}";
+        $latest = Cog::query()->where('cog_no', 'like', "{$prefix}%")->orderByDesc('id')->value('cog_no');
+        $minimumNext = $latest ? ((int) str($latest)->afterLast('/')->value()) + 1 : 1;
 
-        $next = 1;
-
-        if ($latest) {
-            $lastSegment = (int) str($latest)->afterLast('/')->value();
-            $next = $lastSegment + 1;
+        if ($reserve) {
+            return $this->documentNumberService->next($key, $prefix, minimumNext: $minimumNext);
         }
 
-        return $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        $number = max($minimumNext, (int) $this->documentNumberService->preview($key, ''));
+
+        return $prefix.str_pad((string) $number, 3, '0', STR_PAD_LEFT);
     }
 }

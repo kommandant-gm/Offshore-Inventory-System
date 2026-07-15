@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Category;
 use App\Models\Location;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,6 +19,7 @@ class AssetController extends Controller
 {
     public function index(Request $request): Response
     {
+        abort_unless($request->user()?->canRead('it_assets'), 403);
         $categorySummaries = Category::query()
             ->whereIn('type', ['asset', 'both'])
             ->withCount([
@@ -35,7 +37,7 @@ class AssetController extends Controller
             ?? $categorySummaries->first();
 
         $assets = Asset::query()
-            ->with(['category', 'currentLocation'])
+            ->with(['category', 'currentLocation', 'currentAssignment'])
             ->when($selectedCategory, fn ($query) => $query->where('category_id', $selectedCategory->id))
             ->orderBy('asset_tag_no')
             ->paginate(15)
@@ -49,9 +51,15 @@ class AssetController extends Controller
                 'status' => $asset->current_status->value,
                 'condition' => $asset->current_condition?->value,
                 'active' => $asset->active,
+                'serial_no' => $asset->serial_no,
+                'model' => $asset->model,
+                'operating_system' => $asset->operating_system,
+                'purchase_year' => $asset->purchase_year,
+                'assigned_to' => $asset->currentAssignment?->assigned_to_name,
+                'department' => $asset->currentAssignment?->department,
             ]);
 
-        return Inertia::render('Assets/Index', [
+        return Inertia::render('ItAssets/Index', [
             'categories' => $categorySummaries->map(fn (Category $category) => [
                 'id' => $category->id,
                 'code' => $category->code,
@@ -76,18 +84,42 @@ class AssetController extends Controller
         ]);
     }
 
+    public function create(Request $request): Response
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+        return Inertia::render('ItAssets/Create', [
+            'categories' => Category::query()->whereIn('type', ['asset', 'both'])->orderBy('name')->get(['id', 'name']),
+            'locations' => Location::query()->orderBy('name')->get(['id', 'code', 'name']),
+            'statuses' => AssetStatus::options(),
+            'conditions' => AssetCondition::options(),
+        ]);
+    }
+
     public function store(StoreAssetRequest $request): RedirectResponse
     {
-        Asset::create($request->validated());
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+        $data = $request->validated();
+        DB::transaction(function () use ($data, $request) {
+            $asset = Asset::create(collect($data)->except(['assigned_to_name', 'department', 'assigned_at'])->all());
+            if (! empty($data['assigned_to_name'])) {
+                $asset->assignments()->create([
+                    'assigned_to_name' => $data['assigned_to_name'],
+                    'department' => $data['department'] ?? null,
+                    'assigned_at' => $data['assigned_at'] ?? now()->toDateString(),
+                    'assigned_by' => $request->user()->id,
+                ]);
+            }
+        });
 
-        return redirect()->route('assets.index')->with('success', 'Stock item created.');
+        return redirect()->route('it-assets.index')->with('success', 'IT asset registered.');
     }
 
     public function show(Asset $asset): Response
     {
-        $asset->load(['category', 'currentLocation', 'movements.fromLocation', 'movements.toLocation', 'movements.creator']);
+        abort_unless(request()->user()?->canRead('it_assets'), 403);
+        $asset->load(['category', 'currentLocation', 'currentAssignment', 'assignments', 'movements.fromLocation', 'movements.toLocation', 'movements.creator']);
 
-        return Inertia::render('Assets/Show', [
+        return Inertia::render('ItAssets/Show', [
             'asset' => [
                 'id' => $asset->id,
                 'asset_tag_no' => $asset->asset_tag_no,
@@ -102,6 +134,17 @@ class AssetController extends Controller
                 'location' => $asset->currentLocation?->name,
                 'category' => $asset->category->name,
                 'remarks' => $asset->remarks,
+                'operating_system' => $asset->operating_system,
+                'purchase_year' => $asset->purchase_year,
+                'age' => $asset->purchase_year ? now()->year - $asset->purchase_year : null,
+                'assigned_to' => $asset->currentAssignment?->assigned_to_name,
+                'department' => $asset->currentAssignment?->department,
+                'assignments' => $asset->assignments->map(fn ($assignment) => [
+                    'assigned_to_name' => $assignment->assigned_to_name,
+                    'department' => $assignment->department,
+                    'assigned_at' => $assignment->assigned_at?->format('Y-m-d'),
+                    'returned_at' => $assignment->returned_at?->format('Y-m-d'),
+                ]),
                 'movements' => $asset->movements->map(fn ($movement) => [
                     'id' => $movement->id,
                     'movement_date' => $movement->movement_date->format('Y-m-d'),
@@ -121,8 +164,9 @@ class AssetController extends Controller
 
     public function update(UpdateAssetRequest $request, Asset $asset): RedirectResponse
     {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
         $asset->update($request->validated());
 
-        return redirect()->route('assets.show', $asset)->with('success', 'Stock item updated.');
+        return redirect()->route('it-assets.show', $asset)->with('success', 'IT asset updated.');
     }
 }

@@ -27,6 +27,9 @@ class RecordInventoryTransactionAction
 
     public function persist(InventoryItem $item, array $validated, int $userId): InventoryTransaction
     {
+        // Serialize every balance-affecting decision for an item. The availability
+        // check and balance update must observe the same locked state.
+        $item = InventoryItem::query()->lockForUpdate()->findOrFail($item->getKey());
         $transactionType = InventoryTransactionType::from($validated['transaction_type']);
         $quantity = (float) ($validated['quantity'] ?? 0);
         $unitCost = (float) ($validated['unit_cost'] ?? 0);

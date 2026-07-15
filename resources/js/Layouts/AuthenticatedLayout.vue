@@ -23,6 +23,7 @@
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'dashboard' },
         { name: 'Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read' },
         { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read' },
+        { name: 'IT Asset Register', icon: ClipboardDocumentCheckIcon, route: 'it-assets.index', can: 'it_assets_read' },
         { name: 'Stock Items', icon: ArchiveBoxIcon, route: 'assets.index' },
         { name: 'Stock Movements', icon: TruckIcon, route: 'asset-movements.index', can: 'movements_read' },
         { name: 'Stocktakes', icon: ClipboardDocumentListIcon, route: 'stocktakes.index', can: 'movements_read' },
@@ -34,6 +35,7 @@
     ];
 
     const currentUser = page.props.auth.user;
+    const switchBranch = (event) => router.patch(route('branches.activate'), { branch_id: event.target.value }, { preserveScroll: true });
     const notifications = computed(() => page.props.ui?.notifications?.items ?? []);
     const notificationCount = computed(() => page.props.ui?.notifications?.unread_count ?? 0);
     const currentUserInitials = computed(() => {
@@ -141,6 +143,12 @@
                         <label for="my-drawer-2" class="btn btn-square border border-[#d8e7d4] bg-white text-[#2f6f2d] shadow-sm hover:bg-[#eef8ea]">
                             <Bars3Icon class="w-6 h-6" />
                         </label>
+                    </div>
+                    <div v-if="currentUser?.branches?.length" class="border-b border-[#edf3eb] px-4 py-3">
+                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-[.2em] text-[#7f9a7a]">Active branch</label>
+                        <select class="select select-bordered select-sm w-full" :value="currentUser.active_branch?.id" @change="switchBranch">
+                            <option v-for="branch in currentUser.branches" :key="branch.id" :value="branch.id">{{ branch.code }} — {{ branch.name }}</option>
+                        </select>
                     </div>
                     
                     <div class="min-w-0 flex-1">

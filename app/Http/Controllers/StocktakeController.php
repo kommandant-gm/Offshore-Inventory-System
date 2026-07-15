@@ -9,6 +9,7 @@ use App\Models\InventoryItem;
 use App\Models\Location;
 use App\Models\Stocktake;
 use App\Services\AuditLogger;
+use App\Services\DocumentNumberService;
 use App\Services\InventoryLocationBalanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +42,7 @@ class StocktakeController extends Controller
         ]);
     }
 
-    public function create(InventoryLocationBalanceService $locationBalanceService): Response
+    public function create(InventoryLocationBalanceService $locationBalanceService, DocumentNumberService $numberService): Response
     {
         abort_unless(request()->user()?->canEdit('movements'), 403);
 
@@ -68,7 +69,7 @@ class StocktakeController extends Controller
                     ->mapWithKeys(fn ($balance) => [$balance->location_id => round((float) $balance->quantity, 2)]),
                 'current_location' => $locationBalanceService->currentLocationLabel($item),
             ]),
-            'draftReference' => $this->draftReference(),
+            'draftReference' => $this->draftReference($numberService),
         ]);
     }
 
@@ -77,6 +78,7 @@ class StocktakeController extends Controller
         RecordInventoryTransactionAction $recordInventoryTransactionAction,
         InventoryLocationBalanceService $locationBalanceService,
         AuditLogger $auditLogger,
+        DocumentNumberService $numberService,
     ): RedirectResponse {
         $user = $request->user();
 
@@ -86,9 +88,10 @@ class StocktakeController extends Controller
             $locationBalanceService,
             $auditLogger,
             $user,
+            $numberService,
         ) {
             $stocktake = Stocktake::query()->create([
-                'reference_no' => $this->draftReference(),
+                'reference_no' => $this->draftReference($numberService, true),
                 'stocktake_date' => $request->date('stocktake_date'),
                 'location_id' => $request->integer('location_id'),
                 'status' => 'completed',
@@ -191,20 +194,18 @@ class StocktakeController extends Controller
         ]);
     }
 
-    private function draftReference(): string
+    private function draftReference(DocumentNumberService $numberService, bool $reserve = false): string
     {
         $prefix = 'STK/'.now()->format('ym').'/';
-        $latest = Stocktake::query()
-            ->where('reference_no', 'like', "{$prefix}%")
-            ->orderByDesc('id')
-            ->value('reference_no');
+        $key = 'stocktake:'.now()->format('ym');
+        $latest = Stocktake::query()->where('reference_no', 'like', "{$prefix}%")->orderByDesc('id')->value('reference_no');
+        $minimumNext = $latest ? ((int) str($latest)->afterLast('/')->value()) + 1 : 1;
 
-        $next = 1;
-
-        if ($latest) {
-            $next = ((int) str($latest)->afterLast('/')->value()) + 1;
-        }
-
-        return $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        return $reserve
+            ? $numberService->next($key, $prefix, minimumNext: $minimumNext)
+            : $prefix.str_pad((string) max(
+                $minimumNext,
+                (int) $numberService->preview($key, ''),
+            ), 3, '0', STR_PAD_LEFT);
     }
 }

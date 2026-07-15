@@ -8,6 +8,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -51,9 +53,23 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        DB::transaction(function () use ($user) {
+            \App\Models\User::query()->lockForUpdate()->get();
 
-        $user->delete();
+            $adminCount = \App\Models\User::query()->where(fn ($query) => $query
+                ->where('role', 'admin')
+                ->orWhereNull('role')
+                ->orWhere('role', ''))
+                ->count();
+
+            if ($user->isAdmin() && $adminCount <= 1) {
+                throw ValidationException::withMessages(['password' => 'The last administrator cannot delete their account.']);
+            }
+
+            $user->delete();
+        });
+
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

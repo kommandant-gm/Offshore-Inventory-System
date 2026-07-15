@@ -7,6 +7,7 @@ use App\Support\AccessMatrix;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -72,7 +73,14 @@ class User extends Authenticatable
 
     public function canEdit(string $module): bool
     {
-        return $this->permissionLevel($module) === AccessMatrix::EDIT;
+        if ($this->permissionLevel($module) !== AccessMatrix::EDIT) {
+            return false;
+        }
+
+        $context = app(\App\Services\BranchContext::class);
+        $branchId = $context->id($this);
+
+        return $branchId === null || $context->canEdit($this, $branchId);
     }
 
     public function resolvedPermissions(): array
@@ -82,5 +90,12 @@ class User extends Authenticatable
         }
 
         return AccessMatrix::normalizePermissions($this->permissions, $this->role);
+    }
+
+    public function branches(): BelongsToMany
+    {
+        return $this->belongsToMany(Branch::class)
+            ->withPivot(['access_level', 'is_default'])
+            ->withTimestamps();
     }
 }

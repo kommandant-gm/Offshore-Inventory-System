@@ -13,6 +13,7 @@ const props = defineProps({
     permissionModules: Array,
     rolePresets: Object,
     users: Array,
+    branchOptions: Array,
 });
 
 const adminGroups = [
@@ -55,6 +56,8 @@ const userForms = reactive(
             {
                 role: user.role,
                 permissions: { ...user.permissions },
+                branch_access: Object.fromEntries(props.branchOptions.map((branch) => [branch.id, user.branch_access?.[branch.id] ?? 'none'])),
+                default_branch_id: user.default_branch_id,
                 saving: false,
             },
         ]),
@@ -100,6 +103,8 @@ const saveAccess = (userId) => {
         {
             role: form.role,
             permissions: form.permissions,
+            branch_access: form.branch_access,
+            default_branch_id: form.default_branch_id,
         },
         {
             preserveScroll: true,
@@ -277,6 +282,16 @@ const saveAccess = (userId) => {
                         </div>
 
                         <div class="mt-4 grid gap-3 xl:grid-cols-[1fr,auto] xl:items-end">
+                            <div class="xl:col-span-2 rounded-xl border border-[#d8e7d4] bg-[#f7fbf5] p-4">
+                                <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Branch access</p>
+                                <div class="grid gap-3 md:grid-cols-2">
+                                    <div v-for="branch in branchOptions" :key="branch.id" class="flex items-center gap-3 rounded-lg bg-white p-3">
+                                        <div class="min-w-0 flex-1"><p class="font-semibold text-[#234222]">{{ branch.code }}</p><p class="text-xs text-[#7f9a7a]">{{ branch.name }}</p></div>
+                                        <select v-model="userForms[selectedUser.id].branch_access[branch.id]" class="select select-sm select-bordered"><option value="none">None</option><option value="read">Read</option><option value="edit">Edit</option><option value="manage">Manage</option></select>
+                                        <label class="text-xs"><input v-model="userForms[selectedUser.id].default_branch_id" type="radio" :value="branch.id" :disabled="userForms[selectedUser.id].branch_access[branch.id] === 'none'" /> Default</label>
+                                    </div>
+                                </div>
+                            </div>
                             <div>
                                 <label class="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Search Permissions</label>
                                 <input

@@ -15,15 +15,16 @@ class StoreInventoryTransactionRequest extends FormRequest
 
     public function rules(): array
     {
+        $branchId = app(\App\Services\BranchContext::class)->id($this->user());
         $requiresCogDetails = fn () => $this->boolean('generate_cog')
             && $this->input('transaction_type') === InventoryTransactionType::Issue->value;
 
         return [
             'transaction_date' => ['required', 'date'],
-            'item_id' => ['required', 'exists:inventory_items,id'],
-            'location_id' => ['nullable', 'exists:locations,id'],
-            'source_location_id' => ['nullable', 'exists:locations,id'],
-            'destination_location_id' => ['nullable', 'exists:locations,id'],
+            'item_id' => ['required', $branchId ? Rule::exists('inventory_items', 'id')->where('branch_id', $branchId) : Rule::exists('inventory_items', 'id')],
+            'location_id' => ['nullable', $branchId ? Rule::exists('locations', 'id')->where('branch_id', $branchId) : Rule::exists('locations', 'id')],
+            'source_location_id' => ['nullable', $branchId ? Rule::exists('locations', 'id')->where('branch_id', $branchId) : Rule::exists('locations', 'id')],
+            'destination_location_id' => ['nullable', $branchId ? Rule::exists('locations', 'id')->where('branch_id', $branchId) : Rule::exists('locations', 'id')],
             'transaction_type' => ['required', Rule::enum(InventoryTransactionType::class)],
             'quantity' => ['required', 'numeric', 'not_in:0'],
             'unit_cost' => ['required', 'numeric', 'min:0'],

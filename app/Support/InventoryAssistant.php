@@ -32,6 +32,20 @@ class InventoryAssistant
 
         $intent = $this->detectIntent($question);
 
+        if (! $user?->canRead('assets')) {
+            return [
+                'intent' => $intent,
+                'answer' => 'You do not have permission to view stock items.',
+            ];
+        }
+
+        if ($intent === 'movement' && ! $user->canRead('movements')) {
+            return [
+                'intent' => $intent,
+                'answer' => 'You do not have permission to view stock movements.',
+            ];
+        }
+
         if (in_array($intent, ['anomalies', 'critical_anomalies', 'item_flagged'], true)) {
             if (! $user?->canRead('anomalies')) {
                 return [

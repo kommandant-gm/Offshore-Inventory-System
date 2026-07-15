@@ -17,6 +17,7 @@ class AccessMatrix
             'categories' => 'Categories',
             'locations' => 'Locations',
             'assets' => 'Stock Items',
+            'it_assets' => 'IT Asset Register',
             'movements' => 'Stock Movements',
             'ledger' => 'Monthly Ledger',
             'cogs' => 'COG Control',
@@ -55,6 +56,7 @@ class AccessMatrix
                 'categories' => self::EDIT,
                 'locations' => self::EDIT,
                 'assets' => self::EDIT,
+                'it_assets' => self::EDIT,
                 'movements' => self::EDIT,
                 'ledger' => self::READ,
                 'cogs' => self::EDIT,
@@ -67,6 +69,7 @@ class AccessMatrix
                 'categories' => self::READ,
                 'locations' => self::READ,
                 'assets' => self::READ,
+                'it_assets' => self::READ,
                 'movements' => self::READ,
                 'ledger' => self::READ,
                 'cogs' => self::READ,
@@ -86,5 +89,13 @@ class AccessMatrix
         }
 
         return $base;
+    }
+
+    public static function permissionsForKlStaff(): array
+    {
+        return [
+            ...self::permissionsForRole('viewer'),
+            'it_assets' => self::EDIT,
+        ];
     }
 }

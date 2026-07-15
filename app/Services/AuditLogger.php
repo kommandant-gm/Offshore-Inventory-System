@@ -20,6 +20,7 @@ class AuditLogger
         ?Request $request = null,
     ): void {
         AuditLog::query()->create([
+            'branch_id' => $auditable?->getAttribute('branch_id') ?? app(BranchContext::class)->id($user),
             'module' => $module,
             'event' => $event,
             'summary' => $summary,

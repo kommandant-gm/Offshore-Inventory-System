@@ -7,6 +7,7 @@ use App\Models\InventoryTransaction;
 use App\Support\AssistantPrompts;
 use App\Support\StockAnomalyAgent;
 use Illuminate\Http\Request;
+use App\Services\BranchContext;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -33,6 +34,7 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $branchContext = app(BranchContext::class);
         return [
             ...parent::share($request),
             'auth' => [
@@ -51,7 +53,16 @@ class HandleInertiaRequests extends Middleware
                             'movements_edit' => $request->user()->canEdit('movements'),
                             'settings_read' => $request->user()->canRead('settings'),
                             'settings_edit' => $request->user()->canEdit('settings'),
+                            'it_assets_read' => $request->user()->canRead('it_assets'),
+                            'it_assets_edit' => $request->user()->canEdit('it_assets'),
                         ],
+                        'active_branch' => $branchContext->branch($request->user())?->only(['id', 'code', 'name']),
+                        'branches' => $request->user()->branches()->orderBy('name')->get()->map(fn ($branch) => [
+                            'id' => $branch->id,
+                            'code' => $branch->code,
+                            'name' => $branch->name,
+                            'access_level' => $branch->pivot->access_level,
+                        ]),
                     ]
                     : null,
             ],

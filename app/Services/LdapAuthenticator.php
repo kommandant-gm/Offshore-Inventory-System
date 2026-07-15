@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Models\Branch;
 use App\Support\AccessMatrix;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -226,8 +227,9 @@ class LdapAuthenticator
         if (! $user) {
             $user = new User();
             $user->role = 'viewer';
-            $user->permissions = AccessMatrix::permissionsForRole('viewer');
+            $user->permissions = AccessMatrix::permissionsForKlStaff();
             $user->password = Hash::make(Str::random(40));
+            $isNew = true;
         }
 
         $user->name = $name;
@@ -235,6 +237,13 @@ class LdapAuthenticator
         $user->email = $email;
         $user->email_verified_at ??= now();
         $user->save();
+
+        if (($isNew ?? false) && $user->branches()->count() === 0) {
+            $kl = Branch::query()->where('code', 'KL-IT')->first();
+            if ($kl) {
+                $user->branches()->attach($kl->id, ['access_level' => 'edit', 'is_default' => true]);
+            }
+        }
 
         return $user;
     }

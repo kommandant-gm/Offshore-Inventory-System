@@ -22,6 +22,9 @@ class UpdateUserAccessRequest extends FormRequest
         return [
             'role' => ['required', Rule::in($roleKeys)],
             'permissions' => ['required', 'array'],
+            'branch_access' => ['required', 'array'],
+            'branch_access.*' => ['required', Rule::in(['none', 'read', 'edit', 'manage'])],
+            'default_branch_id' => ['required', 'integer', 'exists:branches,id'],
             'permissions.*' => [Rule::in($levelKeys)],
             ...collect($moduleKeys)->mapWithKeys(fn (string $module) => [
                 "permissions.{$module}" => ['required', Rule::in($levelKeys)],
