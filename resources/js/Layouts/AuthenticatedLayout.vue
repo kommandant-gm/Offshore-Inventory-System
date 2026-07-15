@@ -27,7 +27,6 @@
     const klExpanded = ref(storedSection('sidebar.kl.expanded', currentUser?.active_branch?.code === 'KL-IT'));
     watch(miriExpanded, (value) => localStorage.setItem('sidebar.miri.expanded', String(value)));
     watch(klExpanded, (value) => localStorage.setItem('sidebar.kl.expanded', String(value)));
-    const switchBranch = (event) => router.patch(route('branches.activate'), { branch_id: event.target.value }, { preserveScroll: true });
     const hasBranch = (code) => currentUser?.branches?.some((branch) => branch.code === code);
     const openBranchRoute = (branchCode, routeName) => {
         const branch = currentUser?.branches?.find((entry) => entry.code === branchCode);
@@ -43,6 +42,7 @@
     };
     const miriItems = [
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'dashboard' },
+        { name: 'Inventory Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read' },
         { name: 'Stock Items', icon: ArchiveBoxIcon, route: 'assets.index' },
         { name: 'Stock Movements', icon: TruckIcon, route: 'asset-movements.index', can: 'movements_read' },
         { name: 'Receive / Issue', icon: BuildingStorefrontIcon, route: 'asset-movements.create', can: 'movements_edit' },
@@ -53,6 +53,7 @@
     ];
     const klItems = [
         { name: 'IT Dashboard', icon: Squares2X2Icon, route: 'it-assets.dashboard', can: 'it_assets_read' },
+        { name: 'IT Asset Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read' },
         { name: 'IT Asset Register', icon: ClipboardDocumentCheckIcon, route: 'it-assets.index', can: 'it_assets_read' },
         { name: 'Import Assets', icon: ArchiveBoxIcon, route: 'it-assets.import.create', can: 'it_assets_edit' },
         { name: 'Assignments / Returns', icon: TruckIcon, route: 'it-assets.assignments', can: 'it_assets_read' },
@@ -173,13 +174,6 @@
                             <Bars3Icon class="w-6 h-6" />
                         </label>
                     </div>
-                    <div v-if="currentUser?.branches?.length" class="border-b border-[#edf3eb] px-4 py-3">
-                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-[.2em] text-[#7f9a7a]">Active branch</label>
-                        <select class="select select-bordered select-sm w-full" :value="currentUser.active_branch?.id" @change="switchBranch">
-                            <option v-for="branch in currentUser.branches" :key="branch.id" :value="branch.id">{{ branch.code }} — {{ branch.name }}</option>
-                        </select>
-                    </div>
-                    
                     <div class="min-w-0 flex-1">
                         <h2 class="truncate text-lg font-bold tracking-wide text-[#234222] sm:text-xl">Dayang Inventory Management System</h2>
                     </div>

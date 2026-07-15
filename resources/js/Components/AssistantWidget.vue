@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { ChatBubbleLeftRightIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { nextTick, ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
@@ -19,7 +19,13 @@ const messages = ref([
 const bodyRef = ref(null);
 
 const prompts = computed(() => page.props.ui?.assistant_prompts ?? []);
+const context = computed(() => page.props.ui?.assistant_context ?? { branch_code: 'MIRI', title: 'Miri Inventory Assistant', subtitle: 'Live inventory answers', intro: 'Ask about item location, current stock, last movement, or stock anomalies.', placeholder: 'Ask about a stock item...' });
 const visiblePrompts = computed(() => showAllPrompts.value ? prompts.value : prompts.value.slice(0, 4));
+watch(() => context.value.branch_code, () => {
+    input.value = '';
+    showAllPrompts.value = false;
+    messages.value = [{ role: 'assistant', text: context.value.intro }];
+}, { immediate: true });
 
 const scrollToBottom = async () => {
     await nextTick();
@@ -93,8 +99,8 @@ const sendMessage = async (preset = null) => {
             >
                 <div class="flex items-center justify-between border-b border-[#edf3eb] bg-[linear-gradient(180deg,#ffffff_0%,#f4fbf1_100%)] px-4 py-3">
                     <div>
-                        <p class="text-xs uppercase tracking-[0.22em] text-[#7f9a7a]">Inventory Assistant</p>
-                        <p class="text-sm font-semibold text-[#234222]">Live inventory answers</p>
+                        <p class="text-xs uppercase tracking-[0.22em] text-[#7f9a7a]">{{ context.title }}</p>
+                        <p class="text-sm font-semibold text-[#234222]">{{ context.subtitle }}</p>
                     </div>
                     <button
                         type="button"
@@ -167,7 +173,7 @@ const sendMessage = async (preset = null) => {
                             v-model="input"
                             type="text"
                             class="input w-full border-[#cfe6c8] bg-white text-[#234222] placeholder:text-[#7f9a7a]"
-                            placeholder="Ask about an item..."
+                            :placeholder="context.placeholder"
                             :disabled="loading"
                         >
 

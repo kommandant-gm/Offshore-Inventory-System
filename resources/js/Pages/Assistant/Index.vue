@@ -9,6 +9,7 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    assistantContext: { type: Object, default: () => ({}) },
 });
 
 const input = ref('');
@@ -17,7 +18,7 @@ const showAllPrompts = ref(false);
 const messages = ref([
     {
         role: 'assistant',
-        text: 'Ask about item location, current stock, last movement, or stock anomalies. I answer from live inventory records.',
+        text: props.assistantContext.intro ?? 'Ask about live inventory records.',
     },
 ]);
 const visiblePrompts = computed(() => showAllPrompts.value ? props.prompts : props.prompts.slice(0, 6));
@@ -62,19 +63,19 @@ const sendMessage = async (preset = null) => {
 </script>
 
 <template>
-    <Head title="Inventory Assistant" />
+    <Head :title="assistantContext.title || 'Inventory Assistant'" />
 
     <AuthenticatedLayout>
         <PageHeader
-            title="Inventory Assistant"
-            description="Ask simple inventory questions using live stock item and movement records."
+            :title="assistantContext.title || 'Inventory Assistant'"
+            :description="assistantContext.intro || 'Ask questions using live records.'"
         />
 
         <div class="grid gap-6 2xl:grid-cols-[0.7fr,1.3fr]">
             <aside class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
                 <div class="rounded-[1.75rem] border border-[#d8e7d4] bg-[radial-gradient(circle_at_top_left,_rgba(111,187,104,0.16),_transparent_30%),linear-gradient(180deg,_#ffffff_0%,_#f7fcf5_52%,_#eef8ea_100%)] p-5">
                     <p class="text-sm text-[#6f8a6b]">Assistant Scope</p>
-                    <h2 class="mt-1 text-2xl font-semibold text-[#234222]">Live inventory answers</h2>
+                    <h2 class="mt-1 text-2xl font-semibold text-[#234222]">{{ assistantContext.subtitle || 'Live inventory answers' }}</h2>
                         <p class="mt-3 text-sm leading-6 text-[#4f6b4b]">
                         This assistant answers from your database. It does not guess. Use exact item codes when possible for the best match, especially when checking why an item is flagged.
                         </p>
@@ -158,7 +159,7 @@ const sendMessage = async (preset = null) => {
                             v-model="input"
                             type="text"
                             class="input w-full border-[#cfe6c8] bg-white text-[#234222] placeholder:text-[#7f9a7a]"
-                            placeholder="Where is CON-Y1-0001?"
+                            :placeholder="assistantContext.placeholder || 'Ask about an item...'"
                             :disabled="loading"
                         >
                         <button

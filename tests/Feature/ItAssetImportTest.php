@@ -31,4 +31,17 @@ class ItAssetImportTest extends TestCase
         $this->assertSame('TEST USER',$asset->currentAssignment->assigned_to_name);
         $this->assertSame('PROJECT',$asset->currentAssignment->department);
     }
+
+    public function test_kl_branch_chatbot_queries_it_assets_instead_of_miri_stock(): void
+    {
+        $kl=Branch::where('code','KL-IT')->firstOrFail();
+        $user=User::factory()->create(); $user->branches()->attach($kl,['access_level'=>'edit','is_default'=>true]);
+        $this->actingAs($user);
+        $category=\App\Models\Category::create(['code'=>'LAPTOP','name'=>'Laptop','type'=>'asset','active'=>true]);
+        Asset::create(['branch_id'=>$kl->id,'asset_tag_no'=>'DESBKL/LT/2022/001','description'=>'Dell laptop','category_id'=>$category->id,'model'=>'DELL LATITUDE 3420','serial_no'=>'1X8TNL3','operating_system'=>'Windows 11','purchase_year'=>2022,'current_status'=>'available','current_condition'=>'good','active'=>true]);
+
+        $this->postJson(route('assistant.query'),['message'=>'Where is DESBKL/LT/2022/001?'])
+            ->assertOk()->assertJsonPath('intent','asset_summary')->assertJsonPath('item.item_code','DESBKL/LT/2022/001')
+            ->assertJsonPath('answer',fn($answer)=>str_contains($answer,'KL IT:'));
+    }
 }

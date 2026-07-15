@@ -72,8 +72,9 @@ class HandleInertiaRequests extends Middleware
             'ui' => $request->user() ? [
                 'notifications' => fn () => $this->notifications($request),
                 'assistant_prompts' => fn () => $request->user()->canRead('assistant')
-                    ? AssistantPrompts::defaults()
+                    ? AssistantPrompts::forBranch($branchContext->branch($request->user())?->code)
                     : [],
+                'assistant_context' => fn () => $this->assistantContext($branchContext->branch($request->user())?->code),
             ] : null,
         ];
     }
@@ -134,5 +135,10 @@ class HandleInertiaRequests extends Middleware
             'items' => $items->take(5)->values()->all(),
             'unread_count' => $items->count(),
         ];
+    }
+
+    private function assistantContext(?string $code): array
+    {
+        $kl=$code==='KL-IT'; return ['branch_code'=>$code,'title'=>$kl?'KL IT Asset Assistant':'Miri Inventory Assistant','subtitle'=>$kl?'Live IT asset answers':'Live inventory answers','intro'=>$kl?'Ask about asset tags, serial numbers, assignments, operating systems, age, or repairs.':'Ask about item location, current stock, last movement, or stock anomalies.','placeholder'=>$kl?'Ask about an IT asset...':'Ask about a stock item...'];
     }
 }

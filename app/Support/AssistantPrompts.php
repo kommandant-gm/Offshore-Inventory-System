@@ -21,4 +21,10 @@ class AssistantPrompts
             'Total stock in Labuan Inventory',
         ];
     }
+
+    public static function forBranch(?string $code): array
+    {
+        if ($code !== 'KL-IT') return self::defaults();
+        return ['How many IT assets are available?','Who has DESBKL/LT/2022/001?','Show assets under repair','How many assets run Windows 11?','Show assets older than 5 years','Show assets assigned to Project department'];
+    }
 }
