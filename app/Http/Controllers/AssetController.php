@@ -33,8 +33,9 @@ class AssetController extends Controller
             ->orderBy('name')
             ->get();
 
-        $selectedCategory = $categorySummaries->firstWhere('id', (int) $request->integer('category'))
-            ?? $categorySummaries->first();
+        $selectedCategory = $request->filled('category')
+            ? $categorySummaries->firstWhere('id', (int) $request->integer('category'))
+            : null;
 
         $assets = Asset::query()
             ->with(['category', 'currentLocation', 'currentAssignment'])

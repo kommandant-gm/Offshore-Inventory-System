@@ -10,6 +10,7 @@ use App\Services\ItAssetImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use ZipArchive;
+use Inertia\Testing\AssertableInertia as Assert;
 
 class ItAssetImportTest extends TestCase
 {
@@ -31,6 +32,7 @@ class ItAssetImportTest extends TestCase
         $this->assertSame('deployed',$asset->current_status->value);
         $this->assertSame('TEST USER',$asset->currentAssignment->assigned_to_name);
         $this->assertSame('PROJECT',$asset->currentAssignment->department);
+        $this->get(route('it-assets.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->where('assets.data.0.asset_tag_no','DESBKL/LT/2022/001'));
     }
 
     public function test_kl_branch_chatbot_queries_it_assets_instead_of_miri_stock(): void
