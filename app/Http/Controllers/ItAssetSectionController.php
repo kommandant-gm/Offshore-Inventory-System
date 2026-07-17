@@ -13,6 +13,41 @@ class ItAssetSectionController extends Controller
     public function dashboard(Request $request): Response
     {
         $this->authorizeRead($request);
+
+        $assets = Asset::query()
+            ->with(['category:id,name', 'currentLocation:id,name'])
+            ->get();
+
+        $status = $assets
+            ->countBy(fn (Asset $asset) => $asset->current_status->value)
+            ->map(fn (int $total, string $value) => [
+                'label' => str($value)->replace('_', ' ')->title()->toString(),
+                'value' => $total,
+            ])->values();
+
+        $breakdown = fn (callable $label, int $limit = 8) => $assets
+            ->countBy(fn (Asset $asset) => $label($asset) ?: 'Not specified')
+            ->sortDesc()
+            ->take($limit)
+            ->map(fn (int $total, string $name) => ['label' => $name, 'value' => $total])
+            ->values();
+
+        $currentYear = now()->year;
+        $ageBands = [
+            'Under 2 years' => 0,
+            '2–4 years' => 0,
+            '5–7 years' => 0,
+            '8+ years' => 0,
+            'Unknown' => 0,
+        ];
+        foreach ($assets as $asset) {
+            $year = $asset->purchase_year ?: (is_numeric($asset->year) ? (int) $asset->year : null);
+            $age = $year ? max(0, $currentYear - $year) : null;
+            $band = $age === null ? 'Unknown'
+                : ($age < 2 ? 'Under 2 years' : ($age < 5 ? '2–4 years' : ($age < 8 ? '5–7 years' : '8+ years')));
+            $ageBands[$band]++;
+        }
+
         return Inertia::render('ItAssets/Section', [
             'title' => 'IT Dashboard', 'description' => 'KL IT asset overview and lifecycle status.',
             'stats' => [
@@ -20,6 +55,23 @@ class ItAssetSectionController extends Controller
                 ['label' => 'Assigned', 'value' => Asset::where('current_status', AssetStatus::Deployed->value)->count()],
                 ['label' => 'Available', 'value' => Asset::where('current_status', AssetStatus::Available->value)->count()],
                 ['label' => 'Under repair', 'value' => Asset::where('current_status', AssetStatus::UnderRepair->value)->count()],
+            ],
+            'charts' => [
+                'status' => $status,
+                'categories' => $breakdown(fn (Asset $asset) => $asset->category?->name),
+                'locations' => $breakdown(fn (Asset $asset) => $asset->currentLocation?->name),
+                'conditions' => $breakdown(fn (Asset $asset) => $asset->current_condition?->value
+                    ? str($asset->current_condition->value)->replace('_', ' ')->title()->toString()
+                    : null),
+                'age' => collect($ageBands)->map(fn (int $total, string $label) => [
+                    'label' => $label, 'value' => $total,
+                ])->values(),
+                'purchaseYears' => $assets
+                    ->filter(fn (Asset $asset) => $asset->purchase_year)
+                    ->countBy('purchase_year')
+                    ->sortKeys()
+                    ->map(fn (int $total, int|string $year) => ['label' => (string) $year, 'value' => $total])
+                    ->values(),
             ],
         ]);
     }
