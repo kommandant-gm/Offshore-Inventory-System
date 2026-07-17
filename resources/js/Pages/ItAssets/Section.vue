@@ -1,15 +1,26 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, reactive } from 'vue';
 
 const props = defineProps({
   title: String,
   description: String,
   stats: { type: Array, default: () => [] },
-  rows: { type: Array, default: () => [] },
+  rows: { type: [Array, Object], default: () => [] },
   charts: { type: Object, default: null },
+  filters: { type: Object, default: null },
+  filterOptions: { type: Object, default: () => ({}) },
 });
+
+const filterForm = reactive({ ...(props.filters ?? {}) });
+const rowItems = computed(() => Array.isArray(props.rows) ? props.rows : (props.rows?.data ?? []));
+const activeFilters = computed(() => Object.values(filterForm).filter((value) => value !== '' && value !== null).length);
+const applyFilters = () => router.get(route('it-assets.assignments'), filterForm, { preserveState: true, preserveScroll: true, replace: true });
+const clearFilters = () => {
+  Object.keys(filterForm).forEach((key) => { filterForm[key] = ''; });
+  applyFilters();
+};
 
 const palette = ['#2f7d32', '#55a651', '#7abd70', '#a6d49c', '#d3e9ce', '#f0b65a', '#df7f67'];
 const maximum = (items) => Math.max(...(items ?? []).map((item) => Number(item.value)), 1);
@@ -30,6 +41,17 @@ const pie = computed(() => {
 <template><Head :title="title"/><AuthenticatedLayout><section class="space-y-6">
   <header class="rounded-[2rem] border border-[#d8e7d4] bg-white p-7"><p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">KL IT Inventory</p><h1 class="mt-2 text-3xl font-bold text-[#234222]">{{title}}</h1><p class="mt-2 text-sm text-[#60745d]">{{description}}</p></header>
   <div v-if="stats.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><div v-for="stat in stats" :key="stat.label" class="rounded-[1.5rem] border border-[#d8e7d4] bg-white p-6"><p class="text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">{{stat.label}}</p><p class="mt-3 text-3xl font-bold text-[#2f7d32]">{{stat.value}}</p></div></div>
+
+  <form v-if="filters" class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm" @submit.prevent="applyFilters">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><div class="flex items-center gap-2"><h2 class="font-bold text-[#234222]">Filter assignments</h2><span v-if="activeFilters" class="rounded-full bg-[#e8f5e4] px-2.5 py-1 text-xs font-bold text-[#2f7d32]">{{activeFilters}} active</span></div><p class="mt-1 text-xs text-[#7f9a7a]">Search current device custody records.</p></div><div class="flex gap-2"><button v-if="activeFilters" type="button" class="rounded-xl border border-[#d8e7d4] px-4 py-2 text-sm font-semibold text-[#60745d]" @click="clearFilters">Clear all</button><button type="submit" class="rounded-xl bg-[#4f9f4a] px-5 py-2 text-sm font-bold text-white">Apply filters</button></div></div>
+    <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <label class="sm:col-span-2"><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Search</span><input v-model.trim="filterForm.search" type="search" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]" placeholder="Asset tag, serial, device or person" /></label>
+      <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Department</span><select v-model="filterForm.department" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">All departments</option><option v-for="option in filterOptions.departments" :key="option" :value="option">{{option}}</option></select></label>
+      <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Category</span><select v-model="filterForm.category" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">All categories</option><option v-for="option in filterOptions.categories" :key="option.id" :value="String(option.id)">{{option.name}}</option></select></label>
+      <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Location</span><select v-model="filterForm.location" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">All locations</option><option v-for="option in filterOptions.locations" :key="option.id" :value="String(option.id)">{{option.code}} - {{option.name}}</option></select></label>
+      <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Operating system</span><select v-model="filterForm.os" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">All operating systems</option><option v-for="option in filterOptions.operatingSystems" :key="option" :value="option">{{option}}</option></select></label>
+    </div>
+  </form>
 
   <div v-if="charts" class="grid gap-6 xl:grid-cols-2">
     <article class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_16px_38px_rgba(79,159,74,.08)]">
@@ -65,7 +87,11 @@ const pie = computed(() => {
       <div v-if="charts.purchaseYears.length" class="mt-8 flex h-52 items-end gap-2 border-b border-l border-[#d8e7d4] px-3"><div v-for="item in charts.purchaseYears" :key="item.label" class="flex h-full min-w-[2.75rem] flex-1 flex-col justify-end text-center"><span class="mb-2 text-xs font-bold text-[#234222]">{{item.value}}</span><div class="mx-auto w-2/3 rounded-t-md bg-[#55a651]" :style="{height:`${Math.max((item.value/maximum(charts.purchaseYears))*85,5)}%`}"/><span class="mt-2 text-[11px] text-[#60745d]">{{item.label}}</span></div></div><div v-else class="mt-6 rounded-xl border border-dashed border-[#d8e7d4] p-12 text-center text-sm text-[#60745d]">Add purchase years to assets to populate this trend.</div>
     </article>
   </div>
-  <div v-if="rows.length" class="overflow-hidden rounded-[1.5rem] border border-[#d8e7d4] bg-white"><table class="table"><thead><tr><th>Asset tag</th><th>Details</th><th>Status / Department</th></tr></thead><tbody><tr v-for="row in rows" :key="row.asset_tag"><td class="font-bold">{{row.asset_tag}}</td><td>{{row.detail||'—'}}</td><td>{{row.meta||'—'}}</td></tr></tbody></table></div>
-  <div v-if="!stats.length && !rows.length" class="rounded-[1.5rem] border border-dashed border-[#cfe6c8] bg-white p-12 text-center text-[#60745d]">No records are available for this section yet.</div>
+  <div v-if="rowItems.length" class="overflow-hidden rounded-[1.5rem] border border-[#d8e7d4] bg-white">
+    <div v-if="rows.total !== undefined" class="flex justify-between border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><span><strong class="text-[#234222]">{{rows.total}}</strong> assignments found</span><span>Showing {{rows.from}}–{{rows.to}}</span></div>
+    <div class="overflow-x-auto"><table class="table"><thead><tr><th>Asset tag</th><th>Assigned to</th><th>Department</th><th v-if="filters">Category</th><th v-if="filters">Location</th><th v-if="filters">OS</th></tr></thead><tbody><tr v-for="row in rowItems" :key="row.asset_tag"><td class="font-bold"><Link v-if="row.asset_id" class="text-[#2f7d32]" :href="route('it-assets.show',row.asset_id)">{{row.asset_tag}}</Link><template v-else>{{row.asset_tag}}</template></td><td>{{row.detail||'—'}}</td><td>{{row.meta||'—'}}</td><td v-if="filters">{{row.category||'—'}}</td><td v-if="filters">{{row.location||'—'}}</td><td v-if="filters">{{row.os||'—'}}</td></tr></tbody></table></div>
+  </div>
+  <div v-if="!stats.length && !rowItems.length" class="rounded-[1.5rem] border border-dashed border-[#cfe6c8] bg-white p-12 text-center text-[#60745d]">{{filters ? 'No assignments match the selected filters.' : 'No records are available for this section yet.'}}</div>
+  <div v-if="rows.links?.length" class="flex flex-wrap gap-2"><Link v-for="link in rows.links" :key="link.label" v-html="link.label" :href="link.url||'#'" class="btn btn-sm" :class="{'btn-disabled':!link.url,'btn-success text-white':link.active}" preserve-scroll /></div>
   <Link class="btn border-[#cfe6c8] bg-white" :href="route('it-assets.index')">Open IT Asset Register</Link>
 </section></AuthenticatedLayout></template>

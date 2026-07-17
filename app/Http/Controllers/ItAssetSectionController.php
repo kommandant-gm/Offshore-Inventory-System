@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Enums\AssetStatus;
 use App\Models\Asset;
+use App\Models\Category;
+use App\Models\Location;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -79,12 +81,53 @@ class ItAssetSectionController extends Controller
     public function assignments(Request $request): Response
     {
         $this->authorizeRead($request);
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'department' => ['nullable', 'string', 'max:100'],
+            'category' => ['nullable', 'integer'],
+            'location' => ['nullable', 'integer'],
+            'os' => ['nullable', 'string', 'max:100'],
+        ]);
+        $assignedAssets = Asset::query()->whereHas('currentAssignment');
+        $rows = (clone $assignedAssets)
+            ->with(['currentAssignment', 'category:id,name', 'currentLocation:id,name'])
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('asset_tag_no', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('model', 'like', "%{$search}%")
+                        ->orWhere('serial_no', 'like', "%{$search}%")
+                        ->orWhereHas('currentAssignment', fn ($assignment) => $assignment
+                            ->where('assigned_to_name', 'like', "%{$search}%")
+                            ->orWhere('employee_id', 'like', "%{$search}%"));
+                });
+            })
+            ->when($filters['department'] ?? null, fn ($query, $department) => $query->whereHas('currentAssignment', fn ($assignment) => $assignment->where('department', $department)))
+            ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category_id', $category))
+            ->when($filters['location'] ?? null, fn ($query, $location) => $query->where('current_location_id', $location))
+            ->when($filters['os'] ?? null, fn ($query, $os) => $query->where('operating_system', $os))
+            ->orderBy('asset_tag_no')->paginate(20)->withQueryString()
+            ->through(fn (Asset $asset) => [
+                'asset_tag' => $asset->asset_tag_no, 'asset_id' => $asset->id,
+                'detail' => $asset->currentAssignment?->assigned_to_name, 'meta' => $asset->currentAssignment?->department,
+                'category' => $asset->category?->name, 'location' => $asset->currentLocation?->name, 'os' => $asset->operating_system,
+            ]);
+
         return Inertia::render('ItAssets/Section', [
             'title' => 'Assignments / Returns', 'description' => 'Current device custody and assignment records.',
-            'rows' => Asset::with('currentAssignment')->whereHas('currentAssignment')->orderBy('asset_tag_no')->get()->map(fn ($asset) => [
-                'asset_tag' => $asset->asset_tag_no, 'detail' => $asset->currentAssignment?->assigned_to_name,
-                'meta' => $asset->currentAssignment?->department,
-            ]),
+            'rows' => $rows,
+            'filters' => [
+                'search' => $filters['search'] ?? '', 'department' => $filters['department'] ?? '',
+                'category' => isset($filters['category']) ? (string) $filters['category'] : '',
+                'location' => isset($filters['location']) ? (string) $filters['location'] : '', 'os' => $filters['os'] ?? '',
+            ],
+            'filterOptions' => [
+                'departments' => (clone $assignedAssets)->with('currentAssignment:id,asset_id,department')->get()->pluck('currentAssignment.department')->filter()->unique()->sort()->values(),
+                'categories' => Category::query()->whereIn('type', ['asset', 'both'])->orderBy('name')->get(['id', 'name']),
+                'locations' => Location::query()->orderBy('name')->get(['id', 'code', 'name']),
+                'operatingSystems' => (clone $assignedAssets)->whereNotNull('operating_system')->where('operating_system', '<>', '')->distinct()->orderBy('operating_system')->pluck('operating_system'),
+            ],
         ]);
     }
 

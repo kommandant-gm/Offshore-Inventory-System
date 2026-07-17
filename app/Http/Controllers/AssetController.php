@@ -20,6 +20,16 @@ class AssetController extends Controller
     public function index(Request $request): Response
     {
         abort_unless($request->user()?->canRead('it_assets'), 403);
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'category' => ['nullable', 'integer'],
+            'location' => ['nullable', 'integer'],
+            'status' => ['nullable', 'string', 'max:50'],
+            'department' => ['nullable', 'string', 'max:100'],
+            'os' => ['nullable', 'string', 'max:100'],
+            'assignment' => ['nullable', 'in:assigned,unassigned'],
+        ]);
         $categorySummaries = Category::query()
             ->whereIn('type', ['asset', 'both'])
             ->withCount([
@@ -40,6 +50,25 @@ class AssetController extends Controller
         $assets = Asset::query()
             ->with(['category', 'currentLocation', 'currentAssignment'])
             ->when($selectedCategory, fn ($query) => $query->where('category_id', $selectedCategory->id))
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('asset_tag_no', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('brand', 'like', "%{$search}%")
+                        ->orWhere('model', 'like', "%{$search}%")
+                        ->orWhere('serial_no', 'like', "%{$search}%")
+                        ->orWhereHas('currentAssignment', fn ($assignment) => $assignment
+                            ->where('assigned_to_name', 'like', "%{$search}%"));
+                });
+            })
+            ->when($filters['location'] ?? null, fn ($query, $location) => $query->where('current_location_id', $location))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('current_status', $status))
+            ->when($filters['department'] ?? null, fn ($query, $department) => $query->whereHas(
+                'currentAssignment', fn ($assignment) => $assignment->where('department', $department)
+            ))
+            ->when($filters['os'] ?? null, fn ($query, $os) => $query->where('operating_system', $os))
+            ->when(($filters['assignment'] ?? null) === 'assigned', fn ($query) => $query->whereHas('currentAssignment'))
+            ->when(($filters['assignment'] ?? null) === 'unassigned', fn ($query) => $query->whereDoesntHave('currentAssignment'))
             ->orderBy('asset_tag_no')
             ->paginate(15)
             ->withQueryString()
@@ -75,6 +104,15 @@ class AssetController extends Controller
                 'active' => $category->active,
             ]),
             'assets' => $assets,
+            'filters' => [
+                'search' => $filters['search'] ?? '',
+                'category' => isset($filters['category']) ? (string) $filters['category'] : '',
+                'location' => isset($filters['location']) ? (string) $filters['location'] : '',
+                'status' => $filters['status'] ?? '',
+                'department' => $filters['department'] ?? '',
+                'os' => $filters['os'] ?? '',
+                'assignment' => $filters['assignment'] ?? '',
+            ],
             'selectedCategoryId' => $selectedCategory?->id,
             'locationOptions' => Location::query()
                 ->orderBy('name')
@@ -82,6 +120,15 @@ class AssetController extends Controller
                 ->map(fn (Location $location) => ['value' => $location->id, 'label' => "{$location->code} - {$location->name}"]),
             'statusOptions' => AssetStatus::options(),
             'conditionOptions' => AssetCondition::options(),
+            'departmentOptions' => Asset::query()
+                ->whereHas('currentAssignment', fn ($query) => $query->whereNotNull('department')->where('department', '<>', ''))
+                ->with('currentAssignment:id,asset_id,department')
+                ->get()
+                ->pluck('currentAssignment.department')
+                ->filter()->unique()->sort()->values(),
+            'osOptions' => Asset::query()
+                ->whereNotNull('operating_system')->where('operating_system', '<>', '')
+                ->distinct()->orderBy('operating_system')->pluck('operating_system'),
         ]);
     }
 
