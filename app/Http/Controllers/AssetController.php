@@ -122,7 +122,7 @@ class AssetController extends Controller
             'conditionOptions' => AssetCondition::options(),
             'departmentOptions' => Asset::query()
                 ->whereHas('currentAssignment', fn ($query) => $query->whereNotNull('department')->where('department', '<>', ''))
-                ->with('currentAssignment:id,asset_id,department')
+                ->with('currentAssignment')
                 ->get()
                 ->pluck('currentAssignment.department')
                 ->filter()->unique()->sort()->values(),

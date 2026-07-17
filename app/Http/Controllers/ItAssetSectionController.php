@@ -123,7 +123,7 @@ class ItAssetSectionController extends Controller
                 'location' => isset($filters['location']) ? (string) $filters['location'] : '', 'os' => $filters['os'] ?? '',
             ],
             'filterOptions' => [
-                'departments' => (clone $assignedAssets)->with('currentAssignment:id,asset_id,department')->get()->pluck('currentAssignment.department')->filter()->unique()->sort()->values(),
+                'departments' => (clone $assignedAssets)->with('currentAssignment')->get()->pluck('currentAssignment.department')->filter()->unique()->sort()->values(),
                 'categories' => Category::query()->whereIn('type', ['asset', 'both'])->orderBy('name')->get(['id', 'name']),
                 'locations' => Location::query()->orderBy('name')->get(['id', 'code', 'name']),
                 'operatingSystems' => (clone $assignedAssets)->whereNotNull('operating_system')->where('operating_system', '<>', '')->distinct()->orderBy('operating_system')->pluck('operating_system'),
