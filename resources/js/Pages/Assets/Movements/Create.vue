@@ -1,5 +1,6 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -237,18 +238,18 @@ const submit = () => {
 
                             <div class="group rounded-[1.35rem] border border-[#d8e7d4] bg-white p-4 transition hover:border-[#a8d09e]">
                                 <label class="mb-3 block text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7f9a7a]">Movement Type</label>
-                                <select v-model="form.transaction_type" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
+                                <CustomSelect v-model="form.transaction_type" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
                                     <option v-for="type in transactionTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
-                                </select>
+                                </CustomSelect>
                                 <InputError class="mt-2" :message="form.errors.transaction_type" />
                             </div>
                         </div>
 
                         <div class="mt-4 group rounded-[1.35rem] border border-[#d8e7d4] bg-white p-4 transition hover:border-[#a8d09e]">
                             <label class="mb-3 block text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7f9a7a]">Stock Item</label>
-                            <select v-model="form.item_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
+                            <CustomSelect v-model="form.item_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
                                 <option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option>
-                            </select>
+                            </CustomSelect>
                             <InputError class="mt-2" :message="form.errors.item_id" />
                         </div>
 
@@ -265,10 +266,10 @@ const submit = () => {
                             </div>
                             <div class="group rounded-[1.35rem] border border-[#d8e7d4] bg-white p-4 transition hover:border-[#a8d09e]">
                                 <label class="mb-3 block text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7f9a7a]">Primary Location</label>
-                                <select v-model="form.location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
+                                <CustomSelect v-model="form.location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
                                     <option value="">Primary location</option>
                                     <option v-for="location in locations" :key="location.value" :value="location.value">{{ location.label }}</option>
-                                </select>
+                                </CustomSelect>
                                 <InputError class="mt-2" :message="form.errors.location_id" />
                             </div>
                         </div>
@@ -283,18 +284,18 @@ const submit = () => {
                         <div class="grid gap-4 md:grid-cols-2">
                             <div class="group rounded-[1.35rem] border border-[#d8e7d4] bg-white p-4 transition hover:border-[#a8d09e]">
                                 <label class="mb-3 block text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7f9a7a]">From Location</label>
-                                <select v-model="form.source_location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
+                                <CustomSelect v-model="form.source_location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
                                     <option value="">None</option>
                                     <option v-for="location in locations" :key="location.value" :value="location.value">{{ location.label }}</option>
-                                </select>
+                                </CustomSelect>
                                 <InputError class="mt-2" :message="form.errors.source_location_id" />
                             </div>
                             <div class="group rounded-[1.35rem] border border-[#d8e7d4] bg-white p-4 transition hover:border-[#a8d09e]">
                                 <label class="mb-3 block text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7f9a7a]">To Location</label>
-                                <select v-model="form.destination_location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
+                                <CustomSelect v-model="form.destination_location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
                                     <option value="">None</option>
                                     <option v-for="location in locations" :key="location.value" :value="location.value">{{ location.label }}</option>
-                                </select>
+                                </CustomSelect>
                                 <InputError class="mt-2" :message="form.errors.destination_location_id" />
                             </div>
                         </div>

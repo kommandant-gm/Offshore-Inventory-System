@@ -1,5 +1,6 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, reactive, watch } from 'vue';
@@ -120,9 +121,9 @@ const money = (value) => {
                 <div class="space-y-4">
                     <div class="rounded-[1.25rem] border border-[#e1efdc] bg-[#fbfefa] p-4">
                         <label class="mb-2 block text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Category</label>
-                        <select v-model="form.category" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
+                        <CustomSelect v-model="form.category" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
                             <option v-for="category in categories" :key="category.value" :value="category.value">{{ category.label }}</option>
-                        </select>
+                        </CustomSelect>
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-1">

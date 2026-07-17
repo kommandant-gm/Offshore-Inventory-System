@@ -1,5 +1,6 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -112,21 +113,21 @@ const submit = () => {
 
                                 <div class="group rounded-[1.5rem] border border-[#d8e7d4] bg-white p-4 transition hover:border-[#a8d09e]">
                                     <label class="mb-3 block text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7f9a7a]">Category</label>
-                                    <select v-model="form.category_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222] transition group-hover:border-[#a8d09e]">
+                                    <CustomSelect v-model="form.category_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222] transition group-hover:border-[#a8d09e]">
                                         <option value="">Select category</option>
                                         <option v-for="option in categoryOptions" :key="option.value" :value="option.value">
                                             {{ option.code }} - {{ option.label }}
                                         </option>
-                                    </select>
+                                    </CustomSelect>
                                     <InputError class="mt-2" :message="form.errors.category_id" />
                                 </div>
 
                                 <div class="group rounded-[1.5rem] border border-[#d8e7d4] bg-white p-4 transition hover:border-[#a8d09e]">
                                     <label class="mb-3 block text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7f9a7a]">Default Location</label>
-                                    <select v-model="form.default_location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222] transition group-hover:border-[#a8d09e]">
+                                    <CustomSelect v-model="form.default_location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222] transition group-hover:border-[#a8d09e]">
                                         <option value="">Default location</option>
                                         <option v-for="option in locationOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                                    </select>
+                                    </CustomSelect>
                                     <InputError class="mt-2" :message="form.errors.default_location_id" />
                                 </div>
                             </div>

@@ -1,5 +1,6 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -57,16 +58,16 @@ const submit = () => {
                 <div class="grid gap-4 md:grid-cols-2">
                     <div>
                         <label class="mb-2 block text-sm font-medium text-slate-300">Category</label>
-                        <select v-model="form.category_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
+                        <CustomSelect v-model="form.category_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
                             <option v-for="option in categoryOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                        </select>
+                        </CustomSelect>
                     </div>
                     <div>
                         <label class="mb-2 block text-sm font-medium text-slate-300">Default Location</label>
-                        <select v-model="form.default_location_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
+                        <CustomSelect v-model="form.default_location_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
                             <option value="">None</option>
                             <option v-for="option in locationOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                        </select>
+                        </CustomSelect>
                     </div>
                 </div>
 

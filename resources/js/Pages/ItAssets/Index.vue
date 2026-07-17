@@ -1,5 +1,6 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, reactive } from 'vue';
 
@@ -38,22 +39,22 @@ const clearFilters = () => {
         </div>
         <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           <label class="sm:col-span-2 xl:col-span-2"><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Search</span><input v-model.trim="form.search" type="search" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]" placeholder="Tag, serial, device or person" /></label>
-          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Category</span><select v-model="form.category" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All categories</option><option v-for="category in categories" :key="category.id" :value="String(category.id)">{{ category.name }}</option></select></label>
-          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Location</span><select v-model="form.location" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All locations</option><option v-for="option in locationOptions" :key="option.value" :value="String(option.value)">{{ option.label }}</option></select></label>
-          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Status</span><select v-model="form.status" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All statuses</option><option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
-          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Assignment</span><select v-model="form.assignment" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All assets</option><option value="assigned">Assigned</option><option value="unassigned">Unassigned</option></select></label>
-          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Department</span><select v-model="form.department" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All departments</option><option v-for="option in departmentOptions" :key="option" :value="option">{{ option }}</option></select></label>
-          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Operating system</span><select v-model="form.os" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All operating systems</option><option v-for="option in osOptions" :key="option" :value="option">{{ option }}</option></select></label>
+          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Category</span><CustomSelect v-model="form.category" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All categories</option><option v-for="category in categories" :key="category.id" :value="String(category.id)">{{ category.name }}</option></CustomSelect></label>
+          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Location</span><CustomSelect v-model="form.location" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All locations</option><option v-for="option in locationOptions" :key="option.value" :value="String(option.value)">{{ option.label }}</option></CustomSelect></label>
+          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Status</span><CustomSelect v-model="form.status" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All statuses</option><option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option></CustomSelect></label>
+          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Assignment</span><CustomSelect v-model="form.assignment" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All assets</option><option value="assigned">Assigned</option><option value="unassigned">Unassigned</option></CustomSelect></label>
+          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Department</span><CustomSelect v-model="form.department" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All departments</option><option v-for="option in departmentOptions" :key="option" :value="option">{{ option }}</option></CustomSelect></label>
+          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Operating system</span><CustomSelect v-model="form.os" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All operating systems</option><option v-for="option in osOptions" :key="option" :value="option">{{ option }}</option></CustomSelect></label>
         </div>
       </form>
       <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
-        <div class="flex items-center justify-between border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><span><strong class="text-[#234222]">{{ assets.total }}</strong> {{ assets.total === 1 ? 'asset' : 'assets' }} found</span><span v-if="assets.total">Showing {{ assets.from }}–{{ assets.to }}</span></div>
+        <div class="flex items-center justify-between border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><span><strong class="text-[#234222]">{{ assets.total }}</strong> {{ assets.total === 1 ? 'asset' : 'assets' }} found</span><span v-if="assets.total">Showing {{ assets.from }}â€“{{ assets.to }}</span></div>
         <div class="overflow-x-auto"><table class="table">
           <thead><tr><th>Asset tag</th><th>Device</th><th>Serial</th><th>Assigned to</th><th>Department</th><th>OS</th><th>Status</th></tr></thead>
           <tbody><tr v-for="asset in assets.data" :key="asset.id">
             <td><Link class="font-bold text-[#2f7d32]" :href="route('it-assets.show', asset.id)">{{ asset.asset_tag_no }}</Link></td>
             <td>{{ asset.model || asset.description }}<div class="text-xs text-slate-500">{{ asset.category }}</div></td>
-            <td>{{ asset.serial_no || '—' }}</td><td>{{ asset.assigned_to || 'Unassigned' }}</td><td>{{ asset.department || '—' }}</td><td>{{ asset.operating_system || '—' }}</td>
+            <td>{{ asset.serial_no || 'â€”' }}</td><td>{{ asset.assigned_to || 'Unassigned' }}</td><td>{{ asset.department || 'â€”' }}</td><td>{{ asset.operating_system || 'â€”' }}</td>
             <td><span class="badge badge-outline">{{ asset.status.replaceAll('_', ' ') }}</span></td>
           </tr><tr v-if="!assets.data.length"><td colspan="7" class="py-12 text-center text-slate-500">No IT assets match the selected filters.</td></tr></tbody>
         </table></div>

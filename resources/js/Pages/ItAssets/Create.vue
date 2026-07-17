@@ -1,5 +1,6 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 const props = defineProps({ categories: Array, locations: Array, statuses: Array, conditions: Array });
@@ -13,10 +14,10 @@ const submit = () => form.post(route('it-assets.store'));
       <label v-for="field in [{k:'asset_tag_no',l:'Asset tag *'},{k:'serial_no',l:'Serial number'},{k:'description',l:'Description *'},{k:'brand',l:'Brand'},{k:'model',l:'Model'},{k:'operating_system',l:'Operating system'},{k:'purchase_year',l:'Purchase year',t:'number'},{k:'storage_position',l:'Storage position'},{k:'assigned_to_name',l:'Checked out to'},{k:'department',l:'Department'},{k:'assigned_at',l:'Assignment date',t:'date'},{k:'acquisition_date',l:'Acquisition date',t:'date'},{k:'acquisition_cost',l:'Acquisition cost',t:'number'}]" :key="field.k" class="form-control">
         <span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">{{ field.l }}</span><input v-model="form[field.k]" :type="field.t || 'text'" class="input input-bordered" /><InputError :message="form.errors[field.k]" />
       </label>
-      <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Category *</span><select v-model="form.category_id" class="select select-bordered"><option v-for="x in categories" :key="x.id" :value="x.id">{{ x.name }}</option></select></label>
-      <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Location</span><select v-model="form.current_location_id" class="select select-bordered"><option value="">None</option><option v-for="x in locations" :key="x.id" :value="x.id">{{ x.code }} - {{ x.name }}</option></select></label>
-      <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Status *</span><select v-model="form.current_status" class="select select-bordered"><option v-for="x in statuses" :key="x.value" :value="x.value">{{ x.label }}</option></select></label>
-      <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Condition</span><select v-model="form.current_condition" class="select select-bordered"><option v-for="x in conditions" :key="x.value" :value="x.value">{{ x.label }}</option></select></label>
+      <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Category *</span><CustomSelect v-model="form.category_id" class="select select-bordered"><option v-for="x in categories" :key="x.id" :value="x.id">{{ x.name }}</option></CustomSelect></label>
+      <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Location</span><CustomSelect v-model="form.current_location_id" class="select select-bordered"><option value="">None</option><option v-for="x in locations" :key="x.id" :value="x.id">{{ x.code }} - {{ x.name }}</option></CustomSelect></label>
+      <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Status *</span><CustomSelect v-model="form.current_status" class="select select-bordered"><option v-for="x in statuses" :key="x.value" :value="x.value">{{ x.label }}</option></CustomSelect></label>
+      <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Condition</span><CustomSelect v-model="form.current_condition" class="select select-bordered"><option v-for="x in conditions" :key="x.value" :value="x.value">{{ x.label }}</option></CustomSelect></label>
       <label class="form-control md:col-span-2 lg:col-span-3"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Remarks</span><textarea v-model="form.remarks" class="textarea textarea-bordered"></textarea></label>
     </section><div class="flex gap-3"><button class="btn bg-[#4f9f4a] text-white" :disabled="form.processing">Register asset</button><Link class="btn" :href="route('it-assets.index')">Cancel</Link></div>
   </form></AuthenticatedLayout>

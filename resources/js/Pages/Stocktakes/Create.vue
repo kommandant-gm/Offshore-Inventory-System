@@ -1,5 +1,6 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -58,9 +59,9 @@ const submit = () => {
                     </div>
                     <div>
                         <label class="mb-2 block text-sm font-medium text-[#234222]">Location</label>
-                        <select v-model="form.location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
+                        <CustomSelect v-model="form.location_id" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
                             <option v-for="location in locations" :key="location.value" :value="location.value">{{ location.label }}</option>
-                        </select>
+                        </CustomSelect>
                         <InputError class="mt-2" :message="form.errors.location_id" />
                     </div>
                 </div>

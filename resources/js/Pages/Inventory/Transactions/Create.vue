@@ -1,5 +1,6 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -56,9 +57,9 @@ const submit = () => {
                 </div>
                 <div class="md:col-span-2">
                     <label class="mb-2 block text-sm font-medium text-slate-300">Item</label>
-                    <select v-model="form.item_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
+                    <CustomSelect v-model="form.item_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
                         <option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option>
-                    </select>
+                    </CustomSelect>
                     <InputError class="mt-2" :message="form.errors.item_id" />
                 </div>
             </div>
@@ -66,27 +67,27 @@ const submit = () => {
             <div class="grid gap-4 md:grid-cols-4">
                 <div>
                     <label class="mb-2 block text-sm font-medium text-slate-300">Type</label>
-                    <select v-model="form.transaction_type" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
+                    <CustomSelect v-model="form.transaction_type" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
                         <option v-for="type in transactionTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
-                    </select>
+                    </CustomSelect>
                 </div>
                 <TextInput v-model="form.quantity" type="number" step="0.01" class="w-full" placeholder="Quantity" />
                 <TextInput v-model="form.unit_cost" type="number" step="0.01" class="w-full" placeholder="Unit cost" />
-                <select v-model="form.location_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
+                <CustomSelect v-model="form.location_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
                     <option value="">Primary location</option>
                     <option v-for="location in locations" :key="location.value" :value="location.value">{{ location.label }}</option>
-                </select>
+                </CustomSelect>
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
-                <select v-model="form.source_location_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
+                <CustomSelect v-model="form.source_location_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
                     <option value="">Source location</option>
                     <option v-for="location in locations" :key="location.value" :value="location.value">{{ location.label }}</option>
-                </select>
-                <select v-model="form.destination_location_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
+                </CustomSelect>
+                <CustomSelect v-model="form.destination_location_id" class="select w-full border-slate-600 bg-slate-900 text-slate-200">
                     <option value="">Destination location</option>
                     <option v-for="location in locations" :key="location.value" :value="location.value">{{ location.label }}</option>
-                </select>
+                </CustomSelect>
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
