@@ -20,6 +20,7 @@ use App\Http\Controllers\BranchContextController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\ItAssetImportController;
 use App\Http\Controllers\ItAssetSectionController;
+use App\Http\Controllers\IssueLogController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -46,6 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/stock-anomalies', [StockAnomalyController::class, 'index'])->name('anomalies.index');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::patch('/settings/users/{user}/access', [SettingsController::class, 'updateUserAccess'])->name('settings.users.update');
+    Route::get('/settings/issue-logs', [IssueLogController::class, 'index'])->name('settings.issue-logs.index');
     Route::get('/audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

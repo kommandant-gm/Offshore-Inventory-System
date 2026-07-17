@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
                             'movements_edit' => $request->user()->canEdit('movements'),
                             'settings_read' => $request->user()->canRead('settings'),
                             'settings_edit' => $request->user()->canEdit('settings'),
+                            'superadmin' => $request->user()->isSuperAdmin(),
                             'it_assets_read' => $request->user()->canRead('it_assets'),
                             'it_assets_edit' => $request->user()->canEdit('it_assets'),
                         ],

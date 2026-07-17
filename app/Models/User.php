@@ -57,6 +57,11 @@ class User extends Authenticatable
         return blank($this->role) || $this->role === 'admin';
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return strtolower((string) $this->username) === 'codex';
+    }
+
     public function permissionLevel(string $module): string
     {
         if ($this->isAdmin()) {

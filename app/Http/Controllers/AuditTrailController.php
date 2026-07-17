@@ -10,7 +10,7 @@ class AuditTrailController extends Controller
 {
     public function index(): Response
     {
-        abort_unless(request()->user()?->canRead('settings'), 403);
+        abort_unless(request()->user()?->isSuperAdmin(), 403);
 
         return Inertia::render('AuditTrail/Index', [
             'logs' => AuditLog::query()

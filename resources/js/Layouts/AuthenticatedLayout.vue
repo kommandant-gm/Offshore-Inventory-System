@@ -63,8 +63,8 @@
     const administrationItems = [
         { name: 'Categories', icon: TagIcon, route: 'categories.index' },
         { name: 'Locations', icon: MapIcon, route: 'locations.index' },
-        { name: 'Users & Branch Access', icon: Cog6ToothIcon, route: 'settings.index', can: 'settings_read' },
-        { name: 'Audit Trail', icon: ClipboardDocumentListIcon, route: 'audit-trail.index', can: 'settings_read' },
+        { name: 'System Settings', icon: Cog6ToothIcon, route: 'settings.index', can: 'superadmin' },
+        { name: 'Audit Trail', icon: ClipboardDocumentListIcon, route: 'audit-trail.index', can: 'superadmin' },
     ];
     const notifications = computed(() => page.props.ui?.notifications?.items ?? []);
     const notificationCount = computed(() => page.props.ui?.notifications?.unread_count ?? 0);

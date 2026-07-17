@@ -11,6 +11,7 @@ use App\Models\Location;
 use App\Models\Stocktake;
 use App\Models\User;
 use App\Models\Branch;
+use App\Models\IssueLog;
 use App\Services\AuditLogger;
 use App\Support\AccessMatrix;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +24,7 @@ class SettingsController extends Controller
 {
     public function index(): Response
     {
-        abort_unless(request()->user()?->canRead('settings'), 403);
+        abort_unless(request()->user()?->isSuperAdmin(), 403);
 
         $latestMovement = InventoryTransaction::query()
             ->latest('transaction_date')
@@ -41,7 +42,13 @@ class SettingsController extends Controller
                 'audits' => AuditLog::count(),
             ],
             'latestMovementDate' => $latestMovement?->transaction_date?->format('Y-m-d'),
-            'canEditSettings' => request()->user()?->canEdit('settings') ?? false,
+            'canEditSettings' => true,
+            'issueSummary' => [
+                'total' => IssueLog::count(),
+                'errors' => IssueLog::where('level', 'error')->count(),
+                'warnings' => IssueLog::where('level', 'warning')->count(),
+            ],
+            'recentIssues' => IssueLog::query()->latest()->take(5)->get()->map(fn (IssueLog $log) => IssueLogController::format($log)),
             'roleOptions' => collect(AccessMatrix::roleOptions())
                 ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
                 ->values(),

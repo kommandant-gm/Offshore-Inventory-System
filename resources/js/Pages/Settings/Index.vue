@@ -14,6 +14,8 @@ const props = defineProps({
     rolePresets: Object,
     users: Array,
     branchOptions: Array,
+    issueSummary: Object,
+    recentIssues: Array,
 });
 
 const adminGroups = [
@@ -124,6 +126,22 @@ const saveAccess = (userId) => {
             title="Settings"
             description="Administrative shortcuts for master data, operational controls, account access, and role permission management."
         />
+
+        <section class="overflow-hidden rounded-[2rem] border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+            <div class="flex flex-col gap-3 border-b border-[#edf3eb] bg-[#f8fafc] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div><p class="font-semibold text-[#172033]">Issue Activity Log</p><p class="mt-1 text-sm text-[#65748b]">Persistent Laravel errors, warnings, and stack traces stored in the database.</p></div>
+                <Link :href="route('settings.issue-logs.index')" class="w-fit rounded-xl bg-[#111a2e] px-5 py-3 text-sm font-bold text-white">View Full Log</Link>
+            </div>
+            <div class="p-6">
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div class="rounded-2xl border border-[#dce3ed] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#8290a8]">Total</p><p class="mt-3 text-2xl font-bold text-[#111a2e]">{{issueSummary.total}}</p></div>
+                    <div class="rounded-2xl border border-[#ffc6cc] bg-[#fff8f8] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#d61f3c]">Errors</p><p class="mt-3 text-2xl font-bold text-[#a70f29]">{{issueSummary.errors}}</p></div>
+                    <div class="rounded-2xl border border-[#f7d56b] bg-[#fffdf5] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#b45b00]">Warnings</p><p class="mt-3 text-2xl font-bold text-[#914400]">{{issueSummary.warnings}}</p></div>
+                </div>
+                <div v-if="recentIssues.length" class="mt-5 space-y-3"><article v-for="issue in recentIssues" :key="issue.id" class="rounded-2xl border border-[#dce3ed] p-4"><div class="flex flex-wrap items-center gap-3"><span class="rounded-full px-3 py-1 text-[11px] font-bold uppercase" :class="issue.level==='error'?'bg-[#ffe4e8] text-[#c41635]':'bg-[#fff1bd] text-[#a65300]'">{{issue.level}}</span><strong class="text-xs text-[#172033]">{{issue.created_at}}</strong></div><p class="mt-3 break-words text-sm text-[#31415b]">{{issue.message}}</p><p v-if="issue.location" class="mt-2 break-all text-xs text-[#718096]">{{issue.location}}</p></article></div>
+                <div v-else class="mt-5 rounded-2xl border border-dashed border-[#dce3ed] px-5 py-10 text-center text-sm text-[#718096]">No application issues have been recorded.</div>
+            </div>
+        </section>
 
         <div class="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
