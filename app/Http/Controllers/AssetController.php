@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Category;
 use App\Models\Location;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -87,6 +88,7 @@ class AssetController extends Controller
                 'purchase_year' => $asset->purchase_year,
                 'assigned_to' => $asset->currentAssignment?->assigned_to_name,
                 'department' => $asset->currentAssignment?->department,
+                'is_assigned' => $asset->currentAssignment !== null,
             ]);
 
         return Inertia::render('ItAssets/Index', [
@@ -129,6 +131,7 @@ class AssetController extends Controller
             'osOptions' => Asset::query()
                 ->whereNotNull('operating_system')->where('operating_system', '<>', '')
                 ->distinct()->orderBy('operating_system')->pluck('operating_system'),
+            'userOptions' => $this->assignmentUsers($request),
         ]);
     }
 
@@ -187,6 +190,7 @@ class AssetController extends Controller
                 'age' => $asset->purchase_year ? now()->year - $asset->purchase_year : null,
                 'assigned_to' => $asset->currentAssignment?->assigned_to_name,
                 'department' => $asset->currentAssignment?->department,
+                'is_assigned' => $asset->currentAssignment !== null,
                 'assignments' => $asset->assignments->map(fn ($assignment) => [
                     'assigned_to_name' => $assignment->assigned_to_name,
                     'department' => $assignment->department,
@@ -207,6 +211,39 @@ class AssetController extends Controller
                     'created_by' => $movement->creator?->name,
                 ]),
             ],
+            'userOptions' => $this->assignmentUsers(request()),
+        ]);
+    }
+
+    public function edit(Request $request, Asset $asset): Response
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+
+        return Inertia::render('ItAssets/Edit', [
+            'asset' => [
+                'id' => $asset->id,
+                'asset_tag_no' => $asset->asset_tag_no,
+                'serial_no' => $asset->serial_no,
+                'description' => $asset->description,
+                'category_id' => $asset->category_id,
+                'brand' => $asset->brand,
+                'model' => $asset->model,
+                'operating_system' => $asset->operating_system,
+                'purchase_year' => $asset->purchase_year,
+                'current_location_id' => $asset->current_location_id,
+                'storage_position' => $asset->storage_position,
+                'current_status' => $asset->current_status->value,
+                'current_condition' => $asset->current_condition?->value,
+                'acquisition_date' => $asset->acquisition_date?->format('Y-m-d'),
+                'acquisition_cost' => $asset->acquisition_cost,
+                'ownership' => $asset->ownership,
+                'active' => $asset->active,
+                'remarks' => $asset->remarks,
+            ],
+            'categories' => Category::query()->whereIn('type', ['asset', 'both'])->orderBy('name')->get(['id', 'name']),
+            'locations' => Location::query()->orderBy('name')->get(['id', 'code', 'name']),
+            'statuses' => AssetStatus::options(),
+            'conditions' => AssetCondition::options(),
         ]);
     }
 
@@ -216,5 +253,21 @@ class AssetController extends Controller
         $asset->update($request->validated());
 
         return redirect()->route('it-assets.show', $asset)->with('success', 'IT asset updated.');
+    }
+
+    private function assignmentUsers(Request $request): array
+    {
+        $branchId = app(\App\Services\BranchContext::class)->id($request->user());
+
+        return User::query()
+            ->when($branchId, fn ($query) => $query->whereHas('branches', fn ($branch) => $branch->where('branches.id', $branchId)))
+            ->orderBy('name')
+            ->get(['id', 'name', 'username', 'email'])
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'employee_id' => $user->username,
+                'email' => $user->email,
+            ])->all();
     }
 }

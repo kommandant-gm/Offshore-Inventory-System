@@ -1,8 +1,9 @@
 ﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, reactive } from 'vue';
+import AssetAssignmentModal from '@/Components/AssetAssignmentModal.vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed, reactive, ref } from 'vue';
 
 const props = defineProps({
   title: String,
@@ -12,8 +13,14 @@ const props = defineProps({
   charts: { type: Object, default: null },
   filters: { type: Object, default: null },
   filterOptions: { type: Object, default: () => ({}) },
+  availableAssets: { type: Array, default: () => [] },
+  userOptions: { type: Array, default: () => [] },
 });
 
+const page = usePage();
+const canEdit = computed(() => page.props.auth?.user?.can?.it_assets_edit);
+const selectedAsset = ref(null);
+const selectedAvailableId = ref('');
 const filterForm = reactive({ ...(props.filters ?? {}) });
 const rowItems = computed(() => Array.isArray(props.rows) ? props.rows : (props.rows?.data ?? []));
 const activeFilters = computed(() => Object.values(filterForm).filter((value) => value !== '' && value !== null).length);
@@ -21,6 +28,13 @@ const applyFilters = () => router.get(route('it-assets.assignments'), filterForm
 const clearFilters = () => {
   Object.keys(filterForm).forEach((key) => { filterForm[key] = ''; });
   applyFilters();
+};
+const openAvailableAsset = () => {
+  selectedAsset.value = props.availableAssets.find((asset) => String(asset.id) === String(selectedAvailableId.value)) || null;
+};
+const checkIn = (row) => {
+  if (!window.confirm(`Check in ${row.asset_tag} from ${row.detail}?`)) return;
+  router.patch(route('it-assets.check-in', row.asset_id), {}, { preserveScroll: true });
 };
 
 const palette = ['#2f7d32', '#55a651', '#7abd70', '#a6d49c', '#d3e9ce', '#f0b65a', '#df7f67'];
@@ -53,6 +67,14 @@ const pie = computed(() => {
       <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Operating system</span><CustomSelect v-model="filterForm.os" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">All operating systems</option><option v-for="option in filterOptions.operatingSystems" :key="option" :value="option">{{option}}</option></CustomSelect></label>
     </div>
   </form>
+
+  <div v-if="filters && canEdit" class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+      <label class="flex-1"><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Checkout an available asset</span><CustomSelect v-model="selectedAvailableId" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">Select an available asset</option><option v-for="asset in availableAssets" :key="asset.id" :value="asset.id">{{asset.asset_tag_no}} - {{asset.description}}</option></CustomSelect></label>
+      <button type="button" class="rounded-xl bg-[#4f9f4a] px-5 py-3 text-sm font-bold text-white disabled:opacity-50" :disabled="!selectedAvailableId" @click="openAvailableAsset">Checkout to user</button>
+    </div>
+    <p v-if="!availableAssets.length" class="mt-2 text-xs text-[#7f9a7a]">No assets are currently available for checkout.</p>
+  </div>
 
   <div v-if="charts" class="grid gap-6 xl:grid-cols-2">
     <article class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_16px_38px_rgba(79,159,74,.08)]">
@@ -90,9 +112,10 @@ const pie = computed(() => {
   </div>
   <div v-if="rowItems.length" class="overflow-hidden rounded-[1.5rem] border border-[#d8e7d4] bg-white">
     <div v-if="rows.total !== undefined" class="flex justify-between border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><span><strong class="text-[#234222]">{{rows.total}}</strong> assignments found</span><span>Showing {{rows.from}}â€“{{rows.to}}</span></div>
-    <div class="overflow-x-auto"><table class="table"><thead><tr><th>Asset tag</th><th>Assigned to</th><th>Department</th><th v-if="filters">Category</th><th v-if="filters">Location</th><th v-if="filters">OS</th></tr></thead><tbody><tr v-for="row in rowItems" :key="row.asset_tag"><td class="font-bold"><Link v-if="row.asset_id" class="text-[#2f7d32]" :href="route('it-assets.show',row.asset_id)">{{row.asset_tag}}</Link><template v-else>{{row.asset_tag}}</template></td><td>{{row.detail||'â€”'}}</td><td>{{row.meta||'â€”'}}</td><td v-if="filters">{{row.category||'â€”'}}</td><td v-if="filters">{{row.location||'â€”'}}</td><td v-if="filters">{{row.os||'â€”'}}</td></tr></tbody></table></div>
+    <div class="overflow-x-auto"><table class="table"><thead><tr><th>Asset tag</th><th>Assigned to</th><th>Department</th><th v-if="filters">Category</th><th v-if="filters">Location</th><th v-if="filters">OS</th><th v-if="filters && canEdit">Actions</th></tr></thead><tbody><tr v-for="row in rowItems" :key="row.asset_tag"><td class="font-bold"><Link v-if="row.asset_id" class="text-[#2f7d32]" :href="route('it-assets.show',row.asset_id)">{{row.asset_tag}}</Link><template v-else>{{row.asset_tag}}</template></td><td>{{row.detail||'â€”'}}</td><td>{{row.meta||'â€”'}}</td><td v-if="filters">{{row.category||'â€”'}}</td><td v-if="filters">{{row.location||'â€”'}}</td><td v-if="filters">{{row.os||'â€”'}}</td><td v-if="filters && canEdit"><div class="flex gap-2"><button type="button" class="btn btn-xs border-[#cfe6c8] bg-white" @click="selectedAsset = row">Reassign</button><button type="button" class="btn btn-xs border-[#d9a74d] bg-[#fff8e8] text-[#805d17]" @click="checkIn(row)">Check in</button></div></td></tr></tbody></table></div>
   </div>
   <div v-if="!stats.length && !rowItems.length" class="rounded-[1.5rem] border border-dashed border-[#cfe6c8] bg-white p-12 text-center text-[#60745d]">{{filters ? 'No assignments match the selected filters.' : 'No records are available for this section yet.'}}</div>
   <div v-if="rows.links?.length" class="flex flex-wrap gap-2"><Link v-for="link in rows.links" :key="link.label" v-html="link.label" :href="link.url||'#'" class="btn btn-sm" :class="{'btn-disabled':!link.url,'btn-success text-white':link.active}" preserve-scroll /></div>
   <Link class="btn border-[#cfe6c8] bg-white" :href="route('it-assets.index')">Open IT Asset Register</Link>
+  <AssetAssignmentModal v-if="selectedAsset" :asset="selectedAsset" :user-options="userOptions" @close="selectedAsset = null; selectedAvailableId = ''" />
 </section></AuthenticatedLayout></template>

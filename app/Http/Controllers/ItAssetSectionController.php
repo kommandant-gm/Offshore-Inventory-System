@@ -6,6 +6,8 @@ use App\Enums\AssetStatus;
 use App\Models\Asset;
 use App\Models\Category;
 use App\Models\Location;
+use App\Models\User;
+use App\Services\BranchContext;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -112,11 +114,38 @@ class ItAssetSectionController extends Controller
                 'asset_tag' => $asset->asset_tag_no, 'asset_id' => $asset->id,
                 'detail' => $asset->currentAssignment?->assigned_to_name, 'meta' => $asset->currentAssignment?->department,
                 'category' => $asset->category?->name, 'location' => $asset->currentLocation?->name, 'os' => $asset->operating_system,
+                'description' => $asset->model ?: $asset->description,
+                'is_assigned' => true,
+            ]);
+
+        $availableAssets = Asset::query()
+            ->where('current_status', AssetStatus::Available->value)
+            ->whereDoesntHave('currentAssignment')
+            ->orderBy('asset_tag_no')
+            ->get()
+            ->map(fn (Asset $asset) => [
+                'id' => $asset->id,
+                'asset_tag_no' => $asset->asset_tag_no,
+                'description' => $asset->model ?: $asset->description,
+                'status' => $asset->current_status->value,
+                'is_assigned' => false,
+            ]);
+
+        $branchId = app(BranchContext::class)->id($request->user());
+        $userOptions = User::query()
+            ->when($branchId, fn ($query) => $query->whereHas('branches', fn ($branch) => $branch->where('branches.id', $branchId)))
+            ->orderBy('name')
+            ->get(['id', 'name', 'username', 'email'])
+            ->map(fn (User $user) => [
+                'id' => $user->id, 'name' => $user->name,
+                'employee_id' => $user->username, 'email' => $user->email,
             ]);
 
         return Inertia::render('ItAssets/Section', [
             'title' => 'Assignments / Returns', 'description' => 'Current device custody and assignment records.',
             'rows' => $rows,
+            'availableAssets' => $availableAssets,
+            'userOptions' => $userOptions,
             'filters' => [
                 'search' => $filters['search'] ?? '', 'department' => $filters['department'] ?? '',
                 'category' => isset($filters['category']) ? (string) $filters['category'] : '',
