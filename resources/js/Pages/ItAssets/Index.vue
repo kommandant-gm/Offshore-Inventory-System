@@ -67,6 +67,7 @@ const checkIn = (asset) => {
             <td><span class="badge badge-outline">{{ asset.status.replaceAll('_', ' ') }}</span></td>
             <td v-if="canEdit"><div class="flex flex-wrap gap-2">
               <Link class="btn btn-xs border-[#cfe6c8] bg-white" :href="route('it-assets.edit', asset.id)">Edit</Link>
+              <Link class="btn btn-xs border-[#b8cde0] bg-[#f3f8fc] text-[#194568]" :href="route('it-assets.qr-code.show', asset.id)">{{ asset.has_qr_code ? 'QR code' : 'Generate QR' }}</Link>
               <button v-if="asset.is_assigned" type="button" class="btn btn-xs border-[#d9a74d] bg-[#fff8e8] text-[#805d17]" @click="checkIn(asset)">Check in</button>
               <button v-else-if="asset.status === 'available'" type="button" class="btn btn-xs bg-[#4f9f4a] text-white" @click="selectedAsset = asset">Checkout</button>
             </div></td>

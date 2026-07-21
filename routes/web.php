@@ -19,6 +19,8 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\BranchContextController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetAssignmentController;
+use App\Http\Controllers\AssetQrCodeController;
+use App\Http\Controllers\PublicAssetController;
 use App\Http\Controllers\ItAssetImportController;
 use App\Http\Controllers\ItAssetSectionController;
 use App\Http\Controllers\IssueLogController;
@@ -29,6 +31,7 @@ Route::redirect('/', '/login');
 Route::get('/cog/approval/{token}', [CogApprovalController::class, 'show'])->name('cogs.approval.show');
 Route::post('/cog/approval/{token}/approve', [CogApprovalController::class, 'approve'])->name('cogs.approval.approve');
 Route::post('/cog/approval/{token}/reject', [CogApprovalController::class, 'reject'])->name('cogs.approval.reject');
+Route::get('/asset/{publicToken}', PublicAssetController::class)->name('public.it-assets.show');
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -37,6 +40,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('it-assets', AssetController::class)->parameters(['it-assets' => 'asset'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::post('/it-assets/{asset}/checkout', [AssetAssignmentController::class, 'store'])->name('it-assets.checkout');
     Route::patch('/it-assets/{asset}/check-in', [AssetAssignmentController::class, 'destroy'])->name('it-assets.check-in');
+    Route::get('/it-assets/{asset}/qr-code', [AssetQrCodeController::class, 'show'])->name('it-assets.qr-code.show');
+    Route::post('/it-assets/{asset}/qr-code', [AssetQrCodeController::class, 'store'])->name('it-assets.qr-code.store');
+    Route::post('/it-assets/{asset}/qr-code/regenerate', [AssetQrCodeController::class, 'update'])->name('it-assets.qr-code.regenerate');
     Route::get('/it-assets-import', [ItAssetImportController::class, 'create'])->name('it-assets.import.create');
     Route::post('/it-assets-import/preview', [ItAssetImportController::class, 'preview'])->name('it-assets.import.preview');
     Route::post('/it-assets-import', [ItAssetImportController::class, 'store'])->name('it-assets.import.store');

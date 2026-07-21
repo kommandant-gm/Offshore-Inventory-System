@@ -89,6 +89,7 @@ class AssetController extends Controller
                 'assigned_to' => $asset->currentAssignment?->assigned_to_name,
                 'department' => $asset->currentAssignment?->department,
                 'is_assigned' => $asset->currentAssignment !== null,
+                'has_qr_code' => filled($asset->public_token),
             ]);
 
         return Inertia::render('ItAssets/Index', [
@@ -191,6 +192,7 @@ class AssetController extends Controller
                 'assigned_to' => $asset->currentAssignment?->assigned_to_name,
                 'department' => $asset->currentAssignment?->department,
                 'is_assigned' => $asset->currentAssignment !== null,
+                'has_qr_code' => filled($asset->public_token),
                 'assignments' => $asset->assignments->map(fn ($assignment) => [
                     'assigned_to_name' => $assignment->assigned_to_name,
                     'department' => $assignment->department,
