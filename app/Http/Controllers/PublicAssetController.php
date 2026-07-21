@@ -10,7 +10,7 @@ class PublicAssetController extends Controller
     public function __invoke(string $publicToken): View
     {
         $asset = Asset::withoutGlobalScopes()
-            ->with(['category:id,name', 'currentLocation:id,name'])
+            ->with(['category:id,name', 'currentLocation:id,name', 'currentAssignment'])
             ->where('public_token', $publicToken)
             ->firstOrFail();
 

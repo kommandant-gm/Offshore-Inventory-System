@@ -30,6 +30,12 @@ class ItAssetQrCodeTest extends TestCase
         $oldToken = $asset->refresh()->public_token;
         $this->assertNotNull($oldToken);
         $this->assertSame(48, strlen($oldToken));
+        $asset->assignments()->create([
+            'assigned_to_name' => 'Public Custodian',
+            'department' => 'IT',
+            'assigned_at' => '2026-07-21',
+            'assigned_by' => $user->id,
+        ]);
 
         auth()->logout();
         $this->get(route('public.it-assets.show', $oldToken))
@@ -37,6 +43,8 @@ class ItAssetQrCodeTest extends TestCase
             ->assertSee('KL-QR-001')
             ->assertSee('Test Laptop')
             ->assertSee('SN-PRIVATE-001')
+            ->assertSee('Public Custodian')
+            ->assertSee('Department')
             ->assertDontSee('Internal confidential note')
             ->assertDontSee('4999.00');
 

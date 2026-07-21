@@ -50,17 +50,21 @@ const printLabel = () => window.print();
 
       <template v-else>
         <div class="grid gap-6 xl:grid-cols-[1fr,22rem]">
-          <div class="qr-print-area flex min-h-[28rem] items-center justify-center rounded-[2rem] border border-[#d8e7d4] bg-[#f4f7fa] p-8">
-            <article class="asset-label w-[340px] overflow-hidden rounded-2xl border-2 border-[#173516] bg-white shadow-xl">
-              <div class="flex items-center gap-3 bg-[#062344] px-5 py-4 text-white">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4f9f4a] text-xl font-black">D</div>
-                <div><p class="font-bold leading-tight">Dayang Inventory</p><p class="text-[10px] uppercase tracking-[.18em] text-[#b9d5ea]">IT Asset Identification</p></div>
+          <div class="qr-print-area flex min-h-[22rem] items-center justify-center rounded-[2rem] border border-[#d8e7d4] bg-[#f4f7fa] p-8">
+            <article class="asset-label grid h-[170px] w-[300px] grid-cols-[128px,1fr] overflow-hidden rounded-xl border-2 border-[#173516] bg-white shadow-xl">
+              <div class="flex items-center justify-center border-r border-[#d8e7d4] p-2.5">
+                <img :src="qrImage" class="h-[108px] w-[108px]" alt="Asset QR code" />
               </div>
-              <div class="p-5 text-center">
-                <img :src="qrImage" class="mx-auto h-56 w-56" alt="Asset QR code" />
-                <p class="mt-3 break-all text-xl font-black text-[#173516]">{{asset.asset_tag_no}}</p>
-                <p class="mt-1 truncate text-sm font-semibold text-[#526a7d]">{{asset.description}}</p>
-                <p class="mt-3 text-[10px] uppercase tracking-[.16em] text-[#718496]">Scan to view asset details</p>
+              <div class="flex min-w-0 flex-col">
+                <div class="flex items-center gap-2 bg-[#062344] px-3 py-2.5 text-white">
+                  <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#4f9f4a] text-sm font-black">D</div>
+                  <div class="min-w-0"><p class="truncate text-xs font-bold leading-tight">Dayang Inventory</p><p class="text-[7px] uppercase tracking-[.13em] text-[#b9d5ea]">IT Asset</p></div>
+                </div>
+                <div class="flex flex-1 flex-col justify-center px-3 py-2">
+                  <p class="asset-label-tag text-[13px] font-black leading-tight text-[#173516]">{{asset.asset_tag_no}}</p>
+                  <p class="mt-1 line-clamp-2 text-[9px] font-semibold leading-tight text-[#526a7d]">{{asset.description}}</p>
+                  <p class="mt-2 text-[6px] uppercase tracking-[.12em] text-[#718496]">Scan for asset details</p>
+                </div>
               </div>
             </article>
           </div>
@@ -82,10 +86,11 @@ const printLabel = () => window.print();
 
 <style>
 @media print {
-  @page { size: auto; margin: 10mm; }
+  @page { size: 60mm 34mm; margin: 0; }
   body * { visibility: hidden !important; }
   .qr-print-area, .qr-print-area * { visibility: visible !important; }
   .qr-print-area { position: fixed !important; inset: 0 !important; min-height: 0 !important; border: 0 !important; background: white !important; padding: 0 !important; }
-  .asset-label { box-shadow: none !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .asset-label { width: 60mm !important; height: 34mm !important; border-radius: 2mm !important; box-shadow: none !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .asset-label-tag { overflow-wrap: anywhere; }
 }
 </style>

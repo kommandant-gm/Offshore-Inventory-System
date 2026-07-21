@@ -21,6 +21,8 @@
             ['Operating system', $asset->operating_system],
             ['Purchase year', $asset->purchase_year ?: $asset->year],
             ['Current location', $asset->currentLocation?->name],
+            ['Assigned to', $asset->currentAssignment?->assigned_to_name ?: 'Unassigned'],
+            ['Department', $asset->currentAssignment?->department],
             ['Ownership', $asset->ownership],
         ];
     @endphp
