@@ -74,6 +74,41 @@ class ItAssetAssignmentTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_asset_register_can_be_filtered_by_the_exact_current_assignee(): void
+    {
+        [$user, $asset, $branch] = $this->editorAndAsset();
+        $asset->assignments()->create([
+            'branch_id' => $branch->id,
+            'assigned_to_name' => 'Target User',
+            'assigned_at' => '2026-07-21',
+            'assigned_by' => $user->id,
+        ]);
+        $otherAsset = Asset::withoutGlobalScopes()->create([
+            'branch_id' => $branch->id,
+            'asset_tag_no' => 'KL-TEST-002',
+            'description' => 'Other laptop',
+            'category_id' => $asset->category_id,
+            'current_status' => 'deployed',
+            'current_condition' => 'good',
+            'active' => true,
+        ]);
+        $otherAsset->assignments()->create([
+            'branch_id' => $branch->id,
+            'assigned_to_name' => 'Another User',
+            'assigned_at' => '2026-07-21',
+            'assigned_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('it-assets.index', ['assignee' => 'Target User']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ItAssets/Index')
+                ->where('filters.assignee', 'Target User')
+                ->has('assets.data', 1)
+                ->where('assets.data.0.asset_tag_no', 'KL-TEST-001'));
+    }
+
     private function editorAndAsset(): array
     {
         $branch = Branch::where('code', 'KL-IT')->firstOrFail();

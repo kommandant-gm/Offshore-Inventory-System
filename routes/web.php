@@ -1,29 +1,30 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AssetAssignmentController;
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\AssetLedgerController;
+use App\Http\Controllers\AssetQrCodeController;
+use App\Http\Controllers\AssistantController;
+use App\Http\Controllers\AuditTrailController;
+use App\Http\Controllers\BranchContextController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CogApprovalController;
 use App\Http\Controllers\CogController;
-use App\Http\Controllers\QuickSearchController;
-use App\Http\Controllers\LocationController;
-use App\Http\Controllers\AssetLedgerController;
-use App\Http\Controllers\AssistantController;
-use App\Http\Controllers\AuditTrailController;
-use App\Http\Controllers\StockAnomalyController;
-use App\Http\Controllers\StocktakeController;
-use App\Http\Controllers\InventoryItemController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryImportController;
+use App\Http\Controllers\InventoryItemController;
 use App\Http\Controllers\InventoryTransactionController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\BranchContextController;
-use App\Http\Controllers\AssetController;
-use App\Http\Controllers\AssetAssignmentController;
-use App\Http\Controllers\AssetQrCodeController;
-use App\Http\Controllers\PublicAssetController;
+use App\Http\Controllers\IssueLogController;
 use App\Http\Controllers\ItAssetImportController;
 use App\Http\Controllers\ItAssetSectionController;
-use App\Http\Controllers\IssueLogController;
+use App\Http\Controllers\ItLicenseController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicAssetController;
+use App\Http\Controllers\QuickSearchController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\StockAnomalyController;
+use App\Http\Controllers\StocktakeController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -38,11 +39,13 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verif
 Route::middleware('auth')->group(function () {
     Route::patch('/active-branch', [BranchContextController::class, 'update'])->name('branches.activate');
     Route::resource('it-assets', AssetController::class)->parameters(['it-assets' => 'asset'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+    Route::resource('it-licenses', ItLicenseController::class)->parameters(['it-licenses' => 'it_license'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::post('/it-assets/{asset}/checkout', [AssetAssignmentController::class, 'store'])->name('it-assets.checkout');
     Route::patch('/it-assets/{asset}/check-in', [AssetAssignmentController::class, 'destroy'])->name('it-assets.check-in');
     Route::get('/it-assets/{asset}/qr-code', [AssetQrCodeController::class, 'show'])->name('it-assets.qr-code.show');
     Route::post('/it-assets/{asset}/qr-code', [AssetQrCodeController::class, 'store'])->name('it-assets.qr-code.store');
     Route::post('/it-assets/{asset}/qr-code/regenerate', [AssetQrCodeController::class, 'update'])->name('it-assets.qr-code.regenerate');
+    Route::post('/it-asset-qr-codes/generate-all', [AssetQrCodeController::class, 'storeAll'])->name('it-assets.qr-codes.store-all');
     Route::get('/it-assets-import', [ItAssetImportController::class, 'create'])->name('it-assets.import.create');
     Route::post('/it-assets-import/preview', [ItAssetImportController::class, 'preview'])->name('it-assets.import.preview');
     Route::post('/it-assets-import', [ItAssetImportController::class, 'store'])->name('it-assets.import.store');

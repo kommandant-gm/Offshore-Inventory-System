@@ -10,9 +10,9 @@ use App\Models\Asset;
 use App\Models\Category;
 use App\Models\Location;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,6 +28,7 @@ class AssetController extends Controller
             'location' => ['nullable', 'integer'],
             'status' => ['nullable', 'string', 'max:50'],
             'department' => ['nullable', 'string', 'max:100'],
+            'assignee' => ['nullable', 'string', 'max:255'],
             'os' => ['nullable', 'string', 'max:100'],
             'assignment' => ['nullable', 'in:assigned,unassigned'],
         ]);
@@ -48,7 +49,7 @@ class AssetController extends Controller
             ? $categorySummaries->firstWhere('id', (int) $request->integer('category'))
             : null;
 
-        $assets = Asset::query()
+        $assetQuery = Asset::query()
             ->with(['category', 'currentLocation', 'currentAssignment'])
             ->when($selectedCategory, fn ($query) => $query->where('category_id', $selectedCategory->id))
             ->when($filters['search'] ?? null, function ($query, $search) {
@@ -67,10 +68,16 @@ class AssetController extends Controller
             ->when($filters['department'] ?? null, fn ($query, $department) => $query->whereHas(
                 'currentAssignment', fn ($assignment) => $assignment->where('department', $department)
             ))
+            ->when($filters['assignee'] ?? null, fn ($query, $assignee) => $query->whereHas(
+                'currentAssignment', fn ($assignment) => $assignment->where('assigned_to_name', $assignee)
+            ))
             ->when($filters['os'] ?? null, fn ($query, $os) => $query->where('operating_system', $os))
             ->when(($filters['assignment'] ?? null) === 'assigned', fn ($query) => $query->whereHas('currentAssignment'))
             ->when(($filters['assignment'] ?? null) === 'unassigned', fn ($query) => $query->whereDoesntHave('currentAssignment'))
-            ->orderBy('asset_tag_no')
+            ->orderBy('asset_tag_no');
+
+        $qrCodesMissing = (clone $assetQuery)->whereNull('public_token')->count();
+        $assets = $assetQuery
             ->paginate(15)
             ->withQueryString()
             ->through(fn (Asset $asset) => [
@@ -126,6 +133,7 @@ class AssetController extends Controller
                 'active' => $category->active,
             ]),
             'assets' => $assets,
+            'qrCodesMissing' => $qrCodesMissing,
             'assignedAssetsByDepartment' => $assignedAssetsByDepartment,
             'filters' => [
                 'search' => $filters['search'] ?? '',
@@ -133,6 +141,7 @@ class AssetController extends Controller
                 'location' => isset($filters['location']) ? (string) $filters['location'] : '',
                 'status' => $filters['status'] ?? '',
                 'department' => $filters['department'] ?? '',
+                'assignee' => $filters['assignee'] ?? '',
                 'os' => $filters['os'] ?? '',
                 'assignment' => $filters['assignment'] ?? '',
             ],
@@ -159,6 +168,7 @@ class AssetController extends Controller
     public function create(Request $request): Response
     {
         abort_unless($request->user()?->canEdit('it_assets'), 403);
+
         return Inertia::render('ItAssets/Create', [
             'categories' => Category::query()->whereIn('type', ['asset', 'both'])->orderBy('name')->get(['id', 'name']),
             'locations' => Location::query()->orderBy('name')->get(['id', 'code', 'name']),

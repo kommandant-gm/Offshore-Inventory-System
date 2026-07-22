@@ -68,6 +68,42 @@ class ItAssetQrCodeTest extends TestCase
 
         $this->actingAs($viewer)->get(route('it-assets.qr-code.show', $asset))->assertForbidden();
         $this->post(route('it-assets.qr-code.store', $asset))->assertForbidden();
+        $this->post(route('it-assets.qr-codes.store-all'))->assertForbidden();
+    }
+
+    public function test_editor_can_generate_missing_qr_codes_for_all_matching_assets(): void
+    {
+        [$user, $matchingAsset, $branch] = $this->editorAndAsset();
+        $category = $matchingAsset->category;
+        $existingToken = str_repeat('x', 48);
+        $alreadyGenerated = Asset::withoutGlobalScopes()->create([
+            'branch_id' => $branch->id,
+            'asset_tag_no' => 'KL-QR-002',
+            'description' => 'Second Test Laptop',
+            'category_id' => $category->id,
+            'current_status' => 'available',
+            'current_condition' => 'good',
+            'public_token' => $existingToken,
+            'active' => true,
+        ]);
+        $notMatching = Asset::withoutGlobalScopes()->create([
+            'branch_id' => $branch->id,
+            'asset_tag_no' => 'KL-MON-001',
+            'description' => 'Monitor',
+            'category_id' => $category->id,
+            'current_status' => 'available',
+            'current_condition' => 'good',
+            'active' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('it-assets.qr-codes.store-all'), ['search' => 'QR-'])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Generated QR codes for 1 asset. Existing QR codes were unchanged.');
+
+        $this->assertNotNull($matchingAsset->refresh()->public_token);
+        $this->assertSame($existingToken, $alreadyGenerated->refresh()->public_token);
+        $this->assertNull($notMatching->refresh()->public_token);
     }
 
     private function editorAndAsset(): array

@@ -7,6 +7,7 @@ import { computed, reactive, ref } from 'vue';
 
 const props = defineProps({
   assets: Object,
+  qrCodesMissing: Number,
   categories: Array,
   selectedCategoryId: Number,
   locationOptions: Array,
@@ -21,6 +22,7 @@ const props = defineProps({
 const page = usePage();
 const canEdit = computed(() => page.props.auth?.user?.can?.it_assets_edit);
 const selectedAsset = ref(null);
+const generatingAllQr = ref(false);
 const form = reactive({ ...props.filters });
 const activeFilters = computed(() => Object.values(form).filter((value) => value !== '' && value !== null).length);
 const applyFilters = () => router.get(route('it-assets.index'), form, { preserveState: true, preserveScroll: true, replace: true });
@@ -32,15 +34,33 @@ const checkIn = (asset) => {
   if (!window.confirm(`Check in ${asset.asset_tag_no} from ${asset.assigned_to}?`)) return;
   router.patch(route('it-assets.check-in', asset.id), {}, { preserveScroll: true });
 };
+const viewAssigneeAssets = (assignee) => {
+  form.assignee = assignee;
+  applyFilters();
+};
+const clearAssignee = () => {
+  form.assignee = '';
+  applyFilters();
+};
+const generateAllQr = () => {
+  if (!props.qrCodesMissing || !window.confirm(`Generate QR codes for ${props.qrCodesMissing} matching ${props.qrCodesMissing === 1 ? 'asset' : 'assets'}? Existing QR codes will not be changed.`)) return;
+  generatingAllQr.value = true;
+  router.post(route('it-assets.qr-codes.store-all'), props.filters, {
+    preserveScroll: true,
+    onFinish: () => { generatingAllQr.value = false; },
+  });
+};
 
 const statusStyles = {
   available: {
     badge: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     dot: 'bg-emerald-500 ring-emerald-100',
+    showDot: false,
   },
   deployed: {
     badge: 'border-blue-200 bg-blue-50 text-blue-700',
     dot: 'bg-blue-500 ring-blue-100',
+    showDot: false,
   },
   in_transit: {
     badge: 'border-violet-200 bg-violet-50 text-violet-700',
@@ -121,7 +141,7 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
       </section>
       <form class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm" @submit.prevent="applyFilters">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div><div class="flex items-center gap-2"><h2 class="font-bold text-[#234222]">Filter assets</h2><span v-if="activeFilters" class="rounded-full bg-[#e8f5e4] px-2.5 py-1 text-xs font-bold text-[#2f7d32]">{{ activeFilters }} active</span></div><p class="mt-1 text-xs text-[#7f9a7a]">Search and narrow the full asset register.</p></div>
+          <div><div class="flex flex-wrap items-center gap-2"><h2 class="font-bold text-[#234222]">Filter assets</h2><span v-if="activeFilters" class="rounded-full bg-[#e8f5e4] px-2.5 py-1 text-xs font-bold text-[#2f7d32]">{{ activeFilters }} active</span><button v-if="form.assignee" type="button" class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700" title="Clear assigned user filter" @click="clearAssignee">Assigned to: {{ form.assignee }} &times;</button></div><p class="mt-1 text-xs text-[#7f9a7a]">Search and narrow the full asset register.</p></div>
           <div class="flex gap-2"><button v-if="activeFilters" type="button" class="rounded-xl border border-[#d8e7d4] px-4 py-2 text-sm font-semibold text-[#60745d] hover:bg-[#f5faf3]" @click="clearFilters">Clear all</button><button type="submit" class="rounded-xl bg-[#4f9f4a] px-5 py-2 text-sm font-bold text-white hover:bg-[#3f8d3d]">Apply filters</button></div>
         </div>
         <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
@@ -135,19 +155,33 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
         </div>
       </form>
       <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
-        <div class="flex items-center justify-between border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><span><strong class="text-[#234222]">{{ assets.total }}</strong> {{ assets.total === 1 ? 'asset' : 'assets' }} found</span><span v-if="assets.total">Showing {{ assets.from }}&ndash;{{ assets.to }}</span></div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]">
+          <span><strong class="text-[#234222]">{{ assets.total }}</strong> {{ assets.total === 1 ? 'asset' : 'assets' }} found</span>
+          <div class="flex items-center gap-3">
+            <span v-if="assets.total">Showing {{ assets.from }}&ndash;{{ assets.to }}</span>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="btn btn-sm border-[#b8cde0] bg-[#f3f8fc] font-bold text-[#194568]"
+              :disabled="!qrCodesMissing || generatingAllQr"
+              @click="generateAllQr"
+            >
+              {{ generatingAllQr ? 'Generating...' : (qrCodesMissing ? `Generate all QR (${qrCodesMissing})` : 'All QR generated') }}
+            </button>
+          </div>
+        </div>
         <div class="overflow-x-auto"><table class="table">
           <thead><tr><th>Asset tag</th><th>Device</th><th>Serial</th><th>Assigned to</th><th>Department</th><th>OS</th><th>Status</th><th v-if="canEdit">Actions</th></tr></thead>
           <tbody><tr v-for="asset in assets.data" :key="asset.id">
             <td><Link class="font-bold text-[#2f7d32]" :href="route('it-assets.show', asset.id)">{{ asset.asset_tag_no }}</Link></td>
             <td>{{ asset.model || asset.description }}<div class="text-xs text-slate-500">{{ asset.category }}</div></td>
-            <td>{{ asset.serial_no || '\u2014' }}</td><td>{{ asset.assigned_to || 'Unassigned' }}</td><td>{{ asset.department || '\u2014' }}</td><td>{{ asset.operating_system || '\u2014' }}</td>
+            <td>{{ asset.serial_no || '\u2014' }}</td><td><button v-if="asset.assigned_to" type="button" class="text-left font-medium text-[#194568] hover:text-[#2f7d32] hover:underline" :title="`Show all assets assigned to ${asset.assigned_to}`" @click="viewAssigneeAssets(asset.assigned_to)">{{ asset.assigned_to }}</button><span v-else>Unassigned</span></td><td>{{ asset.department || '\u2014' }}</td><td>{{ asset.operating_system || '\u2014' }}</td>
             <td>
               <span
                 class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm"
                 :class="statusStyle(asset.status).badge"
               >
-                <span class="h-2 w-2 rounded-full ring-4" :class="statusStyle(asset.status).dot"></span>
+                <span v-if="statusStyle(asset.status).showDot !== false" class="h-2 w-2 rounded-full ring-4" :class="statusStyle(asset.status).dot"></span>
                 {{ statusLabel(asset.status) }}
               </span>
             </td>

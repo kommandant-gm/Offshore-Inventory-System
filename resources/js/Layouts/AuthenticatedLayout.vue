@@ -7,7 +7,7 @@
         ClipboardDocumentCheckIcon, ChartBarIcon, ChatBubbleLeftRightIcon,
         Cog6ToothIcon, BellIcon, MagnifyingGlassIcon,
         ExclamationTriangleIcon,
-        Bars3Icon, ArrowRightStartOnRectangleIcon, TagIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, ChevronDownIcon
+        Bars3Icon, ArrowRightStartOnRectangleIcon, TagIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, ChevronDownIcon, KeyIcon
     } from '@heroicons/vue/24/outline';
 
     const isSidebarOpen = ref(false);
@@ -55,6 +55,7 @@
         { name: 'IT Dashboard', icon: Squares2X2Icon, route: 'it-assets.dashboard', can: 'it_assets_read' },
         { name: 'IT Asset Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read' },
         { name: 'IT Asset Register', icon: ClipboardDocumentCheckIcon, route: 'it-assets.index', can: 'it_assets_read' },
+        { name: 'IT Licence Register', icon: KeyIcon, route: 'it-licenses.index', can: 'it_assets_read' },
         { name: 'Import Assets', icon: ArchiveBoxIcon, route: 'it-assets.import.create', can: 'it_assets_edit' },
         { name: 'Assignments / Returns', icon: TruckIcon, route: 'it-assets.assignments', can: 'it_assets_read' },
         { name: 'Repairs', icon: ExclamationTriangleIcon, route: 'it-assets.repairs', can: 'it_assets_read' },
