@@ -32,7 +32,11 @@ class ItAssetImportTest extends TestCase
         $this->assertSame('PROJECT',$asset->currentAssignment->department);
         $this->assertSame('KL',$asset->currentLocation->code);
         $this->assertSame('KL',$asset->currentLocation->name);
-        $this->get(route('it-assets.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->where('assets.data.0.asset_tag_no','DESBKL/LT/2022/001'));
+        $this->get(route('it-assets.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('assets.data.0.asset_tag_no', 'DESBKL/LT/2022/001')
+            ->where('assignedAssetsByDepartment.0.department', 'PROJECT')
+            ->where('assignedAssetsByDepartment.0.total', 1)
+            ->where('assignedAssetsByDepartment.0.statuses.deployed', 1));
     }
 
     public function test_kl_branch_chatbot_queries_it_assets_instead_of_miri_stock(): void

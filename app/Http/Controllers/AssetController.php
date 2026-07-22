@@ -92,6 +92,25 @@ class AssetController extends Controller
                 'has_qr_code' => filled($asset->public_token),
             ]);
 
+        $assignedAssetsByDepartment = Asset::query()
+            ->whereHas('currentAssignment')
+            ->with('currentAssignment')
+            ->get(['id', 'current_status'])
+            ->groupBy(fn (Asset $asset) => trim((string) $asset->currentAssignment?->department) ?: 'Unspecified')
+            ->map(function ($departmentAssets, string $department) {
+                $statuses = $departmentAssets
+                    ->countBy(fn (Asset $asset) => $asset->current_status->value)
+                    ->all();
+
+                return [
+                    'department' => $department,
+                    'total' => $departmentAssets->count(),
+                    'statuses' => $statuses,
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+
         return Inertia::render('ItAssets/Index', [
             'categories' => $categorySummaries->map(fn (Category $category) => [
                 'id' => $category->id,
@@ -107,6 +126,7 @@ class AssetController extends Controller
                 'active' => $category->active,
             ]),
             'assets' => $assets,
+            'assignedAssetsByDepartment' => $assignedAssetsByDepartment,
             'filters' => [
                 'search' => $filters['search'] ?? '',
                 'category' => isset($filters['category']) ? (string) $filters['category'] : '',
