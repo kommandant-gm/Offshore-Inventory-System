@@ -31,6 +31,44 @@ const checkIn = (asset) => {
   if (!window.confirm(`Check in ${asset.asset_tag_no} from ${asset.assigned_to}?`)) return;
   router.patch(route('it-assets.check-in', asset.id), {}, { preserveScroll: true });
 };
+
+const statusStyles = {
+  available: {
+    badge: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    dot: 'bg-emerald-500 ring-emerald-100',
+  },
+  deployed: {
+    badge: 'border-blue-200 bg-blue-50 text-blue-700',
+    dot: 'bg-blue-500 ring-blue-100',
+  },
+  in_transit: {
+    badge: 'border-violet-200 bg-violet-50 text-violet-700',
+    dot: 'bg-violet-500 ring-violet-100',
+  },
+  under_repair: {
+    badge: 'border-amber-200 bg-amber-50 text-amber-700',
+    dot: 'bg-amber-500 ring-amber-100',
+  },
+  inspection_hold: {
+    badge: 'border-orange-200 bg-orange-50 text-orange-700',
+    dot: 'bg-orange-500 ring-orange-100',
+  },
+  damaged: {
+    badge: 'border-red-200 bg-red-50 text-red-700',
+    dot: 'bg-red-500 ring-red-100',
+  },
+  disposed: {
+    badge: 'border-slate-200 bg-slate-100 text-slate-600',
+    dot: 'bg-slate-400 ring-slate-200',
+  },
+};
+
+const defaultStatusStyle = {
+  badge: 'border-slate-200 bg-slate-50 text-slate-600',
+  dot: 'bg-slate-400 ring-slate-100',
+};
+const statusStyle = (status) => statusStyles[status] ?? defaultStatusStyle;
+const statusLabel = (status) => status.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 </script>
 
 <template>
@@ -64,7 +102,15 @@ const checkIn = (asset) => {
             <td><Link class="font-bold text-[#2f7d32]" :href="route('it-assets.show', asset.id)">{{ asset.asset_tag_no }}</Link></td>
             <td>{{ asset.model || asset.description }}<div class="text-xs text-slate-500">{{ asset.category }}</div></td>
             <td>{{ asset.serial_no || '\u2014' }}</td><td>{{ asset.assigned_to || 'Unassigned' }}</td><td>{{ asset.department || '\u2014' }}</td><td>{{ asset.operating_system || '\u2014' }}</td>
-            <td><span class="badge badge-outline">{{ asset.status.replaceAll('_', ' ') }}</span></td>
+            <td>
+              <span
+                class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm"
+                :class="statusStyle(asset.status).badge"
+              >
+                <span class="h-2 w-2 rounded-full ring-4" :class="statusStyle(asset.status).dot"></span>
+                {{ statusLabel(asset.status) }}
+              </span>
+            </td>
             <td v-if="canEdit"><div class="flex flex-wrap gap-2">
               <Link class="btn btn-xs border-[#cfe6c8] bg-white" :href="route('it-assets.edit', asset.id)">Edit</Link>
               <Link class="btn btn-xs border-[#b8cde0] bg-[#f3f8fc] text-[#194568]" :href="route('it-assets.qr-code.show', asset.id)">{{ asset.has_qr_code ? 'QR code' : 'Generate QR' }}</Link>

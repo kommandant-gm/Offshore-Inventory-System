@@ -81,7 +81,7 @@ const pie = computed(() => {
       <p class="text-xs font-bold uppercase tracking-[.2em] text-[#7f9a7a]">Asset allocation</p><h2 class="mt-1 text-xl font-bold text-[#234222]">Lifecycle status</h2>
       <div class="mt-6 grid items-center gap-6 sm:grid-cols-[13rem,1fr]">
         <div class="relative mx-auto h-48 w-48 rounded-full" :style="{background:pie}"><div class="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-white"><span class="text-3xl font-bold text-[#234222]">{{total(charts.status)}}</span><span class="text-xs text-[#7f9a7a]">assets</span></div></div>
-        <div class="space-y-3"><div v-for="(item,index) in charts.status" :key="item.label" class="flex items-center gap-3"><span class="h-3 w-3 rounded-full" :style="{backgroundColor:palette[index%palette.length]}"/><span class="flex-1 text-sm text-[#60745d]">{{item.label}}</span><strong class="text-sm text-[#234222]">{{item.value}} Â· {{percent(item.value,charts.status)}}%</strong></div></div>
+        <div class="space-y-3"><div v-for="(item,index) in charts.status" :key="item.label" class="flex items-center gap-3"><span class="h-3 w-3 rounded-full" :style="{backgroundColor:palette[index%palette.length]}"/><span class="flex-1 text-sm text-[#60745d]">{{item.label}}</span><strong class="text-sm text-[#234222]">{{item.value}} &middot; {{percent(item.value,charts.status)}}%</strong></div></div>
       </div>
     </article>
 

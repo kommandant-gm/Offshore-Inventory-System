@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Enums\AssetCondition;
 use App\Enums\AssetStatus;
 use App\Enums\CategoryType;
+use App\Enums\LocationType;
 use App\Models\Asset;
 use App\Models\Category;
 use App\Models\Location;
+use App\Services\BranchContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -39,9 +41,11 @@ class ItAssetImportService
     {
         $report = $this->analyse($path);
         DB::transaction(function () use ($report, $userId) {
-            $location = Location::query()->where('code', 'KL')->orWhere('name', 'like', '%KL%')->first();
+            $locations = [];
             foreach ($report['valid'] as $entry) {
                 $data = $entry['data'];
+                $locationKey = Str::lower($data['location']);
+                $location = $locations[$locationKey] ??= $this->resolveLocation($data['location']);
                 $category = Category::firstOrCreate(['name' => $data['category_name']], ['code' => Str::upper(Str::slug($data['category_name'], '-')), 'type' => CategoryType::Asset->value, 'active' => true]);
                 $asset = Asset::create([
                     'asset_tag_no' => $data['asset_tag_no'], 'description' => $data['model'] ?: $data['category_name'],
@@ -61,7 +65,36 @@ class ItAssetImportService
     {
         $get = fn (string $key) => trim((string) ($row[$key] ?? ''));
         $checkedOut = $get('checked out to'); $status = Str::upper($get('status'));
-        return ['asset_tag_no'=>$get('asset tag'),'serial_no'=>$get('serial'),'model'=>$get('model'),'category_name'=>$get('category') ?: 'Uncategorised','assigned_to_name'=>$checkedOut,'department'=>$get('department'),'operating_system'=>$get('operating system'),'purchase_year'=>filter_var($get('year of purchase'), FILTER_VALIDATE_INT) ?: null,'current_status'=>match($status){'REPAIR','UNDER REPAIR'=>AssetStatus::UnderRepair->value,'DAMAGED'=>AssetStatus::Damaged->value,'DISPOSED','RETIRED'=>AssetStatus::Disposed->value,default=>$checkedOut ? AssetStatus::Deployed->value : AssetStatus::Available->value},'active'=>!in_array($status,['DISPOSED','RETIRED'],true)];
+        return ['asset_tag_no'=>$get('asset tag'),'serial_no'=>$get('serial'),'model'=>$get('model'),'category_name'=>$get('category') ?: 'Uncategorised','assigned_to_name'=>$checkedOut,'department'=>$get('department'),'location'=>$get('location'),'operating_system'=>$get('operating system'),'purchase_year'=>filter_var($get('year of purchase'), FILTER_VALIDATE_INT) ?: null,'current_status'=>match($status){'REPAIR','UNDER REPAIR'=>AssetStatus::UnderRepair->value,'DAMAGED'=>AssetStatus::Damaged->value,'DISPOSED','RETIRED'=>AssetStatus::Disposed->value,default=>$checkedOut ? AssetStatus::Deployed->value : AssetStatus::Available->value},'active'=>!in_array($status,['DISPOSED','RETIRED'],true)];
+    }
+
+    private function resolveLocation(string $value): ?Location
+    {
+        $value = trim($value);
+        if ($value === '') return null;
+
+        $location = Location::query()
+            ->where(function ($query) use ($value) {
+                $query->whereRaw('LOWER(code) = ?', [Str::lower($value)])
+                    ->orWhereRaw('LOWER(name) = ?', [Str::lower($value)]);
+            })
+            ->first();
+
+        if ($location) return $location;
+
+        $branchId = app(BranchContext::class)->id();
+        $code = Str::upper(Str::slug($value, '-')) ?: 'LOCATION';
+        if (Location::withoutGlobalScopes()->where('code', $code)->exists()) {
+            $code = ($branchId ? "B{$branchId}-" : '').$code;
+        }
+
+        return Location::create([
+            'branch_id' => $branchId,
+            'code' => $code,
+            'name' => $value,
+            'type' => LocationType::Yard->value,
+            'active' => true,
+        ]);
     }
 
     private function rows(string $path): array
