@@ -67,21 +67,21 @@ const pie = computed(() => {
 });
 </script>
 <template><Head :title="title"/><AuthenticatedLayout><section class="space-y-6" :class="{'dashboard-shell':charts}">
-  <header v-if="charts" class="relative isolate overflow-hidden rounded-[1.75rem] bg-[linear-gradient(120deg,#172033_0%,#1e293b_58%,#243b53_100%)] px-5 py-6 text-white shadow-[0_24px_70px_rgba(15,23,42,.18)] sm:px-8 sm:py-8 lg:px-10">
-    <div class="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-blue-500/20 blur-2xl"></div>
-    <div class="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-violet-400/10 blur-3xl"></div>
+  <header v-if="charts" class="relative isolate overflow-hidden rounded-[1.75rem] bg-[linear-gradient(120deg,#064e3b_0%,#0f766e_58%,#115e59_100%)] px-5 py-6 text-white shadow-[0_24px_70px_rgba(6,78,59,.22)] sm:px-8 sm:py-8 lg:px-10">
+    <div class="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-cyan-300/20 blur-2xl"></div>
+    <div class="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-emerald-300/15 blur-3xl"></div>
     <div class="relative grid items-end gap-8 lg:grid-cols-[minmax(0,1fr),22rem]">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[.24em] text-sky-300">KL IT Inventory</p>
+        <p class="text-xs font-semibold uppercase tracking-[.24em] text-emerald-200">KL IT Inventory</p>
         <h1 class="mt-3 text-3xl font-bold tracking-[-.02em] sm:text-4xl lg:text-[2.75rem]">{{title}}</h1>
         <p class="mt-3 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">{{description}} Monitor allocation, health, location and asset age from one responsive workspace.</p>
         <div class="mt-6 flex flex-wrap gap-3">
-          <Link :href="route('it-assets.index')" class="inline-flex items-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-50">View asset register</Link>
+          <Link :href="route('it-assets.index')" class="inline-flex items-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50">View asset register</Link>
           <Link v-if="canEdit" :href="route('it-assets.create')" class="inline-flex items-center rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15">+ Register asset</Link>
         </div>
       </div>
       <div class="grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/[.07] p-4 backdrop-blur-sm">
-        <div class="rounded-xl bg-black/10 p-4"><p class="text-[10px] font-semibold uppercase tracking-[.16em] text-white/50">Utilisation</p><p class="mt-2 text-2xl font-bold text-sky-300 sm:text-3xl">{{statPercent(statValue('Assigned'))}}%</p><p class="mt-1 text-xs text-white/55">{{statValue('Assigned')}} assigned</p></div>
+        <div class="rounded-xl bg-black/10 p-4"><p class="text-[10px] font-semibold uppercase tracking-[.16em] text-white/50">Utilisation</p><p class="mt-2 text-2xl font-bold text-cyan-200 sm:text-3xl">{{statPercent(statValue('Assigned'))}}%</p><p class="mt-1 text-xs text-white/55">{{statValue('Assigned')}} assigned</p></div>
         <div class="rounded-xl bg-black/10 p-4"><p class="text-[10px] font-semibold uppercase tracking-[.16em] text-white/50">Ready now</p><p class="mt-2 text-2xl font-bold text-emerald-300 sm:text-3xl">{{statPercent(statValue('Available'))}}%</p><p class="mt-1 text-xs text-white/55">{{statValue('Available')}} available</p></div>
       </div>
     </div>
