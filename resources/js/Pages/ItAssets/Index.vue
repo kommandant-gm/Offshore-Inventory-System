@@ -57,13 +57,13 @@ const checkIn = (asset) => {
         </div>
       </form>
       <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
-        <div class="flex items-center justify-between border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><span><strong class="text-[#234222]">{{ assets.total }}</strong> {{ assets.total === 1 ? 'asset' : 'assets' }} found</span><span v-if="assets.total">Showing {{ assets.from }}â€“{{ assets.to }}</span></div>
+        <div class="flex items-center justify-between border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><span><strong class="text-[#234222]">{{ assets.total }}</strong> {{ assets.total === 1 ? 'asset' : 'assets' }} found</span><span v-if="assets.total">Showing {{ assets.from }}&ndash;{{ assets.to }}</span></div>
         <div class="overflow-x-auto"><table class="table">
           <thead><tr><th>Asset tag</th><th>Device</th><th>Serial</th><th>Assigned to</th><th>Department</th><th>OS</th><th>Status</th><th v-if="canEdit">Actions</th></tr></thead>
           <tbody><tr v-for="asset in assets.data" :key="asset.id">
             <td><Link class="font-bold text-[#2f7d32]" :href="route('it-assets.show', asset.id)">{{ asset.asset_tag_no }}</Link></td>
             <td>{{ asset.model || asset.description }}<div class="text-xs text-slate-500">{{ asset.category }}</div></td>
-            <td>{{ asset.serial_no || 'â€”' }}</td><td>{{ asset.assigned_to || 'Unassigned' }}</td><td>{{ asset.department || 'â€”' }}</td><td>{{ asset.operating_system || 'â€”' }}</td>
+            <td>{{ asset.serial_no || '\u2014' }}</td><td>{{ asset.assigned_to || 'Unassigned' }}</td><td>{{ asset.department || '\u2014' }}</td><td>{{ asset.operating_system || '\u2014' }}</td>
             <td><span class="badge badge-outline">{{ asset.status.replaceAll('_', ' ') }}</span></td>
             <td v-if="canEdit"><div class="flex flex-wrap gap-2">
               <Link class="btn btn-xs border-[#cfe6c8] bg-white" :href="route('it-assets.edit', asset.id)">Edit</Link>
