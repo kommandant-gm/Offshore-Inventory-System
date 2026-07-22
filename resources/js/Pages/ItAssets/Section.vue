@@ -41,6 +41,19 @@ const palette = ['#2f7d32', '#55a651', '#7abd70', '#a6d49c', '#d3e9ce', '#f0b65a
 const maximum = (items) => Math.max(...(items ?? []).map((item) => Number(item.value)), 1);
 const total = (items) => (items ?? []).reduce((sum, item) => sum + Number(item.value), 0);
 const percent = (value, items) => total(items) ? Math.round((Number(value) / total(items)) * 100) : 0;
+const hoveredStatus = ref(null);
+const hoveredCategory = ref(null);
+const hoveredLocation = ref(null);
+const dashboardTotal = computed(() => total(props.charts?.status));
+const statValue = (label) => Number(props.stats.find((stat) => stat.label === label)?.value ?? 0);
+const statPercent = (value) => dashboardTotal.value ? Math.round((Number(value) / dashboardTotal.value) * 100) : 0;
+const statTheme = (label) => ({
+  'Total assets': { accent: 'bg-[#234222]', icon: 'bg-[#e7f3e3] text-[#234222]', glow: 'from-[#2f7d32]/10' },
+  Assigned: { accent: 'bg-blue-500', icon: 'bg-blue-50 text-blue-700', glow: 'from-blue-500/10' },
+  Available: { accent: 'bg-emerald-500', icon: 'bg-emerald-50 text-emerald-700', glow: 'from-emerald-500/10' },
+  'Under repair': { accent: 'bg-amber-500', icon: 'bg-amber-50 text-amber-700', glow: 'from-amber-500/10' },
+}[label] ?? { accent: 'bg-slate-400', icon: 'bg-slate-50 text-slate-600', glow: 'from-slate-500/10' });
+const activeStatus = computed(() => hoveredStatus.value === null ? null : props.charts?.status?.[hoveredStatus.value]);
 const pie = computed(() => {
   let angle = 0;
   const entries = props.charts?.status ?? [];
@@ -54,8 +67,41 @@ const pie = computed(() => {
 });
 </script>
 <template><Head :title="title"/><AuthenticatedLayout><section class="space-y-6">
-  <header class="rounded-[2rem] border border-[#d8e7d4] bg-white p-7"><p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">KL IT Inventory</p><h1 class="mt-2 text-3xl font-bold text-[#234222]">{{title}}</h1><p class="mt-2 text-sm text-[#60745d]">{{description}}</p></header>
-  <div v-if="stats.length" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><div v-for="stat in stats" :key="stat.label" class="rounded-[1.5rem] border border-[#d8e7d4] bg-white p-6"><p class="text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">{{stat.label}}</p><p class="mt-3 text-3xl font-bold text-[#2f7d32]">{{stat.value}}</p></div></div>
+  <header v-if="charts" class="relative isolate overflow-hidden rounded-[1.75rem] bg-[#173a21] px-5 py-6 text-white shadow-[0_24px_70px_rgba(30,74,38,.2)] sm:px-8 sm:py-8 lg:px-10">
+    <div class="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[#75bd67]/20 blur-2xl"></div>
+    <div class="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-[#dff2d8]/10 blur-3xl"></div>
+    <div class="relative grid items-end gap-8 lg:grid-cols-[minmax(0,1fr),22rem]">
+      <div>
+        <div class="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[.22em] text-[#c8e9be] backdrop-blur">
+          <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#8dd47f] opacity-60"></span><span class="relative h-2 w-2 rounded-full bg-[#8dd47f]"></span></span>
+          Live portfolio overview
+        </div>
+        <p class="text-xs font-bold uppercase tracking-[.3em] text-[#91c987]">KL IT Inventory</p>
+        <h1 class="mt-2 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">{{title}}</h1>
+        <p class="mt-3 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">{{description}} Monitor allocation, health, location and asset age from one responsive workspace.</p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <Link :href="route('it-assets.index')" class="inline-flex items-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#234222] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#f3faef]">View asset register</Link>
+          <Link v-if="canEdit" :href="route('it-assets.create')" class="inline-flex items-center rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15">+ Register asset</Link>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/[.07] p-4 backdrop-blur-sm">
+        <div class="rounded-xl bg-black/10 p-4"><p class="text-[10px] font-bold uppercase tracking-[.18em] text-white/50">Utilisation</p><p class="mt-2 text-2xl font-black sm:text-3xl">{{statPercent(statValue('Assigned'))}}%</p><p class="mt-1 text-xs text-white/55">{{statValue('Assigned')}} assigned</p></div>
+        <div class="rounded-xl bg-black/10 p-4"><p class="text-[10px] font-bold uppercase tracking-[.18em] text-white/50">Ready now</p><p class="mt-2 text-2xl font-black text-[#aee5a3] sm:text-3xl">{{statPercent(statValue('Available'))}}%</p><p class="mt-1 text-xs text-white/55">{{statValue('Available')}} available</p></div>
+      </div>
+    </div>
+  </header>
+  <header v-else class="rounded-[2rem] border border-[#d8e7d4] bg-white p-7"><p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">KL IT Inventory</p><h1 class="mt-2 text-3xl font-bold text-[#234222]">{{title}}</h1><p class="mt-2 text-sm text-[#60745d]">{{description}}</p></header>
+
+  <div v-if="stats.length" class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+    <article v-for="stat in stats" :key="stat.label" class="group relative overflow-hidden rounded-2xl border border-[#d8e7d4] bg-white p-4 shadow-[0_8px_28px_rgba(39,89,45,.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(39,89,45,.12)] sm:p-5">
+      <div class="absolute inset-x-0 top-0 h-1" :class="statTheme(stat.label).accent"></div>
+      <div class="absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition group-hover:opacity-100" :class="statTheme(stat.label).glow"></div>
+      <div class="relative flex items-start justify-between gap-3">
+        <div><p class="text-[10px] font-extrabold uppercase tracking-[.16em] text-[#70836e] sm:text-xs">{{stat.label}}</p><p class="mt-2 text-2xl font-black tracking-tight text-[#173a21] sm:text-3xl">{{stat.value}}</p><p v-if="stat.label !== 'Total assets'" class="mt-1 text-[11px] font-semibold text-[#8a9a88]">{{statPercent(stat.value)}}% of all assets</p><p v-else class="mt-1 text-[11px] font-semibold text-[#8a9a88]">Tracked equipment</p></div>
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black sm:h-10 sm:w-10" :class="statTheme(stat.label).icon">{{stat.label.charAt(0)}}</span>
+      </div>
+    </article>
+  </div>
 
   <form v-if="filters" class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm" @submit.prevent="applyFilters">
     <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><div class="flex items-center gap-2"><h2 class="font-bold text-[#234222]">Filter assignments</h2><span v-if="activeFilters" class="rounded-full bg-[#e8f5e4] px-2.5 py-1 text-xs font-bold text-[#2f7d32]">{{activeFilters}} active</span></div><p class="mt-1 text-xs text-[#7f9a7a]">Search current device custody records.</p></div><div class="flex gap-2"><button v-if="activeFilters" type="button" class="rounded-xl border border-[#d8e7d4] px-4 py-2 text-sm font-semibold text-[#60745d]" @click="clearFilters">Clear all</button><button type="submit" class="rounded-xl bg-[#4f9f4a] px-5 py-2 text-sm font-bold text-white">Apply filters</button></div></div>
@@ -76,38 +122,64 @@ const pie = computed(() => {
     <p v-if="!availableAssets.length" class="mt-2 text-xs text-[#7f9a7a]">No assets are currently available for checkout.</p>
   </div>
 
-  <div v-if="charts" class="grid gap-6 xl:grid-cols-2">
-    <article class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_16px_38px_rgba(79,159,74,.08)]">
-      <p class="text-xs font-bold uppercase tracking-[.2em] text-[#7f9a7a]">Asset allocation</p><h2 class="mt-1 text-xl font-bold text-[#234222]">Lifecycle status</h2>
-      <div class="mt-6 grid items-center gap-6 sm:grid-cols-[13rem,1fr]">
-        <div class="relative mx-auto h-48 w-48 rounded-full" :style="{background:pie}"><div class="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-white"><span class="text-3xl font-bold text-[#234222]">{{total(charts.status)}}</span><span class="text-xs text-[#7f9a7a]">assets</span></div></div>
-        <div class="space-y-3"><div v-for="(item,index) in charts.status" :key="item.label" class="flex items-center gap-3"><span class="h-3 w-3 rounded-full" :style="{backgroundColor:palette[index%palette.length]}"/><span class="flex-1 text-sm text-[#60745d]">{{item.label}}</span><strong class="text-sm text-[#234222]">{{item.value}} &middot; {{percent(item.value,charts.status)}}%</strong></div></div>
+  <div v-if="charts" class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+    <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-5">
+      <div class="flex items-start justify-between gap-4"><div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-[#71906d]">Asset allocation</p><h2 class="mt-1 text-xl font-black tracking-tight text-[#173a21]">Lifecycle status</h2></div><span class="rounded-full bg-[#eef7eb] px-3 py-1 text-[11px] font-bold text-[#397d38]">Live</span></div>
+      <div class="mt-7 grid items-center gap-7 sm:grid-cols-[12rem,minmax(0,1fr)]">
+        <div class="relative mx-auto h-44 w-44 rounded-full p-3 shadow-inner transition-transform duration-300 hover:scale-[1.03] sm:h-48 sm:w-48" :style="{background:pie}">
+          <div class="flex h-full w-full flex-col items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_#edf4ea]">
+            <span class="text-3xl font-black tracking-tight text-[#173a21]">{{activeStatus?.value ?? dashboardTotal}}</span>
+            <span class="mt-1 max-w-[7rem] truncate text-xs font-semibold text-[#7b8f78]">{{activeStatus?.label ?? 'Total assets'}}</span>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <button v-for="(item,index) in charts.status" :key="item.label" type="button" class="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition hover:border-[#dbead7] hover:bg-[#f7fbf5] focus:border-[#b9dbb1] focus:outline-none" @mouseenter="hoveredStatus=index" @mouseleave="hoveredStatus=null" @focus="hoveredStatus=index" @blur="hoveredStatus=null">
+            <span class="h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-[#edf5ea]" :style="{backgroundColor:palette[index%palette.length]}"/>
+            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-[#5c715a]">{{item.label}}</span>
+            <span class="text-right"><strong class="block text-sm font-black text-[#173a21]">{{item.value}}</strong><small class="text-[10px] font-bold text-[#93a391]">{{percent(item.value,charts.status)}}%</small></span>
+          </button>
+        </div>
       </div>
     </article>
 
-    <article class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_16px_38px_rgba(79,159,74,.08)]">
-      <p class="text-xs font-bold uppercase tracking-[.2em] text-[#7f9a7a]">Inventory mix</p><h2 class="mt-1 text-xl font-bold text-[#234222]">Assets by category</h2>
-      <div class="mt-6 space-y-4"><div v-for="item in charts.categories" :key="item.label"><div class="mb-1.5 flex justify-between text-sm"><span class="truncate pr-4 text-[#60745d]">{{item.label}}</span><strong class="text-[#234222]">{{item.value}}</strong></div><div class="h-3 overflow-hidden rounded-full bg-[#edf5ea]"><div class="h-full rounded-full bg-[linear-gradient(90deg,#2f7d32,#7abd70)]" :style="{width:`${(item.value/maximum(charts.categories))*100}%`}"/></div></div></div>
+    <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-7">
+      <div class="flex items-start justify-between gap-4"><div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-[#71906d]">Inventory mix</p><h2 class="mt-1 text-xl font-black tracking-tight text-[#173a21]">Assets by category</h2></div><p class="text-right text-xs text-[#8a9a88]"><strong class="block text-lg text-[#173a21]">{{charts.categories.length}}</strong>categories</p></div>
+      <div class="mt-7 space-y-5">
+        <button v-for="(item,index) in charts.categories" :key="item.label" type="button" class="block w-full text-left focus:outline-none" @mouseenter="hoveredCategory=index" @mouseleave="hoveredCategory=null" @focus="hoveredCategory=index" @blur="hoveredCategory=null">
+          <div class="mb-2 flex items-end justify-between gap-4"><span class="truncate text-sm font-bold text-[#50694e]">{{item.label}}</span><span class="shrink-0 text-sm"><strong class="text-[#173a21]">{{item.value}}</strong><small class="ml-1 text-[#91a08f]">({{percent(item.value,charts.categories)}}%)</small></span></div>
+          <div class="h-3 overflow-hidden rounded-full bg-[#edf4ea]"><div class="h-full origin-left rounded-full bg-[linear-gradient(90deg,#2b7933,#75bd67)] transition-all duration-500" :class="hoveredCategory===index ? 'brightness-110' : ''" :style="{width:`${(item.value/maximum(charts.categories))*100}%`,transform:hoveredCategory===index?'scaleY(1.35)':'scaleY(1)'}"/></div>
+        </button>
+      </div>
     </article>
 
-    <article class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_16px_38px_rgba(79,159,74,.08)]">
-      <p class="text-xs font-bold uppercase tracking-[.2em] text-[#7f9a7a]">Deployment footprint</p><h2 class="mt-1 text-xl font-bold text-[#234222]">Assets by location</h2>
-      <div class="mt-6 flex h-64 items-end gap-3 overflow-x-auto border-b border-[#d8e7d4] px-2 pb-0"><div v-for="(item,index) in charts.locations" :key="item.label" class="flex h-full min-w-[4.5rem] flex-1 flex-col justify-end text-center"><strong class="mb-2 text-sm text-[#234222]">{{item.value}}</strong><div class="mx-auto w-3/5 min-h-[.5rem] rounded-t-lg" :style="{height:`${(item.value/maximum(charts.locations))*75}%`,backgroundColor:palette[index%5]}"/><span class="mt-2 line-clamp-2 min-h-[2.5rem] text-[11px] leading-4 text-[#60745d]">{{item.label}}</span></div></div>
+    <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-7">
+      <div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-[#71906d]">Deployment footprint</p><h2 class="mt-1 text-xl font-black tracking-tight text-[#173a21]">Assets by location</h2><p class="mt-1 text-xs text-[#899a86]">Where the current asset fleet is physically based.</p></div>
+      <div class="mt-6 grid gap-3 sm:grid-cols-2">
+        <button v-for="(item,index) in charts.locations" :key="item.label" type="button" class="group relative overflow-hidden rounded-2xl border border-[#e1ecde] bg-[#f8fbf7] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#a9d3a1] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#75bd67]/40" @mouseenter="hoveredLocation=index" @mouseleave="hoveredLocation=null" @focus="hoveredLocation=index" @blur="hoveredLocation=null">
+          <div class="absolute inset-y-0 left-0 bg-[#e6f3e2] transition-all duration-500" :style="{width:`${percent(item.value,charts.locations)}%`}"></div>
+          <div class="relative flex items-center gap-3"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#397d38] shadow-sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2" stroke-width="1.8"/></svg></span><span class="min-w-0 flex-1"><strong class="block truncate text-sm text-[#173a21]">{{item.label}}</strong><small class="text-[#71816f]">{{percent(item.value,charts.locations)}}% of fleet</small></span><strong class="text-xl font-black text-[#234222]">{{item.value}}</strong></div>
+        </button>
+        <div v-if="!charts.locations.length" class="rounded-2xl border border-dashed border-[#cadfc5] p-8 text-center text-sm text-[#71816f]">No asset locations recorded yet.</div>
+      </div>
     </article>
 
-    <article class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_16px_38px_rgba(79,159,74,.08)]">
-      <p class="text-xs font-bold uppercase tracking-[.2em] text-[#7f9a7a]">Lifecycle planning</p><h2 class="mt-1 text-xl font-bold text-[#234222]">Asset age profile</h2>
-      <div class="mt-6 grid grid-cols-5 gap-3"><div v-for="(item,index) in charts.age" :key="item.label" class="text-center"><div class="flex h-44 items-end justify-center rounded-xl bg-[#f5faf3] p-2"><div class="w-full rounded-lg" :style="{height:`${Math.max((item.value/maximum(charts.age))*100,4)}%`,backgroundColor:palette[index%palette.length]}"/></div><strong class="mt-2 block text-lg text-[#234222]">{{item.value}}</strong><span class="text-[11px] leading-4 text-[#60745d]">{{item.label}}</span></div></div>
+    <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-5">
+      <div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-[#71906d]">Lifecycle planning</p><h2 class="mt-1 text-xl font-black tracking-tight text-[#173a21]">Asset age profile</h2></div>
+      <div class="mt-6 space-y-4">
+        <div v-for="(item,index) in charts.age" :key="item.label" class="grid grid-cols-[6.5rem,minmax(0,1fr),2rem] items-center gap-3 sm:grid-cols-[7.5rem,minmax(0,1fr),2rem]">
+          <span class="truncate text-xs font-semibold text-[#637761]">{{item.label}}</span><div class="h-8 overflow-hidden rounded-lg bg-[#f0f5ee] p-1"><div class="h-full min-w-[.35rem] rounded-md transition-all duration-500 hover:brightness-110" :style="{width:`${(item.value/maximum(charts.age))*100}%`,backgroundColor:palette[index%palette.length]}"/></div><strong class="text-right text-sm text-[#173a21]">{{item.value}}</strong>
+        </div>
+      </div>
     </article>
 
-    <article class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_16px_38px_rgba(79,159,74,.08)]">
-      <p class="text-xs font-bold uppercase tracking-[.2em] text-[#7f9a7a]">Health snapshot</p><h2 class="mt-1 text-xl font-bold text-[#234222]">Condition distribution</h2>
-      <div class="mt-6 space-y-4"><div v-for="(item,index) in charts.conditions" :key="item.label" class="grid grid-cols-[7rem,1fr,3rem] items-center gap-3"><span class="truncate text-sm text-[#60745d]">{{item.label}}</span><div class="h-7 overflow-hidden rounded-lg bg-[#edf5ea]"><div class="flex h-full items-center justify-end rounded-lg pr-2 text-xs font-bold text-white" :style="{width:`${Math.max(percent(item.value,charts.conditions),8)}%`,backgroundColor:palette[index%palette.length]}">{{percent(item.value,charts.conditions)}}%</div></div><strong class="text-right text-[#234222]">{{item.value}}</strong></div></div>
+    <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-6">
+      <div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-[#71906d]">Health snapshot</p><h2 class="mt-1 text-xl font-black tracking-tight text-[#173a21]">Condition distribution</h2></div>
+      <div class="mt-6 space-y-4"><div v-for="(item,index) in charts.conditions" :key="item.label" class="grid grid-cols-[5.5rem,minmax(0,1fr),2rem] items-center gap-3 sm:grid-cols-[7rem,minmax(0,1fr),3rem]"><span class="truncate text-xs font-semibold text-[#637761] sm:text-sm">{{item.label}}</span><div class="h-8 overflow-hidden rounded-lg bg-[#edf5ea]"><div class="flex h-full min-w-[2.5rem] items-center justify-end rounded-lg pr-2 text-[10px] font-black text-white transition-all duration-500" :style="{width:`${Math.max(percent(item.value,charts.conditions),8)}%`,backgroundColor:palette[index%palette.length]}">{{percent(item.value,charts.conditions)}}%</div></div><strong class="text-right text-sm text-[#173a21]">{{item.value}}</strong></div></div>
     </article>
 
-    <article class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_16px_38px_rgba(79,159,74,.08)]">
-      <p class="text-xs font-bold uppercase tracking-[.2em] text-[#7f9a7a]">Acquisition trend</p><h2 class="mt-1 text-xl font-bold text-[#234222]">Purchases by year</h2>
-      <div v-if="charts.purchaseYears.length" class="mt-8 flex h-52 items-end gap-2 border-b border-l border-[#d8e7d4] px-3"><div v-for="item in charts.purchaseYears" :key="item.label" class="flex h-full min-w-[2.75rem] flex-1 flex-col justify-end text-center"><span class="mb-2 text-xs font-bold text-[#234222]">{{item.value}}</span><div class="mx-auto w-2/3 rounded-t-md bg-[#55a651]" :style="{height:`${Math.max((item.value/maximum(charts.purchaseYears))*85,5)}%`}"/><span class="mt-2 text-[11px] text-[#60745d]">{{item.label}}</span></div></div><div v-else class="mt-6 rounded-xl border border-dashed border-[#d8e7d4] p-12 text-center text-sm text-[#60745d]">Add purchase years to assets to populate this trend.</div>
+    <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-6">
+      <div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-[#71906d]">Acquisition trend</p><h2 class="mt-1 text-xl font-black tracking-tight text-[#173a21]">Purchases by year</h2></div>
+      <div v-if="charts.purchaseYears.length" class="mt-7 overflow-x-auto pb-1"><div class="flex h-48 min-w-[24rem] items-end gap-2 border-b border-[#d8e7d4] px-2"><div v-for="item in charts.purchaseYears" :key="item.label" class="group flex h-full min-w-[2.75rem] flex-1 flex-col justify-end text-center"><span class="mb-2 text-xs font-black text-[#234222] opacity-70 transition group-hover:opacity-100">{{item.value}}</span><div class="mx-auto w-3/5 rounded-t-lg bg-[linear-gradient(180deg,#75bd67,#2f7d32)] transition-all duration-300 group-hover:w-3/4" :style="{height:`${Math.max((item.value/maximum(charts.purchaseYears))*78,5)}%`}"/><span class="mt-2 text-[10px] font-semibold text-[#728570]">{{item.label}}</span></div></div></div><div v-else class="mt-6 rounded-xl border border-dashed border-[#d8e7d4] p-10 text-center text-sm text-[#60745d]">Add purchase years to assets to populate this trend.</div>
     </article>
   </div>
   <div v-if="rowItems.length" class="overflow-hidden rounded-[1.5rem] border border-[#d8e7d4] bg-white">
@@ -116,6 +188,6 @@ const pie = computed(() => {
   </div>
   <div v-if="!stats.length && !rowItems.length" class="rounded-[1.5rem] border border-dashed border-[#cfe6c8] bg-white p-12 text-center text-[#60745d]">{{filters ? 'No assignments match the selected filters.' : 'No records are available for this section yet.'}}</div>
   <div v-if="rows.links?.length" class="flex flex-wrap gap-2"><Link v-for="link in rows.links" :key="link.label" v-html="link.label" :href="link.url||'#'" class="btn btn-sm" :class="{'btn-disabled':!link.url,'btn-success text-white':link.active}" preserve-scroll /></div>
-  <Link class="btn border-[#cfe6c8] bg-white" :href="route('it-assets.index')">Open IT Asset Register</Link>
+  <Link v-if="!charts" class="btn border-[#cfe6c8] bg-white" :href="route('it-assets.index')">Open IT Asset Register</Link>
   <AssetAssignmentModal v-if="selectedAsset" :asset="selectedAsset" :user-options="userOptions" @close="selectedAsset = null; selectedAvailableId = ''" />
 </section></AuthenticatedLayout></template>
