@@ -4,11 +4,13 @@ import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, reactive } from 'vue';
 
-const props = defineProps({ licenses: Object, summary: Object, filters: Object, types: Array, departments: Array });
+const props = defineProps({ licenses: Object, summary: Object, assignmentChart: Array, filters: Object, types: Array, departments: Array });
 const page = usePage();
 const canEdit = computed(() => page.props.auth?.user?.can?.it_assets_edit);
 const form = reactive({ ...props.filters });
 const activeFilters = computed(() => Object.values(form).filter((value) => value !== '' && value !== null).length);
+const chartMaximum = computed(() => Math.max(1, ...props.assignmentChart.map((item) => item.total_licenses)));
+const chartWidth = (value) => `${(value / chartMaximum.value) * 100}%`;
 const applyFilters = () => router.get(route('it-licenses.index'), form, { preserveState: true, preserveScroll: true, replace: true });
 const clearFilters = () => {
   Object.keys(form).forEach((key) => { form[key] = ''; });
@@ -41,6 +43,26 @@ const formatDate = (date) => date ? new Intl.DateTimeFormat('en-MY', { day: '2-d
           <p class="text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">{{ card.label }}</p><p class="mt-2 text-3xl font-black text-[#234222]">{{ card.value }}</p>
         </article>
       </div>
+
+      <section class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm sm:p-6">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div><p class="text-xs font-bold uppercase tracking-[.2em] text-[#4f9f4a]">Licence usage</p><h2 class="mt-1 text-xl font-black text-[#234222]">Users assigned by software</h2><p class="mt-1 text-xs text-[#7f9a7a]">Assigned users compared with the total licences recorded for each software product.</p></div>
+          <div class="flex gap-4 text-xs font-semibold text-[#60745d]"><span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-[#4f9f4a]"></span>Assigned</span><span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-[#dce8d9]"></span>Unassigned</span></div>
+        </div>
+        <div v-if="assignmentChart.length" class="mt-6 space-y-3">
+          <div v-for="item in assignmentChart" :key="item.software_name" class="grid gap-1.5 sm:grid-cols-[minmax(10rem,16rem)_minmax(0,1fr)_8rem] sm:items-center sm:gap-4">
+            <span class="truncate text-sm font-semibold text-[#405d3e]" :title="item.software_name">{{ item.software_name }}</span>
+            <div class="h-7 overflow-hidden rounded-lg bg-[#f1f6ef]">
+              <div class="flex h-full min-w-[.4rem] overflow-hidden rounded-lg" :style="{ width: chartWidth(item.total_licenses) }">
+                <div class="h-full bg-[linear-gradient(90deg,#2f7d32,#62b357)] transition-all duration-500" :style="{ width: `${item.total_licenses ? (item.users_assigned / item.total_licenses) * 100 : 0}%` }" :title="`${item.users_assigned} users assigned`"></div>
+                <div class="h-full bg-[#dce8d9]" :style="{ width: `${item.total_licenses ? (item.unassigned / item.total_licenses) * 100 : 0}%` }" :title="`${item.unassigned} unassigned`"></div>
+              </div>
+            </div>
+            <span class="text-sm font-black text-[#234222] sm:text-right">{{ item.users_assigned }} <small class="font-medium text-[#7f9a7a]">/ {{ item.total_licenses }}</small></span>
+          </div>
+        </div>
+        <div v-else class="mt-6 rounded-xl bg-[#f5faf3] px-4 py-8 text-center text-sm text-[#7f9a7a]">No licence assignments to chart yet.</div>
+      </section>
 
       <form class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm" @submit.prevent="applyFilters">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><div class="flex items-center gap-2"><h2 class="font-bold text-[#234222]">Filter licences</h2><span v-if="activeFilters" class="rounded-full bg-[#e8f5e4] px-2.5 py-1 text-xs font-bold text-[#2f7d32]">{{ activeFilters }} active</span></div><p class="mt-1 text-xs text-[#7f9a7a]">Search products, vendors, owners, and licence IDs.</p></div><div class="flex gap-2"><button v-if="activeFilters" type="button" class="rounded-xl border border-[#d8e7d4] px-4 py-2 text-sm font-semibold text-[#60745d]" @click="clearFilters">Clear all</button><button class="rounded-xl bg-[#4f9f4a] px-5 py-2 text-sm font-bold text-white">Apply filters</button></div></div>

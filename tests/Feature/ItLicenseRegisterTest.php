@@ -49,6 +49,9 @@ class ItLicenseRegisterTest extends TestCase
                 ->component('ItLicenses/Index')
                 ->where('summary.total', 1)
                 ->where('summary.users_assigned', 20)
+                ->where('assignmentChart.0.software_name', 'Microsoft 365 Business')
+                ->where('assignmentChart.0.users_assigned', 20)
+                ->where('assignmentChart.0.total_licenses', 25)
                 ->where('licenses.data.0.assigned_to', 'IT Administrator')
                 ->has('licenses.data', 1));
 

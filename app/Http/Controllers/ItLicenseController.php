@@ -55,10 +55,26 @@ class ItLicenseController extends Controller
             'expired' => $this->statusQuery(clone $all, 'expired')->count(),
             'users_assigned' => (int) (clone $all)->where('active', true)->sum('seats_assigned'),
         ];
+        $assignmentChart = ItLicense::query()
+            ->where('active', true)
+            ->select('software_name')
+            ->selectRaw('SUM(seats_assigned) as users_assigned')
+            ->selectRaw('SUM(seats_total) as total_licenses')
+            ->groupBy('software_name')
+            ->orderByDesc('users_assigned')
+            ->orderBy('software_name')
+            ->get()
+            ->map(fn (ItLicense $license) => [
+                'software_name' => $license->software_name,
+                'users_assigned' => (int) $license->users_assigned,
+                'total_licenses' => (int) $license->total_licenses,
+                'unassigned' => max(0, (int) $license->total_licenses - (int) $license->users_assigned),
+            ]);
 
         return Inertia::render('ItLicenses/Index', [
             'licenses' => $licenses,
             'summary' => $summary,
+            'assignmentChart' => $assignmentChart,
             'filters' => [
                 'search' => $filters['search'] ?? '',
                 'type' => $filters['type'] ?? '',
