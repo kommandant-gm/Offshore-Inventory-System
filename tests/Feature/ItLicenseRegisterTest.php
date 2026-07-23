@@ -49,6 +49,7 @@ class ItLicenseRegisterTest extends TestCase
                 ->component('ItLicenses/Index')
                 ->where('summary.total', 1)
                 ->where('summary.seats_available', 5)
+                ->where('licenses.data.0.assigned_to', 'IT Administrator')
                 ->has('licenses.data', 1));
 
         $this->get(route('it-licenses.show', $license))

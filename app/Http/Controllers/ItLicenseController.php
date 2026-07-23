@@ -189,6 +189,7 @@ class ItLicenseController extends Controller
             'seats_total' => $license->seats_total,
             'seats_assigned' => $license->seats_assigned,
             'seats_available' => max(0, $license->seats_total - $license->seats_assigned),
+            'assigned_to' => $license->assigned_to,
             'expiry_date' => $license->expiry_date?->format('Y-m-d'),
             'status' => $license->status(),
         ];

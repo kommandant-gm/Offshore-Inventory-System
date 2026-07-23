@@ -55,13 +55,13 @@ const formatDate = (date) => date ? new Intl.DateTimeFormat('en-MY', { day: '2-d
       <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
         <div class="flex items-center justify-between border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><span><strong class="text-[#234222]">{{ licenses.total }}</strong> {{ licenses.total === 1 ? 'licence' : 'licences' }} found</span><span v-if="licenses.total">Showing {{ licenses.from }}&ndash;{{ licenses.to }}</span></div>
         <div class="overflow-x-auto"><table class="table">
-          <thead><tr><th>Licence ID</th><th>Software</th><th>Type</th><th>Seats</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Licence ID</th><th>Software</th><th>Type</th><th>Checked Out To</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             <tr v-for="license in licenses.data" :key="license.id">
               <td><Link class="font-bold text-[#2f7d32]" :href="route('it-licenses.show', license.id)">{{ license.license_code }}</Link></td>
               <td><p class="font-semibold text-[#234222]">{{ license.software_name }}</p><p class="text-xs text-slate-500">{{ license.vendor || 'Vendor not specified' }}</p></td>
               <td>{{ label(license.license_type) }}</td>
-              <td><p class="font-semibold">{{ license.seats_assigned }} / {{ license.seats_total }}</p><p class="text-xs text-slate-500">{{ license.seats_available }} available</p></td>
+              <td><p v-if="license.assigned_to" class="max-w-64 font-semibold text-[#234222]">{{ license.assigned_to }}</p><span v-else class="text-sm text-slate-500">{{ license.seats_assigned ? 'Assignee not recorded' : 'Available / Unassigned' }}</span></td>
               <td>{{ formatDate(license.expiry_date) }}</td>
               <td><span class="inline-flex whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold" :class="statusStyles[license.status]">{{ label(license.status) }}</span></td>
               <td><div class="flex gap-2"><Link class="btn btn-xs border-[#b8cde0] bg-[#f3f8fc] text-[#194568]" :href="route('it-licenses.show', license.id)">View</Link><Link v-if="canEdit" class="btn btn-xs border-[#cfe6c8] bg-white" :href="route('it-licenses.edit', license.id)">Edit</Link></div></td>
