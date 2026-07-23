@@ -48,7 +48,7 @@ class ItLicenseRegisterTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('ItLicenses/Index')
                 ->where('summary.total', 1)
-                ->where('summary.seats_available', 5)
+                ->where('summary.users_assigned', 20)
                 ->where('licenses.data.0.assigned_to', 'IT Administrator')
                 ->has('licenses.data', 1));
 

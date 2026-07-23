@@ -37,7 +37,7 @@ const formatDate = (date) => date ? new Intl.DateTimeFormat('en-MY', { day: '2-d
       </header>
 
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <article v-for="card in [{label:'Total licences',value:summary.total},{label:'Active',value:summary.active},{label:'Expiring in 30 days',value:summary.expiring_soon},{label:'Expired',value:summary.expired},{label:'Seats available',value:summary.seats_available}]" :key="card.label" class="rounded-[1.5rem] border border-[#d8e7d4] bg-white p-5 shadow-sm">
+        <article v-for="card in [{label:'Total licences',value:summary.total},{label:'Active',value:summary.active},{label:'Expiring in 30 days',value:summary.expiring_soon},{label:'Expired',value:summary.expired},{label:'Users assigned',value:summary.users_assigned}]" :key="card.label" class="rounded-[1.5rem] border border-[#d8e7d4] bg-white p-5 shadow-sm">
           <p class="text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">{{ card.label }}</p><p class="mt-2 text-3xl font-black text-[#234222]">{{ card.value }}</p>
         </article>
       </div>

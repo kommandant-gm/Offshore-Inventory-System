@@ -53,7 +53,7 @@ class ItLicenseController extends Controller
             'active' => $this->statusQuery(clone $all, 'active')->count(),
             'expiring_soon' => $this->statusQuery(clone $all, 'expiring_soon')->count(),
             'expired' => $this->statusQuery(clone $all, 'expired')->count(),
-            'seats_available' => max(0, (int) (clone $all)->where('active', true)->sum('seats_total') - (int) (clone $all)->where('active', true)->sum('seats_assigned')),
+            'users_assigned' => (int) (clone $all)->where('active', true)->sum('seats_assigned'),
         ];
 
         return Inertia::render('ItLicenses/Index', [
