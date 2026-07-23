@@ -30,7 +30,10 @@ const formatDate = (date) => date ? new Intl.DateTimeFormat('en-MY', { day: '2-d
     <section class="space-y-6">
       <header class="flex flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-[#d8e7d4] bg-white p-7 shadow-sm">
         <div><p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">KL IT Inventory</p><h1 class="mt-2 text-3xl font-bold text-[#234222]">IT Licence Register</h1><p class="mt-2 text-sm text-[#60745d]">Software licences, seat availability, ownership, and renewal dates.</p></div>
-        <Link v-if="canEdit" :href="route('it-licenses.create')" class="rounded-full bg-[#4f9f4a] px-5 py-3 text-sm font-bold text-white">Register licence</Link>
+        <div v-if="canEdit" class="flex flex-wrap gap-2">
+          <Link :href="route('it-licenses.import.create')" class="rounded-full border border-[#4f9f4a] px-5 py-3 text-sm font-bold text-[#2f7d32]">Import licences</Link>
+          <Link :href="route('it-licenses.create')" class="rounded-full bg-[#4f9f4a] px-5 py-3 text-sm font-bold text-white">Register licence</Link>
+        </div>
       </header>
 
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
