@@ -12,14 +12,11 @@ import { computed, ref, watch } from 'vue';
 const props = defineProps({
     locations: Array,
     locationOptions: Array,
-    typeOptions: Array,
 });
 
 const editingId = ref(null);
 const form = useForm({
-    code: '',
     name: '',
-    type: props.typeOptions[0]?.value ?? 'yard',
     parent_id: '',
     active: true,
 });
@@ -29,16 +26,13 @@ const submitLabel = computed(() => editingId.value ? 'Update Location' : 'Create
 watch(editingId, (id) => {
     if (!id) {
         form.reset();
-        form.type = props.typeOptions[0]?.value ?? 'yard';
         form.active = true;
     }
 });
 
 const editLocation = (location) => {
     editingId.value = location.id;
-    form.code = location.code;
     form.name = location.name;
-    form.type = location.type;
     form.parent_id = location.parent_id ?? '';
     form.active = location.active;
 };
@@ -67,24 +61,14 @@ const submit = () => {
 
         <div class="grid gap-6 xl:grid-cols-[360px,1fr]">
             <form class="rounded-2xl border border-[#d8e7d4] bg-white p-6 space-y-4 shadow-[0_18px_45px_rgba(79,159,74,0.10)]" @submit.prevent="submit">
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-[#5f7b5e]">Code</label>
-                    <TextInput v-model="form.code" class="w-full border-[#cfe6c8] bg-white text-[#234222]" />
-                    <InputError class="mt-2" :message="form.errors.code" />
-                </div>
+                <p class="rounded-xl border border-dashed border-[#cfe6c8] bg-[#fbfefa] px-4 py-3 text-sm text-[#5f7b5e]">
+                    {{ editingId ? 'The existing location code will be kept.' : 'A location code will be generated automatically.' }}
+                </p>
 
                 <div>
                     <label class="mb-2 block text-sm font-medium text-[#5f7b5e]">Name</label>
                     <TextInput v-model="form.name" class="w-full border-[#cfe6c8] bg-white text-[#234222]" />
                     <InputError class="mt-2" :message="form.errors.name" />
-                </div>
-
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-[#5f7b5e]">Type</label>
-                    <CustomSelect v-model="form.type" class="select w-full border-[#cfe6c8] bg-white text-[#234222]">
-                        <option v-for="option in typeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                    </CustomSelect>
-                    <InputError class="mt-2" :message="form.errors.type" />
                 </div>
 
                 <div>
@@ -113,7 +97,6 @@ const submit = () => {
                         <tr class="text-[#6f8a6b]">
                             <th>Code</th>
                             <th>Name</th>
-                            <th>Type</th>
                             <th>Parent</th>
                             <th>Status</th>
                             <th></th>
@@ -123,7 +106,6 @@ const submit = () => {
                         <tr v-for="location in locations" :key="location.id" class="hover:bg-[#f4fbf1]">
                             <td class="font-mono text-[#3c8a39]">{{ location.code }}</td>
                             <td class="text-[#234222]">{{ location.name }}</td>
-                            <td><StatusBadge :value="location.type" /></td>
                             <td class="text-[#5f7b5e]">{{ location.parent_name ?? '-' }}</td>
                             <td><StatusBadge :value="location.active ? 'active' : 'inactive'" /></td>
                             <td class="text-right">

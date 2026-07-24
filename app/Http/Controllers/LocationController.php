@@ -27,7 +27,6 @@ class LocationController extends Controller
                 'id' => $location->id,
                 'code' => $location->code,
                 'name' => $location->name,
-                'type' => $location->type->value,
                 'parent_id' => $location->parent_id,
                 'parent_name' => $location->parent?->name,
                 'active' => $location->active,
@@ -36,13 +35,16 @@ class LocationController extends Controller
                 'value' => $location->id,
                 'label' => "{$location->code} - {$location->name}",
             ]),
-            'typeOptions' => LocationType::options(),
         ]);
     }
 
     public function store(StoreLocationRequest $request, AuditLogger $auditLogger): RedirectResponse
     {
-        $location = Location::create($request->validated());
+        $location = Location::create([
+            ...$request->validated(),
+            'code' => $this->generateLocationCode(),
+            'type' => LocationType::Yard,
+        ]);
         $auditLogger->record(
             module: 'locations',
             event: 'created',
@@ -72,5 +74,17 @@ class LocationController extends Controller
         );
 
         return back()->with('success', 'Location updated.');
+    }
+
+    private function generateLocationCode(): string
+    {
+        $nextNumber = ((int) Location::withoutGlobalScopes()->max('id')) + 1;
+
+        do {
+            $code = 'LOC-'.str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT);
+            $nextNumber++;
+        } while (Location::withoutGlobalScopes()->where('code', $code)->exists());
+
+        return $code;
     }
 }
