@@ -7,7 +7,7 @@
         ClipboardDocumentCheckIcon, ChartBarIcon, ChatBubbleLeftRightIcon,
         Cog6ToothIcon, BellIcon, MagnifyingGlassIcon,
         ExclamationTriangleIcon,
-        Bars3Icon, ArrowRightStartOnRectangleIcon, TagIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, ChevronDownIcon, KeyIcon
+        Bars3Icon, ArrowRightStartOnRectangleIcon, TagIcon, BuildingStorefrontIcon, ClipboardDocumentListIcon, ChevronDownIcon, KeyIcon, UserGroupIcon
     } from '@heroicons/vue/24/outline';
 
     const isSidebarOpen = ref(false);
@@ -28,6 +28,7 @@
     watch(miriExpanded, (value) => localStorage.setItem('sidebar.miri.expanded', String(value)));
     watch(klExpanded, (value) => localStorage.setItem('sidebar.kl.expanded', String(value)));
     const hasBranch = (code) => currentUser?.branches?.some((branch) => branch.code === code);
+    const isItemActive = (item) => route().current(item.active ?? item.route);
     const openBranchRoute = (branchCode, routeName) => {
         const branch = currentUser?.branches?.find((entry) => entry.code === branchCode);
         if (!branch) return;
@@ -55,6 +56,7 @@
         { name: 'IT Dashboard', icon: Squares2X2Icon, route: 'it-assets.dashboard', can: 'it_assets_read' },
         { name: 'IT Asset Register', icon: ClipboardDocumentCheckIcon, route: 'it-assets.index', can: 'it_assets_read' },
         { name: 'IT Licence Register', icon: KeyIcon, route: 'it-licenses.index', can: 'it_assets_read' },
+        { name: 'People', icon: UserGroupIcon, route: 'it-people.index', active: 'it-people.*', can: 'it_assets_read' },
         { name: 'Import Assets', icon: ArchiveBoxIcon, route: 'it-assets.import.create', can: 'it_assets_edit' },
         { name: 'Assignments / Returns', icon: TruckIcon, route: 'it-assets.assignments', can: 'it_assets_read' },
         { name: 'Repairs', icon: ExclamationTriangleIcon, route: 'it-assets.repairs', can: 'it_assets_read' },
@@ -274,7 +276,7 @@
                                 <span>Miri Inventory</span><ChevronDownIcon class="h-4 w-4 transition-transform" :class="miriExpanded ? 'rotate-180' : ''" />
                             </button>
                             <div v-show="miriExpanded" class="space-y-0.5">
-                                <button v-for="item in miriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                <button v-for="item in miriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && isItemActive(item) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
                                     <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
                                 </button>
                             </div>
@@ -285,7 +287,7 @@
                                 <span>KL IT Inventory</span><ChevronDownIcon class="h-4 w-4 transition-transform" :class="klExpanded ? 'rotate-180' : ''" />
                             </button>
                             <div v-show="klExpanded" class="space-y-0.5">
-                                <button v-for="item in klItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`kl-${item.name}`" type="button" @click="openBranchRoute('KL-IT', item.route)" :class="currentUser?.active_branch?.code === 'KL-IT' && route().current(item.route) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                <button v-for="item in klItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`kl-${item.name}`" type="button" @click="openBranchRoute('KL-IT', item.route)" :class="currentUser?.active_branch?.code === 'KL-IT' && isItemActive(item) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
                                     <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
                                 </button>
                             </div>

@@ -19,6 +19,7 @@ use App\Http\Controllers\ItAssetImportController;
 use App\Http\Controllers\ItAssetSectionController;
 use App\Http\Controllers\ItLicenseController;
 use App\Http\Controllers\ItLicenseImportController;
+use App\Http\Controllers\ItPeopleController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicAssetController;
@@ -54,6 +55,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/it-licenses-import/preview', [ItLicenseImportController::class, 'preview'])->name('it-licenses.import.preview');
     Route::post('/it-licenses-import', [ItLicenseImportController::class, 'store'])->name('it-licenses.import.store');
     Route::get('/it-dashboard', [ItAssetSectionController::class, 'dashboard'])->name('it-assets.dashboard');
+    Route::get('/it-people', [ItPeopleController::class, 'index'])->name('it-people.index');
+    Route::get('/it-people/{person}', [ItPeopleController::class, 'show'])->name('it-people.show');
     Route::get('/it-asset-assignments', [ItAssetSectionController::class, 'assignments'])->name('it-assets.assignments');
     Route::get('/it-asset-repairs', [ItAssetSectionController::class, 'repairs'])->name('it-assets.repairs');
     Route::get('/it-asset-reports', [ItAssetSectionController::class, 'reports'])->name('it-assets.reports');
