@@ -23,6 +23,7 @@ const page = usePage();
 const canEdit = computed(() => page.props.auth?.user?.can?.it_assets_edit);
 const selectedAsset = ref(null);
 const generatingAllQr = ref(false);
+const assignmentOverviewOpen = ref(false);
 const form = reactive({ ...props.filters });
 const activeFilters = computed(() => Object.values(form).filter((value) => value !== '' && value !== null).length);
 const applyFilters = () => router.get(route('it-assets.index'), form, { preserveState: true, preserveScroll: true, replace: true });
@@ -121,23 +122,42 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
       <section class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm sm:p-6">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div><p class="text-xs font-bold uppercase tracking-[.18em] text-[#4f9f4a]">Assignment overview</p><h2 class="mt-1 text-lg font-bold text-[#234222]">Assigned assets by department status</h2><p class="mt-1 text-xs text-[#7f9a7a]">Current assignments across the full IT asset register.</p></div>
-          <div class="rounded-2xl bg-[#f2f8ef] px-4 py-3 text-right"><p class="text-2xl font-bold text-[#234222]">{{ assignedAssetTotal }}</p><p class="text-xs font-semibold text-[#60745d]">Assigned assets</p></div>
+          <button
+            type="button"
+            class="flex items-center gap-4 rounded-2xl bg-[#f2f8ef] px-4 py-3 text-left transition hover:bg-[#e8f3e4] focus:outline-none focus:ring-2 focus:ring-[#4f9f4a]/40"
+            :aria-expanded="assignmentOverviewOpen"
+            aria-controls="assignment-overview-content"
+            @click="assignmentOverviewOpen = !assignmentOverviewOpen"
+          >
+            <span class="text-right">
+              <span class="block text-2xl font-bold leading-none text-[#234222]">{{ assignedAssetTotal }}</span>
+              <span class="mt-1 block text-xs font-semibold text-[#60745d]">Assigned assets</span>
+            </span>
+            <span class="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[#2f7d32]">
+              {{ assignmentOverviewOpen ? 'Hide' : 'Show' }}
+              <svg class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': assignmentOverviewOpen }" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+              </svg>
+            </span>
+          </button>
         </div>
-        <div v-if="assignedAssetsByDepartment.length" class="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto]">
-          <div class="space-y-4">
-            <div v-for="row in assignedAssetsByDepartment" :key="row.department" class="grid grid-cols-[9rem_minmax(0,1fr)_2.5rem] items-center gap-3">
-              <div class="truncate text-sm font-semibold text-[#395337]" :title="row.department">{{ row.department }}</div>
-              <div class="flex h-7 overflow-hidden rounded-lg bg-[#edf3eb]" :aria-label="`${row.department}: ${row.total} assigned assets`">
-                <div v-for="status in chartStatuses" :key="status" :class="barClass(status)" :style="{ width: chartBarWidth(row.statuses[status] || 0, largestDepartmentTotal) }" :title="`${statusLabel(status)}: ${row.statuses[status] || 0}`"></div>
+        <div v-show="assignmentOverviewOpen" id="assignment-overview-content">
+          <div v-if="assignedAssetsByDepartment.length" class="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto]">
+            <div class="space-y-4">
+              <div v-for="row in assignedAssetsByDepartment" :key="row.department" class="grid grid-cols-[9rem_minmax(0,1fr)_2.5rem] items-center gap-3">
+                <div class="truncate text-sm font-semibold text-[#395337]" :title="row.department">{{ row.department }}</div>
+                <div class="flex h-7 overflow-hidden rounded-lg bg-[#edf3eb]" :aria-label="`${row.department}: ${row.total} assigned assets`">
+                  <div v-for="status in chartStatuses" :key="status" :class="barClass(status)" :style="{ width: chartBarWidth(row.statuses[status] || 0, largestDepartmentTotal) }" :title="`${statusLabel(status)}: ${row.statuses[status] || 0}`"></div>
+                </div>
+                <div class="text-right text-sm font-bold text-[#234222]">{{ row.total }}</div>
               </div>
-              <div class="text-right text-sm font-bold text-[#234222]">{{ row.total }}</div>
+            </div>
+            <div class="flex flex-wrap content-start gap-x-4 gap-y-2 xl:max-w-52 xl:flex-col">
+              <div v-for="status in chartStatuses" :key="status" class="flex items-center gap-2 text-xs font-semibold text-[#60745d]"><span class="h-2.5 w-2.5 rounded-sm" :class="barClass(status)"></span>{{ statusLabel(status) }}</div>
             </div>
           </div>
-          <div class="flex flex-wrap content-start gap-x-4 gap-y-2 xl:max-w-52 xl:flex-col">
-            <div v-for="status in chartStatuses" :key="status" class="flex items-center gap-2 text-xs font-semibold text-[#60745d]"><span class="h-2.5 w-2.5 rounded-sm" :class="barClass(status)"></span>{{ statusLabel(status) }}</div>
-          </div>
+          <div v-else class="mt-5 rounded-xl bg-[#f5faf3] px-4 py-8 text-center text-sm text-[#7f9a7a]">No assigned assets to chart yet.</div>
         </div>
-        <div v-else class="mt-5 rounded-xl bg-[#f5faf3] px-4 py-8 text-center text-sm text-[#7f9a7a]">No assigned assets to chart yet.</div>
       </section>
       <form class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm" @submit.prevent="applyFilters">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
