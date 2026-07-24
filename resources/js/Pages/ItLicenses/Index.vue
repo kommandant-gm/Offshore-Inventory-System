@@ -2,14 +2,17 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 
 const props = defineProps({ licenses: Object, summary: Object, assignmentChart: Array, filters: Object, types: Array, departments: Array });
 const page = usePage();
 const canEdit = computed(() => page.props.auth?.user?.can?.it_assets_edit);
 const form = reactive({ ...props.filters });
+const licenceUsageOpen = ref(false);
 const activeFilters = computed(() => Object.values(form).filter((value) => value !== '' && value !== null).length);
 const chartMaximum = computed(() => Math.max(1, ...props.assignmentChart.map((item) => item.total_licenses)));
+const assignedSeatTotal = computed(() => props.assignmentChart.reduce((total, item) => total + item.users_assigned, 0));
+const licenceSeatTotal = computed(() => props.assignmentChart.reduce((total, item) => total + item.total_licenses, 0));
 const chartWidth = (value) => `${(value / chartMaximum.value) * 100}%`;
 const applyFilters = () => router.get(route('it-licenses.index'), form, { preserveState: true, preserveScroll: true, replace: true });
 const clearFilters = () => {
@@ -44,24 +47,54 @@ const formatDate = (date) => date ? new Intl.DateTimeFormat('en-MY', { day: '2-d
         </article>
       </div>
 
-      <section class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm sm:p-6">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div><p class="text-xs font-bold uppercase tracking-[.2em] text-[#4f9f4a]">Licence usage</p><h2 class="mt-1 text-xl font-black text-[#234222]">Users assigned by software</h2><p class="mt-1 text-xs text-[#7f9a7a]">Assigned users compared with the total licences recorded for each software product.</p></div>
-          <div class="flex gap-4 text-xs font-semibold text-[#60745d]"><span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-[#4f9f4a]"></span>Assigned</span><span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-[#dce8d9]"></span>Unassigned</span></div>
-        </div>
-        <div v-if="assignmentChart.length" class="mt-6 space-y-3">
-          <div v-for="item in assignmentChart" :key="item.software_name" class="grid gap-1.5 sm:grid-cols-[minmax(10rem,16rem)_minmax(0,1fr)_8rem] sm:items-center sm:gap-4">
-            <span class="truncate text-sm font-semibold text-[#405d3e]" :title="item.software_name">{{ item.software_name }}</span>
-            <div class="h-7 overflow-hidden rounded-lg bg-[#f1f6ef]">
-              <div class="flex h-full min-w-[.4rem] overflow-hidden rounded-lg" :style="{ width: chartWidth(item.total_licenses) }">
-                <div class="h-full bg-[linear-gradient(90deg,#2f7d32,#62b357)] transition-all duration-500" :style="{ width: `${item.total_licenses ? (item.users_assigned / item.total_licenses) * 100 : 0}%` }" :title="`${item.users_assigned} users assigned`"></div>
-                <div class="h-full bg-[#dce8d9]" :style="{ width: `${item.total_licenses ? (item.unassigned / item.total_licenses) * 100 : 0}%` }" :title="`${item.unassigned} unassigned`"></div>
+      <section class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white shadow-sm">
+        <button
+          type="button"
+          class="group flex w-full flex-col gap-5 px-5 py-5 text-left transition hover:bg-[#f8fcf7] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#4f9f4a]/35 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+          :class="{ 'border-b border-[#e5efe2] bg-[#fbfefa]': licenceUsageOpen }"
+          :aria-expanded="licenceUsageOpen"
+          aria-controls="licence-usage-content"
+          @click="licenceUsageOpen = !licenceUsageOpen"
+        >
+          <span>
+            <span class="block text-xs font-bold uppercase tracking-[.2em] text-[#4f9f4a]">Licence usage</span>
+            <span class="mt-1 block text-xl font-black text-[#234222]">Users assigned by software</span>
+            <span class="mt-1 block text-xs text-[#7f9a7a]">Assigned users compared with the total licences recorded for each software product.</span>
+          </span>
+          <span class="flex shrink-0 items-center gap-4 self-stretch sm:self-auto">
+            <span class="flex-1 text-left sm:flex-none sm:text-right">
+              <span class="block text-2xl font-black leading-none text-[#234222]">{{ assignedSeatTotal }} <small class="text-sm font-semibold text-[#7f9a7a]">/ {{ licenceSeatTotal }}</small></span>
+              <span class="mt-1 block text-[11px] font-semibold uppercase tracking-wider text-[#7f9a7a]">Seats assigned</span>
+            </span>
+            <span class="h-9 w-px bg-[#d8e7d4]"></span>
+            <span class="flex items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#2f7d32]">
+              {{ licenceUsageOpen ? 'Collapse' : 'View details' }}
+              <span class="flex h-9 w-9 items-center justify-center rounded-full border border-[#cfe6c8] bg-white shadow-sm transition group-hover:border-[#86c87b] group-hover:bg-[#eef8ea]">
+                <svg class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': licenceUsageOpen }" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                </svg>
+              </span>
+            </span>
+          </span>
+        </button>
+        <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="-translate-y-1 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-150 ease-in" leave-from-class="translate-y-0 opacity-100" leave-to-class="-translate-y-1 opacity-0">
+          <div v-if="licenceUsageOpen" id="licence-usage-content" class="p-5 sm:p-6">
+            <div class="mb-6 flex flex-wrap gap-4 text-xs font-semibold text-[#60745d]"><span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-[#4f9f4a]"></span>Assigned</span><span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-sm bg-[#dce8d9]"></span>Unassigned</span></div>
+            <div v-if="assignmentChart.length" class="space-y-3">
+              <div v-for="item in assignmentChart" :key="item.software_name" class="grid gap-1.5 sm:grid-cols-[minmax(10rem,16rem)_minmax(0,1fr)_8rem] sm:items-center sm:gap-4">
+                <span class="truncate text-sm font-semibold text-[#405d3e]" :title="item.software_name">{{ item.software_name }}</span>
+                <div class="h-7 overflow-hidden rounded-lg bg-[#f1f6ef]">
+                  <div class="flex h-full min-w-[.4rem] overflow-hidden rounded-lg" :style="{ width: chartWidth(item.total_licenses) }">
+                    <div class="h-full bg-[linear-gradient(90deg,#2f7d32,#62b357)] transition-all duration-500" :style="{ width: `${item.total_licenses ? (item.users_assigned / item.total_licenses) * 100 : 0}%` }" :title="`${item.users_assigned} users assigned`"></div>
+                    <div class="h-full bg-[#dce8d9]" :style="{ width: `${item.total_licenses ? (item.unassigned / item.total_licenses) * 100 : 0}%` }" :title="`${item.unassigned} unassigned`"></div>
+                  </div>
+                </div>
+                <span class="text-sm font-black text-[#234222] sm:text-right">{{ item.users_assigned }} <small class="font-medium text-[#7f9a7a]">/ {{ item.total_licenses }}</small></span>
               </div>
             </div>
-            <span class="text-sm font-black text-[#234222] sm:text-right">{{ item.users_assigned }} <small class="font-medium text-[#7f9a7a]">/ {{ item.total_licenses }}</small></span>
+            <div v-else class="rounded-xl bg-[#f5faf3] px-4 py-8 text-center text-sm text-[#7f9a7a]">No licence assignments to chart yet.</div>
           </div>
-        </div>
-        <div v-else class="mt-6 rounded-xl bg-[#f5faf3] px-4 py-8 text-center text-sm text-[#7f9a7a]">No licence assignments to chart yet.</div>
+        </Transition>
       </section>
 
       <form class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm" @submit.prevent="applyFilters">

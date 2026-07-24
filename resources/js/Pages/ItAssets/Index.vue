@@ -119,45 +119,55 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
         <div><p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">KL IT Inventory</p><h1 class="mt-2 text-3xl font-bold text-[#234222]">IT Asset Register</h1><p class="mt-2 text-sm text-[#60745d]">Individually tagged equipment, assignments and lifecycle status.</p></div>
         <div v-if="canEdit" class="flex gap-2"><Link :href="route('it-assets.import.create')" class="rounded-full border border-[#4f9f4a] px-5 py-3 text-sm font-bold text-[#2f7d32]">Import legacy file</Link><Link :href="route('it-assets.create')" class="rounded-full bg-[#4f9f4a] px-5 py-3 text-sm font-bold text-white">Register asset</Link></div>
       </header>
-      <section class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm sm:p-6">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div><p class="text-xs font-bold uppercase tracking-[.18em] text-[#4f9f4a]">Assignment overview</p><h2 class="mt-1 text-lg font-bold text-[#234222]">Assigned assets by department status</h2><p class="mt-1 text-xs text-[#7f9a7a]">Current assignments across the full IT asset register.</p></div>
-          <button
-            type="button"
-            class="flex items-center gap-4 rounded-2xl bg-[#f2f8ef] px-4 py-3 text-left transition hover:bg-[#e8f3e4] focus:outline-none focus:ring-2 focus:ring-[#4f9f4a]/40"
-            :aria-expanded="assignmentOverviewOpen"
-            aria-controls="assignment-overview-content"
-            @click="assignmentOverviewOpen = !assignmentOverviewOpen"
-          >
-            <span class="text-right">
-              <span class="block text-2xl font-bold leading-none text-[#234222]">{{ assignedAssetTotal }}</span>
-              <span class="mt-1 block text-xs font-semibold text-[#60745d]">Assigned assets</span>
+      <section class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white shadow-sm">
+        <button
+          type="button"
+          class="group flex w-full flex-col gap-5 px-5 py-5 text-left transition hover:bg-[#f8fcf7] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#4f9f4a]/35 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+          :class="{ 'border-b border-[#e5efe2] bg-[#fbfefa]': assignmentOverviewOpen }"
+          :aria-expanded="assignmentOverviewOpen"
+          aria-controls="assignment-overview-content"
+          @click="assignmentOverviewOpen = !assignmentOverviewOpen"
+        >
+          <span>
+            <span class="block text-xs font-bold uppercase tracking-[.2em] text-[#4f9f4a]">Assignment overview</span>
+            <span class="mt-1 block text-lg font-bold text-[#234222]">Assigned assets by department status</span>
+            <span class="mt-1 block text-xs text-[#7f9a7a]">Current assignments across the full IT asset register.</span>
+          </span>
+          <span class="flex shrink-0 items-center gap-4 self-stretch sm:self-auto">
+            <span class="flex-1 text-left sm:flex-none sm:text-right">
+              <span class="block text-2xl font-black leading-none text-[#234222]">{{ assignedAssetTotal }}</span>
+              <span class="mt-1 block text-[11px] font-semibold uppercase tracking-wider text-[#7f9a7a]">Assigned assets</span>
             </span>
-            <span class="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[#2f7d32]">
-              {{ assignmentOverviewOpen ? 'Hide' : 'Show' }}
-              <svg class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': assignmentOverviewOpen }" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-              </svg>
+            <span class="h-9 w-px bg-[#d8e7d4]"></span>
+            <span class="flex items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#2f7d32]">
+              {{ assignmentOverviewOpen ? 'Collapse' : 'View details' }}
+              <span class="flex h-9 w-9 items-center justify-center rounded-full border border-[#cfe6c8] bg-white shadow-sm transition group-hover:border-[#86c87b] group-hover:bg-[#eef8ea]">
+                <svg class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': assignmentOverviewOpen }" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                </svg>
+              </span>
             </span>
-          </button>
-        </div>
-        <div v-show="assignmentOverviewOpen" id="assignment-overview-content">
-          <div v-if="assignedAssetsByDepartment.length" class="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto]">
-            <div class="space-y-4">
-              <div v-for="row in assignedAssetsByDepartment" :key="row.department" class="grid grid-cols-[9rem_minmax(0,1fr)_2.5rem] items-center gap-3">
-                <div class="truncate text-sm font-semibold text-[#395337]" :title="row.department">{{ row.department }}</div>
-                <div class="flex h-7 overflow-hidden rounded-lg bg-[#edf3eb]" :aria-label="`${row.department}: ${row.total} assigned assets`">
-                  <div v-for="status in chartStatuses" :key="status" :class="barClass(status)" :style="{ width: chartBarWidth(row.statuses[status] || 0, largestDepartmentTotal) }" :title="`${statusLabel(status)}: ${row.statuses[status] || 0}`"></div>
+          </span>
+        </button>
+        <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="-translate-y-1 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition duration-150 ease-in" leave-from-class="translate-y-0 opacity-100" leave-to-class="-translate-y-1 opacity-0">
+          <div v-if="assignmentOverviewOpen" id="assignment-overview-content" class="p-5 sm:p-6">
+            <div v-if="assignedAssetsByDepartment.length" class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto]">
+              <div class="space-y-4">
+                <div v-for="row in assignedAssetsByDepartment" :key="row.department" class="grid grid-cols-[9rem_minmax(0,1fr)_2.5rem] items-center gap-3">
+                  <div class="truncate text-sm font-semibold text-[#395337]" :title="row.department">{{ row.department }}</div>
+                  <div class="flex h-7 overflow-hidden rounded-lg bg-[#edf3eb]" :aria-label="`${row.department}: ${row.total} assigned assets`">
+                    <div v-for="status in chartStatuses" :key="status" :class="barClass(status)" :style="{ width: chartBarWidth(row.statuses[status] || 0, largestDepartmentTotal) }" :title="`${statusLabel(status)}: ${row.statuses[status] || 0}`"></div>
+                  </div>
+                  <div class="text-right text-sm font-bold text-[#234222]">{{ row.total }}</div>
                 </div>
-                <div class="text-right text-sm font-bold text-[#234222]">{{ row.total }}</div>
+              </div>
+              <div class="flex flex-wrap content-start gap-x-4 gap-y-2 xl:max-w-52 xl:flex-col">
+                <div v-for="status in chartStatuses" :key="status" class="flex items-center gap-2 text-xs font-semibold text-[#60745d]"><span class="h-2.5 w-2.5 rounded-sm" :class="barClass(status)"></span>{{ statusLabel(status) }}</div>
               </div>
             </div>
-            <div class="flex flex-wrap content-start gap-x-4 gap-y-2 xl:max-w-52 xl:flex-col">
-              <div v-for="status in chartStatuses" :key="status" class="flex items-center gap-2 text-xs font-semibold text-[#60745d]"><span class="h-2.5 w-2.5 rounded-sm" :class="barClass(status)"></span>{{ statusLabel(status) }}</div>
-            </div>
+            <div v-else class="rounded-xl bg-[#f5faf3] px-4 py-8 text-center text-sm text-[#7f9a7a]">No assigned assets to chart yet.</div>
           </div>
-          <div v-else class="mt-5 rounded-xl bg-[#f5faf3] px-4 py-8 text-center text-sm text-[#7f9a7a]">No assigned assets to chart yet.</div>
-        </div>
+        </Transition>
       </section>
       <form class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm" @submit.prevent="applyFilters">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
