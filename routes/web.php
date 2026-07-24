@@ -57,9 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/it-dashboard', [ItAssetSectionController::class, 'dashboard'])->name('it-assets.dashboard');
     Route::get('/it-people', [ItPeopleController::class, 'index'])->name('it-people.index');
     Route::get('/it-people/{person}', [ItPeopleController::class, 'show'])->name('it-people.show');
-    Route::get('/it-asset-assignments', [ItAssetSectionController::class, 'assignments'])->name('it-assets.assignments');
     Route::get('/it-asset-repairs', [ItAssetSectionController::class, 'repairs'])->name('it-assets.repairs');
-    Route::get('/it-asset-reports', [ItAssetSectionController::class, 'reports'])->name('it-assets.reports');
     Route::get('/quick-search', QuickSearchController::class)->name('quick-search');
     Route::get('/assistant', [AssistantController::class, 'index'])->name('assistant.index');
     Route::post('/assistant/query', [AssistantController::class, 'query'])->name('assistant.query');

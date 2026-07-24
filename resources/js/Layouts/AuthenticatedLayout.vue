@@ -57,10 +57,7 @@
         { name: 'IT Asset Register', icon: ClipboardDocumentCheckIcon, route: 'it-assets.index', can: 'it_assets_read' },
         { name: 'IT Licence Register', icon: KeyIcon, route: 'it-licenses.index', can: 'it_assets_read' },
         { name: 'People', icon: UserGroupIcon, route: 'it-people.index', active: 'it-people.*', can: 'it_assets_read' },
-        { name: 'Import Assets', icon: ArchiveBoxIcon, route: 'it-assets.import.create', can: 'it_assets_edit' },
-        { name: 'Assignments / Returns', icon: TruckIcon, route: 'it-assets.assignments', can: 'it_assets_read' },
         { name: 'Repairs', icon: ExclamationTriangleIcon, route: 'it-assets.repairs', can: 'it_assets_read' },
-        { name: 'IT Asset Reports', icon: ChartBarIcon, route: 'it-assets.reports', can: 'it_assets_read' },
     ];
     const administrationItems = [
         { name: 'Categories', icon: TagIcon, route: 'categories.index' },
