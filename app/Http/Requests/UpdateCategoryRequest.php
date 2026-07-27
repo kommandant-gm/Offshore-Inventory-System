@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use App\Enums\CategoryType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
 class UpdateCategoryRequest extends FormRequest
 {
     protected function prepareForValidation(): void
