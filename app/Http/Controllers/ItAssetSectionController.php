@@ -192,6 +192,25 @@ class ItAssetSectionController extends Controller
             'seat_utilisation' => $seatUtilisation,
             'expiry_timeline' => $expiryTimeline,
             'renewal_cost_by_vendor' => $renewalCostByVendor,
+            'licenses' => $licenses->map(fn (ItLicense $license) => [
+                'id' => $license->id,
+                'code' => $license->license_code,
+                'software' => $license->software_name,
+                'license_key_reference' => $this->licenseKeyReference($license),
+                'vendor' => trim((string) $license->vendor) ?: 'Other vendors',
+                'status' => $statusLabels[$license->status()],
+                'active' => $license->active,
+                'seats_total' => $license->seats_total,
+                'seats_assigned' => $license->seats_assigned,
+                'seats_available' => max(0, $license->seats_total - $license->seats_assigned),
+                'expiry_date' => $license->expiry_date?->format('Y-m-d'),
+                'expiry_month' => $license->expiry_date?->format('M Y'),
+                'days_until_expiry' => $license->expiry_date
+                    ? (int) $today->diffInDays($license->expiry_date, false)
+                    : null,
+                'renewal_cost' => round((float) $license->renewal_cost, 2),
+                'auto_renew' => $license->auto_renew,
+            ])->values(),
             'upcoming_renewals' => $licenses
                 ->filter(fn (ItLicense $license) => $license->active && $license->expiry_date?->gte($today))
                 ->sortBy('expiry_date')
@@ -208,6 +227,15 @@ class ItAssetSectionController extends Controller
                     'status' => $license->status(),
                 ])->values(),
         ];
+    }
+
+    private function licenseKeyReference(ItLicense $license): string
+    {
+        if (blank($license->license_key)) {
+            return $license->license_code.' - no key recorded';
+        }
+
+        return $license->license_code.' - key ending '.mb_substr($license->license_key, -4);
     }
 
     public function repairs(Request $request): Response

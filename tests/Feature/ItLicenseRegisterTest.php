@@ -110,6 +110,7 @@ class ItLicenseRegisterTest extends TestCase
             'software_name' => 'Microsoft 365',
             'vendor' => 'Microsoft',
             'license_type' => 'subscription',
+            'license_key' => 'DASHBOARD-KEY-1234',
             'seats_total' => 20,
             'seats_assigned' => 15,
             'expiry_date' => today()->addDays(20),
@@ -142,6 +143,10 @@ class ItLicenseRegisterTest extends TestCase
                 ->where('licenseDashboard.summary.expired', 1)
                 ->where('licenseDashboard.seat_utilisation.0.label', 'Microsoft 365')
                 ->where('licenseDashboard.seat_utilisation.0.percent', 75)
+                ->where('licenseDashboard.licenses.1.software', 'Microsoft 365')
+                ->where('licenseDashboard.licenses.1.status', 'Expiring soon')
+                ->where('licenseDashboard.licenses.1.seats_available', 5)
+                ->where('licenseDashboard.licenses.1.license_key_reference', 'LIC-M365-DASH - key ending 1234')
                 ->where('licenseDashboard.upcoming_renewals.0.code', 'LIC-M365-DASH')
                 ->has('licenseDashboard.expiry_timeline', 12));
     }
