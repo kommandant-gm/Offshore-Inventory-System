@@ -15,7 +15,7 @@ class ItAssetSectionController extends Controller
         $this->authorizeRead($request);
 
         $assets = Asset::query()
-            ->with(['category:id,name', 'currentLocation:id,name', 'currentAssignment:id,asset_id,assigned_to_name,department'])
+            ->with(['category:id,name', 'currentLocation:id,name', 'currentAssignment'])
             ->get();
 
         $status = $assets
