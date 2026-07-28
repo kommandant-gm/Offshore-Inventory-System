@@ -4,6 +4,7 @@ use App\Http\Controllers\AssetAssignmentController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetLedgerController;
 use App\Http\Controllers\AssetQrCodeController;
+use App\Http\Controllers\AssetRepairController;
 use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\AuditTrailController;
 use App\Http\Controllers\BranchContextController;
@@ -44,6 +45,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('it-licenses', ItLicenseController::class)->parameters(['it-licenses' => 'it_license'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::post('/it-assets/{asset}/checkout', [AssetAssignmentController::class, 'store'])->name('it-assets.checkout');
     Route::patch('/it-assets/{asset}/check-in', [AssetAssignmentController::class, 'destroy'])->name('it-assets.check-in');
+    Route::post('/it-asset-repairs', [AssetRepairController::class, 'store'])->name('it-assets.repairs.store');
+    Route::patch('/it-assets/{asset}/return-from-repair', [AssetRepairController::class, 'returnFromRepair'])->name('it-assets.repairs.return');
     Route::get('/it-assets/{asset}/qr-code', [AssetQrCodeController::class, 'show'])->name('it-assets.qr-code.show');
     Route::post('/it-assets/{asset}/qr-code', [AssetQrCodeController::class, 'store'])->name('it-assets.qr-code.store');
     Route::post('/it-assets/{asset}/qr-code/regenerate', [AssetQrCodeController::class, 'update'])->name('it-assets.qr-code.regenerate');

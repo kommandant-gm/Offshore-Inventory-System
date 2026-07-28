@@ -48,6 +48,15 @@ class ItAssetSectionController extends Controller
             $ageBands[$band]++;
         }
 
+        $ageLabels = array_keys($ageBands);
+        $assetAgeBand = function (Asset $asset) use ($currentYear, $ageLabels): string {
+            $year = $asset->purchase_year ?: (is_numeric($asset->year) ? (int) $asset->year : null);
+            $age = $year ? max(0, $currentYear - $year) : null;
+
+            return $age === null ? $ageLabels[4]
+                : ($age < 2 ? $ageLabels[0] : ($age < 5 ? $ageLabels[1] : ($age < 8 ? $ageLabels[2] : $ageLabels[3])));
+        };
+
         return Inertia::render('ItAssets/Section', [
             'title' => 'IT Dashboard', 'description' => 'KL IT asset overview and lifecycle status.',
             'stats' => [
@@ -73,6 +82,16 @@ class ItAssetSectionController extends Controller
                     ->map(fn (int $total, int|string $year) => ['label' => (string) $year, 'value' => $total])
                     ->values(),
             ],
+            'dashboardAssets' => $assets->map(fn (Asset $asset) => [
+                'status' => str($asset->current_status->value)->replace('_', ' ')->title()->toString(),
+                'category' => $asset->category?->name ?: 'Not specified',
+                'location' => $asset->currentLocation?->name ?: 'Not specified',
+                'condition' => $asset->current_condition?->value
+                    ? str($asset->current_condition->value)->replace('_', ' ')->title()->toString()
+                    : 'Not specified',
+                'age' => $assetAgeBand($asset),
+                'purchaseYear' => $asset->purchase_year ? (string) $asset->purchase_year : null,
+            ])->values(),
         ]);
     }
 
@@ -82,10 +101,36 @@ class ItAssetSectionController extends Controller
 
         return Inertia::render('ItAssets/Section', [
             'title' => 'Repairs', 'description' => 'IT assets currently recorded as under repair.',
-            'rows' => Asset::where('current_status', AssetStatus::UnderRepair->value)->orderBy('asset_tag_no')->get()->map(fn ($asset) => [
-                'asset_tag' => $asset->asset_tag_no, 'asset_id' => $asset->id,
-                'detail' => $asset->model ?: $asset->description, 'meta' => 'Under repair',
-            ]),
+            'repairMode' => true,
+            'rows' => Asset::query()
+                ->where('current_status', AssetStatus::UnderRepair->value)
+                ->with(['movements' => fn ($query) => $query->where('movement_type', 'send_for_repair')])
+                ->orderBy('asset_tag_no')->get()->map(function (Asset $asset) {
+                    $repair = $asset->movements->first();
+
+                    return [
+                        'asset_tag' => $asset->asset_tag_no,
+                        'asset_id' => $asset->id,
+                        'detail' => $asset->model ?: $asset->description,
+                        'repair_date' => $repair?->movement_date?->format('Y-m-d'),
+                        'handled_by' => $repair?->handled_by,
+                        'reference_no' => $repair?->reference_no,
+                        'remarks' => $repair?->remarks,
+                    ];
+                }),
+            'repairableAssets' => Asset::query()
+                ->whereIn('current_status', [
+                    AssetStatus::Available->value,
+                    AssetStatus::Damaged->value,
+                    AssetStatus::InspectionHold->value,
+                ])
+                ->whereDoesntHave('currentAssignment')
+                ->orderBy('asset_tag_no')
+                ->get(['id', 'asset_tag_no', 'description', 'model'])
+                ->map(fn (Asset $asset) => [
+                    'id' => $asset->id,
+                    'label' => $asset->asset_tag_no.' - '.($asset->model ?: $asset->description),
+                ]),
         ]);
     }
 
