@@ -33,7 +33,7 @@ const percent = (value, items) => total(items) ? Math.round((Number(value) / tot
 const hoveredStatus = ref(null);
 const hoveredCategory = ref(null);
 const hoveredLocation = ref(null);
-const filters = reactive({ status: null, category: null, location: null, age: null, condition: null, purchaseYear: null });
+const filters = reactive({ status: null, category: null, location: null, department: null, age: null, condition: null, purchaseYear: null });
 const dimensionKeys = Object.keys(filters);
 const hasFilters = computed(() => dimensionKeys.some((key) => filters[key] !== null));
 const matchesFilters = (asset, except = null) => dimensionKeys.every((key) => key === except || filters[key] === null || asset[key] === filters[key]);
@@ -49,10 +49,19 @@ const displayedCharts = computed(() => ({
   status: chartFor('status', 'status'),
   categories: chartFor('categories', 'category'),
   locations: chartFor('locations', 'location'),
+  departments: chartFor('departments', 'department'),
   age: chartFor('age', 'age'),
   conditions: chartFor('conditions', 'condition'),
   purchaseYears: chartFor('purchaseYears', 'purchaseYear'),
 }));
+const holderAssets = computed(() => (hasFilters.value
+  ? filteredAssets.value
+  : props.dashboardAssets.filter((asset) => asset.holder)
+).slice().sort((a, b) => {
+  if (Boolean(a.holder) !== Boolean(b.holder)) return a.holder ? -1 : 1;
+  return String(a.assetTag).localeCompare(String(b.assetTag));
+}));
+const assignedHolderCount = computed(() => holderAssets.value.filter((asset) => asset.holder).length);
 const dashboardTotal = computed(() => props.dashboardAssets.length || total(props.charts?.status));
 const filteredTotal = computed(() => filteredAssets.value.length);
 const statValue = (label) => {
@@ -174,6 +183,21 @@ const pie = computed(() => {
       </div>
     </article>
 
+    <article class="rounded-[1.5rem] border border-[#cfe3ca] bg-white shadow-[0_12px_35px_rgba(39,89,45,.07)] lg:col-span-12">
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#e2eee0] px-5 py-5 sm:px-6">
+        <div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-emerald-600">Assignment overview</p><h2 class="mt-1 text-xl font-black tracking-tight text-slate-800">Assigned assets by department</h2><p class="mt-1 text-xs text-slate-500">Select a department to filter every dashboard visual and the holder list.</p></div>
+        <div class="text-right"><strong class="block text-2xl text-[#173a21]">{{assignedHolderCount}}</strong><span class="text-[10px] font-bold uppercase tracking-wider text-[#7f9a7a]">Matching assigned assets</span></div>
+      </div>
+      <div v-if="displayedCharts.departments.length" class="space-y-3 p-5 sm:p-6">
+        <button v-for="item in displayedCharts.departments" :key="item.label" type="button" class="grid w-full grid-cols-[7rem_minmax(0,1fr)_2.5rem] items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-200 sm:grid-cols-[9rem_minmax(0,1fr)_3rem]" :class="filters.department===item.label ? 'bg-emerald-50 ring-1 ring-emerald-300' : ''" :aria-pressed="filters.department===item.label" @click="toggleFilter('department',item.label)">
+          <span class="truncate text-xs font-bold uppercase text-[#395337] sm:text-sm" :title="item.label">{{item.label}}</span>
+          <span class="h-7 overflow-hidden rounded-lg bg-[#edf3eb]"><span class="block h-full rounded-lg bg-blue-500 transition-all duration-500" :style="{width:`${(item.value/maximum(displayedCharts.departments))*100}%`}"></span></span>
+          <strong class="text-right text-sm text-[#173a21]">{{item.value}}</strong>
+        </button>
+      </div>
+      <div v-else class="p-8 text-center text-sm text-slate-500">No assigned departments are available for this selection.</div>
+    </article>
+
     <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-6">
       <div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-rose-500">Health snapshot</p><h2 class="mt-1 text-xl font-black tracking-tight text-slate-800">Condition distribution</h2></div>
       <div class="mt-6 space-y-4"><button v-for="(item,index) in displayedCharts.conditions" :key="item.label" type="button" class="grid w-full grid-cols-[5.5rem,minmax(0,1fr),2rem] items-center gap-3 rounded-lg text-left transition focus:outline-none focus:ring-2 focus:ring-rose-200 sm:grid-cols-[7rem,minmax(0,1fr),3rem]" :class="filters.condition===item.label ? 'bg-rose-50 ring-1 ring-rose-200' : ''" :aria-pressed="filters.condition===item.label" @click="toggleFilter('condition',item.label)"><span class="truncate text-xs font-semibold text-[#637761] sm:text-sm">{{item.label}}</span><span class="h-8 overflow-hidden rounded-lg bg-[#edf5ea]"><span class="flex h-full min-w-[2.5rem] items-center justify-end rounded-lg pr-2 text-[10px] font-black text-white transition-all duration-500" :style="{width:`${Math.max(percent(item.value,displayedCharts.conditions),8)}%`,backgroundColor:palette[index%palette.length]}">{{percent(item.value,displayedCharts.conditions)}}%</span></span><strong class="text-right text-sm text-[#173a21]">{{item.value}}</strong></button></div>
@@ -182,6 +206,20 @@ const pie = computed(() => {
     <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-6">
       <div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-sky-500">Acquisition trend</p><h2 class="mt-1 text-xl font-black tracking-tight text-slate-800">Purchases by year</h2></div>
       <div v-if="displayedCharts.purchaseYears.length" class="mt-7 overflow-x-auto pb-1"><div class="flex h-48 min-w-[24rem] items-end gap-2 border-b border-slate-200 px-2"><button v-for="item in displayedCharts.purchaseYears" :key="item.label" type="button" class="group flex h-full min-w-[2.75rem] flex-1 flex-col justify-end rounded-t-lg text-center transition focus:outline-none focus:ring-2 focus:ring-sky-200" :class="filters.purchaseYear===item.label ? 'bg-sky-50' : ''" :aria-pressed="filters.purchaseYear===item.label" @click="toggleFilter('purchaseYear',item.label)"><span class="mb-2 text-xs font-black text-slate-700 opacity-70 transition group-hover:opacity-100">{{item.value}}</span><span class="mx-auto block w-3/5 rounded-t-lg bg-[linear-gradient(180deg,#38bdf8,#2563eb)] transition-all duration-300 group-hover:w-3/4" :style="{height:`${Math.max((item.value/maximum(displayedCharts.purchaseYears))*78,5)}%`}"/><span class="mt-2 text-[10px] font-semibold text-slate-500">{{item.label}}</span></button></div></div><div v-else class="mt-6 rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">Add purchase years to assets to populate this trend.</div>
+    </article>
+
+    <article class="overflow-hidden rounded-[1.5rem] border border-[#d9e8d5] bg-white shadow-[0_12px_35px_rgba(39,89,45,.07)] lg:col-span-12">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2eee0] px-5 py-5 sm:px-6">
+        <div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-teal-600">Asset holder details</p><h2 class="mt-1 text-xl font-black tracking-tight text-slate-800">Who holds the selected assets</h2><p class="mt-1 text-xs text-slate-500">{{hasFilters ? `${holderAssets.length} assets match the current dashboard selection.` : 'Showing all currently assigned assets. Click any visual to narrow this list.'}}</p></div>
+        <div class="flex gap-2 text-xs font-bold"><span class="rounded-full bg-blue-50 px-3 py-1.5 text-blue-700">{{assignedHolderCount}} assigned</span><span v-if="hasFilters" class="rounded-full bg-slate-100 px-3 py-1.5 text-slate-600">{{holderAssets.length-assignedHolderCount}} unassigned</span></div>
+      </div>
+      <div v-if="holderAssets.length" class="max-h-[28rem] overflow-auto">
+        <table class="table">
+          <thead class="sticky top-0 z-10 bg-white"><tr><th>Asset</th><th>Held by</th><th>Department</th><th>Status</th><th>Category</th></tr></thead>
+          <tbody><tr v-for="asset in holderAssets" :key="asset.id"><td><Link class="font-bold text-[#2f7d32] hover:underline" :href="route('it-assets.show',asset.id)">{{asset.assetTag}}</Link><span class="mt-0.5 block max-w-xs truncate text-xs text-slate-500">{{asset.detail||'—'}}</span></td><td><span v-if="asset.holder" class="font-semibold text-slate-800">{{asset.holder}}</span><span v-else class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">Unassigned</span></td><td>{{asset.department||'—'}}</td><td>{{asset.status}}</td><td>{{asset.category}}</td></tr></tbody>
+        </table>
+      </div>
+      <div v-else class="p-10 text-center text-sm text-slate-500">No assets match the current selection.</div>
     </article>
   </div>
   <div v-if="rowItems.length" class="overflow-hidden rounded-[1.5rem] border border-[#d8e7d4] bg-white">

@@ -15,7 +15,7 @@ class ItAssetSectionController extends Controller
         $this->authorizeRead($request);
 
         $assets = Asset::query()
-            ->with(['category:id,name', 'currentLocation:id,name'])
+            ->with(['category:id,name', 'currentLocation:id,name', 'currentAssignment:id,asset_id,assigned_to_name,department'])
             ->get();
 
         $status = $assets
@@ -69,6 +69,12 @@ class ItAssetSectionController extends Controller
                 'status' => $status,
                 'categories' => $breakdown(fn (Asset $asset) => $asset->category?->name),
                 'locations' => $breakdown(fn (Asset $asset) => $asset->currentLocation?->name),
+                'departments' => $assets
+                    ->filter(fn (Asset $asset) => $asset->currentAssignment !== null)
+                    ->countBy(fn (Asset $asset) => trim((string) $asset->currentAssignment?->department) ?: 'Unspecified')
+                    ->sortDesc()
+                    ->map(fn (int $total, string $name) => ['label' => $name, 'value' => $total])
+                    ->values(),
                 'conditions' => $breakdown(fn (Asset $asset) => $asset->current_condition?->value
                     ? str($asset->current_condition->value)->replace('_', ' ')->title()->toString()
                     : null),
@@ -83,9 +89,16 @@ class ItAssetSectionController extends Controller
                     ->values(),
             ],
             'dashboardAssets' => $assets->map(fn (Asset $asset) => [
+                'id' => $asset->id,
+                'assetTag' => $asset->asset_tag_no,
+                'detail' => $asset->model ?: $asset->description,
                 'status' => str($asset->current_status->value)->replace('_', ' ')->title()->toString(),
                 'category' => $asset->category?->name ?: 'Not specified',
                 'location' => $asset->currentLocation?->name ?: 'Not specified',
+                'holder' => $asset->currentAssignment?->assigned_to_name,
+                'department' => $asset->currentAssignment
+                    ? (trim((string) $asset->currentAssignment->department) ?: 'Unspecified')
+                    : null,
                 'condition' => $asset->current_condition?->value
                     ? str($asset->current_condition->value)->replace('_', ' ')->title()->toString()
                     : 'Not specified',
