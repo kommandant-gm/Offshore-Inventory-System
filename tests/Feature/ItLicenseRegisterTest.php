@@ -146,9 +146,45 @@ class ItLicenseRegisterTest extends TestCase
                 ->where('licenseDashboard.licenses.1.software', 'Microsoft 365')
                 ->where('licenseDashboard.licenses.1.status', 'Expiring soon')
                 ->where('licenseDashboard.licenses.1.seats_available', 5)
-                ->where('licenseDashboard.licenses.1.license_key_reference', 'LIC-M365-DASH - key ending 1234')
+                ->where('licenseDashboard.licenses.1.license_key_reference', 'Key ending -1234')
                 ->where('licenseDashboard.upcoming_renewals.0.code', 'LIC-M365-DASH')
                 ->has('licenseDashboard.expiry_timeline', 12));
+    }
+
+    public function test_dashboard_groups_repeated_imported_seats_by_the_same_license_key(): void
+    {
+        [$user, $branch] = $this->userWithAccess('read');
+        $foxitKey = 'E7F3K-010L9-4UT00-37P1P-EHMMJ-JXMNA';
+
+        foreach ([
+            ['code' => 'LIC-FOXIT-USED', 'assigned' => 1, 'holder' => 'Foxit User'],
+            ['code' => 'LIC-FOXIT-FREE', 'assigned' => 0, 'holder' => null],
+        ] as $seat) {
+            ItLicense::withoutGlobalScopes()->create([
+                'branch_id' => $branch->id,
+                'license_code' => $seat['code'],
+                'software_name' => 'FOXIT PDF PRO',
+                'vendor' => 'Foxit',
+                'license_type' => 'perpetual',
+                'license_key' => $foxitKey,
+                'seats_total' => 1,
+                'seats_assigned' => $seat['assigned'],
+                'assigned_to' => $seat['holder'],
+                'active' => true,
+            ]);
+        }
+
+        $keyGroup = hash_hmac('sha256', $foxitKey, (string) config('app.key'));
+
+        $this->actingAs($user)->get(route('it-assets.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('licenseDashboard.licenses.0.license_key_group', $keyGroup)
+                ->where('licenseDashboard.licenses.1.license_key_group', $keyGroup)
+                ->where('licenseDashboard.licenses.0.license_key_reference', 'Key ending JXMNA')
+                ->where('licenseDashboard.licenses.1.license_key_reference', 'Key ending JXMNA')
+                ->where('licenseDashboard.licenses.0.seats_available', 1)
+                ->where('licenseDashboard.licenses.1.seats_assigned', 1));
     }
 
     public function test_read_only_user_can_view_but_cannot_manage_it_licenses(): void

@@ -13,10 +13,13 @@ const filters = reactive({ status: null, software: null, licenseKey: null, expir
 const filterKeys = Object.keys(filters);
 const hasFilters = computed(() => filterKeys.some((key) => filters[key] !== null));
 const filterLabel = (key) => ({ licenseKey: 'Licence key', expiryMonth: 'Expiry month', capacity: 'Seat capacity' }[key] ?? key);
+const filterValue = (key) => key === 'licenseKey'
+  ? (props.dashboard.licenses.find((row) => row.license_key_group === filters.licenseKey)?.license_key_reference ?? 'Selected key')
+  : filters[key];
 const rowMatches = (row, except = null) => filterKeys.every((key) => {
   if (key === except || filters[key] === null) return true;
   if (key === 'capacity') return filters.capacity === 'Assigned seats' ? row.seats_assigned > 0 : row.seats_available > 0;
-  if (key === 'licenseKey') return row.license_key_reference === filters.licenseKey;
+  if (key === 'licenseKey') return row.license_key_group === filters.licenseKey;
   if (key === 'expiryMonth') return row.expiry_month === filters.expiryMonth;
   return row[key] === filters[key];
 });
@@ -49,19 +52,19 @@ const grouped = (rows, key) => Array.from(rows.reduce((groups, row) => {
   return groups;
 }, new Map()));
 const seatDimension = computed(() => seatView.value === 'software' ? 'software' : 'licenseKey');
-const seatProperty = computed(() => seatView.value === 'software' ? 'software' : 'license_key_reference');
+const seatProperty = computed(() => seatView.value === 'software' ? 'software' : 'license_key_group');
 const setSeatView = (view) => {
   seatView.value = view;
   filters.software = null;
   filters.licenseKey = null;
 };
 const seatItems = computed(() => grouped(recordsFor(seatDimension.value).filter((row) => row.active), seatProperty.value)
-  .map(([label, rows]) => {
+  .map(([id, rows]) => {
     const purchased = rows.reduce((sum, row) => sum + Number(row.seats_total), 0);
     const assigned = rows.reduce((sum, row) => sum + Number(row.seats_assigned), 0);
-    return { label, assigned, available: Math.max(0, purchased - assigned), total: purchased, percent: purchased ? Math.round((assigned / purchased) * 100) : 0 };
+    return { id, label: seatView.value === 'software' ? id : rows[0].license_key_reference, assigned, available: Math.max(0, purchased - assigned), total: purchased, percent: purchased ? Math.round((assigned / purchased) * 100) : 0 };
   })
-  .sort((a, b) => (a.label === filters[seatDimension.value] ? -1 : b.label === filters[seatDimension.value] ? 1 : b.assigned - a.assigned))
+  .sort((a, b) => (a.id === filters[seatDimension.value] ? -1 : b.id === filters[seatDimension.value] ? 1 : b.assigned - a.assigned))
   .slice(0, 8));
 const timelineItems = computed(() => props.dashboard.expiry_timeline.map((month) => {
   const rows = recordsFor('expiryMonth').filter((row) => row.active && row.expiry_month === month.full_label);
@@ -139,7 +142,7 @@ const detailRows = computed(() => {
 
     <div v-if="hasFilters" class="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3" aria-live="polite">
       <span class="mr-1 text-xs font-bold uppercase tracking-wider text-emerald-800">{{ filteredLicenses.length }} matching</span>
-      <button v-for="key in filterKeys.filter((key) => filters[key] !== null)" :key="key" type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold capitalize text-emerald-900 shadow-sm hover:border-emerald-400" @click="filters[key]=null">{{ filterLabel(key) }}: {{ filters[key] }} <span aria-hidden="true">×</span></button>
+      <button v-for="key in filterKeys.filter((key) => filters[key] !== null)" :key="key" type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold capitalize text-emerald-900 shadow-sm hover:border-emerald-400" @click="filters[key]=null">{{ filterLabel(key) }}: {{ filterValue(key) }} <span aria-hidden="true">×</span></button>
       <button type="button" class="ml-auto text-xs font-bold text-emerald-800 underline decoration-emerald-300 underline-offset-2" @click="clearFilters">Clear all</button>
     </div>
 
@@ -161,7 +164,7 @@ const detailRows = computed(() => {
           <button type="button" class="rounded-lg px-3 py-1.5 text-xs font-bold transition" :class="seatView === 'licenseKey' ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'" :aria-pressed="seatView === 'licenseKey'" @click="setSeatView('licenseKey')">By licence key</button>
         </div>
         <div v-if="seatItems.length" class="mt-6 space-y-3">
-          <button v-for="item in seatItems" :key="item.label" type="button" class="block w-full rounded-xl p-2 text-left transition hover:bg-violet-50 focus:outline-none focus:ring-2 focus:ring-violet-200" :class="filters[seatDimension] === item.label ? 'bg-violet-50 ring-1 ring-violet-300' : ''" :aria-pressed="filters[seatDimension] === item.label" @click="toggleFilter(seatDimension, item.label)"><div class="mb-2 flex items-end justify-between gap-4"><span class="truncate text-sm font-bold text-[#50694e]" :title="item.label">{{ item.label }}</span><span class="shrink-0 text-xs text-slate-500"><strong class="text-sm text-[#173a21]">{{ item.assigned }}</strong> / {{ item.total }} seats</span></div><div class="flex h-3 overflow-hidden rounded-full bg-slate-100"><span class="h-full bg-[linear-gradient(90deg,#2563eb,#8b5cf6)] transition-all duration-500" :style="{ width: `${Math.min(item.percent, 100)}%` }"></span></div><div class="mt-1.5 flex justify-between text-[10px] font-semibold text-slate-400"><span>{{ item.percent }}% utilised</span><span>{{ item.available }} available</span></div></button>
+          <button v-for="item in seatItems" :key="item.id" type="button" class="block w-full rounded-xl p-2 text-left transition hover:bg-violet-50 focus:outline-none focus:ring-2 focus:ring-violet-200" :class="filters[seatDimension] === item.id ? 'bg-violet-50 ring-1 ring-violet-300' : ''" :aria-pressed="filters[seatDimension] === item.id" @click="toggleFilter(seatDimension, item.id)"><div class="mb-2 flex items-end justify-between gap-4"><span class="truncate text-sm font-bold text-[#50694e]" :title="item.label">{{ item.label }}</span><span class="shrink-0 text-xs text-slate-500"><strong class="text-sm text-[#173a21]">{{ item.assigned }}</strong> / {{ item.total }} seats</span></div><div class="flex h-3 overflow-hidden rounded-full bg-slate-100"><span class="h-full bg-[linear-gradient(90deg,#2563eb,#8b5cf6)] transition-all duration-500" :style="{ width: `${Math.min(item.percent, 100)}%` }"></span></div><div class="mt-1.5 flex justify-between text-[10px] font-semibold text-slate-400"><span>{{ item.percent }}% utilised</span><span :class="item.available ? 'font-bold text-emerald-600' : ''">{{ item.available }} available</span></div></button>
         </div><div v-else class="mt-6 rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">No active licence seats match this selection.</div>
       </article>
 
@@ -178,7 +181,7 @@ const detailRows = computed(() => {
 
       <article class="overflow-hidden rounded-[1.5rem] border border-[#d9e8d5] bg-white shadow-[0_12px_35px_rgba(39,89,45,.07)] lg:col-span-12">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2eee0] px-5 py-5 sm:px-6"><div><p class="text-[10px] font-bold uppercase tracking-[.22em] text-rose-500">{{ hasFilters ? 'Filtered details' : 'Action queue' }}</p><h2 class="mt-1 text-xl font-bold tracking-tight text-slate-800">{{ hasFilters ? 'Selected licence details' : 'Upcoming renewals' }}</h2><p class="mt-1 text-xs text-slate-500">{{ hasFilters ? 'Records matching every active dashboard selection.' : 'The next active licences due to expire.' }}</p></div><Link :href="route('it-licenses.index')" class="text-sm font-bold text-emerald-700 hover:underline">Open licence register →</Link></div>
-        <div v-if="detailRows.length" class="overflow-x-auto"><table class="table"><thead><tr><th>Licence</th><th>Vendor</th><th>Expiry</th><th>Renewal</th><th>Cost</th></tr></thead><tbody><tr v-for="item in detailRows" :key="item.id"><td><Link :href="route('it-licenses.show', item.id)" class="font-bold text-[#2f7d32] hover:underline">{{ item.software }}</Link><span class="mt-0.5 block text-xs text-slate-500">{{ item.code }}</span></td><td>{{ item.vendor }}</td><td><span class="block font-semibold text-slate-700">{{ prettyDate(item.expiry_date) }}</span><span class="mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-bold ring-1" :class="urgencyClass(item)">{{ renewalLabel(item) }}</span></td><td><span v-if="item.auto_renew" class="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">Auto-renew</span><span v-else class="text-xs font-semibold text-slate-500">Manual</span></td><td class="font-semibold text-slate-700">{{ item.renewal_cost ? money(item.renewal_cost, 2) : '—' }}</td></tr></tbody></table></div>
+        <div v-if="detailRows.length" class="overflow-x-auto"><table class="table"><thead><tr><th>Licence</th><th>Licence key</th><th>Seat</th><th>Vendor</th><th>Expiry</th><th>Renewal</th><th>Cost</th></tr></thead><tbody><tr v-for="item in detailRows" :key="item.id"><td><Link :href="route('it-licenses.show', item.id)" class="font-bold text-[#2f7d32] hover:underline">{{ item.software }}</Link><span class="mt-0.5 block text-xs text-slate-500">{{ item.code }}</span></td><td class="text-xs font-semibold text-slate-600">{{ item.license_key_reference }}</td><td><span v-if="item.seats_available" class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">Available</span><span v-else class="text-xs font-semibold text-slate-600">{{ item.assigned_to || 'Assigned' }}</span></td><td>{{ item.vendor }}</td><td><span class="block font-semibold text-slate-700">{{ prettyDate(item.expiry_date) }}</span><span class="mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-bold ring-1" :class="urgencyClass(item)">{{ renewalLabel(item) }}</span></td><td><span v-if="item.auto_renew" class="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">Auto-renew</span><span v-else class="text-xs font-semibold text-slate-500">Manual</span></td><td class="font-semibold text-slate-700">{{ item.renewal_cost ? money(item.renewal_cost, 2) : '—' }}</td></tr></tbody></table></div>
         <div v-else class="p-10 text-center text-sm text-slate-500">No licences match the current selection.</div>
       </article>
     </div>
