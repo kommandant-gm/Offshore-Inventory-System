@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Enums\AssetStatus;
 use App\Models\Asset;
+use App\Models\ItLicense;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,6 +18,11 @@ class ItAssetSectionController extends Controller
 
         $assets = Asset::query()
             ->with(['category:id,name', 'currentLocation:id,name', 'currentAssignment'])
+            ->get();
+
+        $licenses = ItLicense::query()
+            ->orderBy('software_name')
+            ->orderBy('license_code')
             ->get();
 
         $status = $assets
@@ -105,7 +112,102 @@ class ItAssetSectionController extends Controller
                 'age' => $assetAgeBand($asset),
                 'purchaseYear' => $asset->purchase_year ? (string) $asset->purchase_year : null,
             ])->values(),
+            'licenseDashboard' => $this->licenseDashboard($licenses),
         ]);
+    }
+
+    private function licenseDashboard(Collection $licenses): array
+    {
+        $statusLabels = [
+            'active' => 'Active',
+            'expiring_soon' => 'Expiring soon',
+            'expired' => 'Expired',
+            'inactive' => 'Inactive',
+        ];
+        $statusTotals = $licenses->countBy(fn (ItLicense $license) => $license->status());
+        $totalSeats = (int) $licenses->where('active', true)->sum('seats_total');
+        $assignedSeats = (int) $licenses->where('active', true)->sum('seats_assigned');
+        $today = today();
+        $monthStart = $today->copy()->startOfMonth();
+
+        $expiryTimeline = collect(range(0, 11))->map(function (int $offset) use ($licenses, $monthStart) {
+            $start = $monthStart->copy()->addMonths($offset);
+            $end = $start->copy()->endOfMonth();
+            $expiring = $licenses->filter(fn (ItLicense $license) => $license->active
+                && $license->expiry_date?->betweenIncluded($start, $end));
+
+            return [
+                'label' => $start->format('M'),
+                'full_label' => $start->format('M Y'),
+                'value' => $expiring->count(),
+                'cost' => round((float) $expiring->sum('renewal_cost'), 2),
+            ];
+        });
+
+        $seatUtilisation = $licenses
+            ->where('active', true)
+            ->groupBy('software_name')
+            ->map(function (Collection $items, string $software) {
+                $purchased = (int) $items->sum('seats_total');
+                $assigned = (int) $items->sum('seats_assigned');
+
+                return [
+                    'label' => $software,
+                    'assigned' => $assigned,
+                    'available' => max(0, $purchased - $assigned),
+                    'total' => $purchased,
+                    'percent' => $purchased > 0 ? (int) round(($assigned / $purchased) * 100) : 0,
+                ];
+            })
+            ->sortByDesc('assigned')
+            ->take(8)
+            ->values();
+
+        $renewalCostByVendor = $licenses
+            ->where('active', true)
+            ->filter(fn (ItLicense $license) => (float) $license->renewal_cost > 0)
+            ->groupBy(fn (ItLicense $license) => trim((string) $license->vendor) ?: 'Other vendors')
+            ->map(fn (Collection $items, string $vendor) => [
+                'label' => $vendor,
+                'value' => round((float) $items->sum('renewal_cost'), 2),
+            ])
+            ->sortByDesc('value')
+            ->take(6)
+            ->values();
+
+        return [
+            'summary' => [
+                'total_licenses' => $licenses->count(),
+                'total_seats' => $totalSeats,
+                'assigned_seats' => $assignedSeats,
+                'available_seats' => max(0, $totalSeats - $assignedSeats),
+                'expiring_soon' => (int) ($statusTotals['expiring_soon'] ?? 0),
+                'expired' => (int) ($statusTotals['expired'] ?? 0),
+                'renewal_cost' => round((float) $licenses->where('active', true)->sum('renewal_cost'), 2),
+            ],
+            'status' => collect($statusLabels)->map(fn (string $label, string $key) => [
+                'label' => $label,
+                'value' => (int) ($statusTotals[$key] ?? 0),
+            ])->values(),
+            'seat_utilisation' => $seatUtilisation,
+            'expiry_timeline' => $expiryTimeline,
+            'renewal_cost_by_vendor' => $renewalCostByVendor,
+            'upcoming_renewals' => $licenses
+                ->filter(fn (ItLicense $license) => $license->active && $license->expiry_date?->gte($today))
+                ->sortBy('expiry_date')
+                ->take(8)
+                ->map(fn (ItLicense $license) => [
+                    'id' => $license->id,
+                    'code' => $license->license_code,
+                    'software' => $license->software_name,
+                    'vendor' => $license->vendor ?: 'Not specified',
+                    'expiry_date' => $license->expiry_date?->format('Y-m-d'),
+                    'days_until_expiry' => (int) $today->diffInDays($license->expiry_date, false),
+                    'renewal_cost' => round((float) $license->renewal_cost, 2),
+                    'auto_renew' => $license->auto_renew,
+                    'status' => $license->status(),
+                ])->values(),
+        ];
     }
 
     public function repairs(Request $request): Response

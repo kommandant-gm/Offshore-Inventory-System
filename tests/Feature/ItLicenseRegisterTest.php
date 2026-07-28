@@ -100,6 +100,52 @@ class ItLicenseRegisterTest extends TestCase
         ])->assertSessionHasErrors('seats_assigned');
     }
 
+    public function test_it_dashboard_includes_live_licence_analytics(): void
+    {
+        [$user, $branch] = $this->userWithAccess('read');
+
+        ItLicense::withoutGlobalScopes()->create([
+            'branch_id' => $branch->id,
+            'license_code' => 'LIC-M365-DASH',
+            'software_name' => 'Microsoft 365',
+            'vendor' => 'Microsoft',
+            'license_type' => 'subscription',
+            'seats_total' => 20,
+            'seats_assigned' => 15,
+            'expiry_date' => today()->addDays(20),
+            'renewal_cost' => 2400,
+            'auto_renew' => true,
+            'active' => true,
+        ]);
+        ItLicense::withoutGlobalScopes()->create([
+            'branch_id' => $branch->id,
+            'license_code' => 'LIC-ADOBE-DASH',
+            'software_name' => 'Adobe Creative Cloud',
+            'vendor' => 'Adobe',
+            'license_type' => 'subscription',
+            'seats_total' => 10,
+            'seats_assigned' => 4,
+            'expiry_date' => today()->subDay(),
+            'renewal_cost' => 1800,
+            'active' => true,
+        ]);
+
+        $this->actingAs($user)->get(route('it-assets.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ItAssets/Section')
+                ->where('licenseDashboard.summary.total_licenses', 2)
+                ->where('licenseDashboard.summary.total_seats', 30)
+                ->where('licenseDashboard.summary.assigned_seats', 19)
+                ->where('licenseDashboard.summary.available_seats', 11)
+                ->where('licenseDashboard.summary.expiring_soon', 1)
+                ->where('licenseDashboard.summary.expired', 1)
+                ->where('licenseDashboard.seat_utilisation.0.label', 'Microsoft 365')
+                ->where('licenseDashboard.seat_utilisation.0.percent', 75)
+                ->where('licenseDashboard.upcoming_renewals.0.code', 'LIC-M365-DASH')
+                ->has('licenseDashboard.expiry_timeline', 12));
+    }
+
     public function test_read_only_user_can_view_but_cannot_manage_it_licenses(): void
     {
         [$viewer, $branch] = $this->userWithAccess('read');

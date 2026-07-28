@@ -1,6 +1,7 @@
 ﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import AssetRepairModal from '@/Components/AssetRepairModal.vue';
+import ItLicenseDashboard from '@/Components/ItLicenseDashboard.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
 
@@ -11,6 +12,7 @@ const props = defineProps({
   rows: { type: [Array, Object], default: () => [] },
   charts: { type: Object, default: null },
   dashboardAssets: { type: Array, default: () => [] },
+  licenseDashboard: { type: Object, default: null },
   repairMode: { type: Boolean, default: false },
   repairableAssets: { type: Array, default: () => [] },
 });
@@ -19,6 +21,11 @@ const page = usePage();
 const canEdit = computed(() => page.props.auth?.user?.can?.it_assets_edit);
 const rowItems = computed(() => Array.isArray(props.rows) ? props.rows : (props.rows?.data ?? []));
 const repairModalOpen = ref(false);
+const activeDashboard = ref('assets');
+const licenseSummary = computed(() => props.licenseDashboard?.summary ?? {});
+const licenseUtilisation = computed(() => licenseSummary.value.total_seats
+  ? Math.round((licenseSummary.value.assigned_seats / licenseSummary.value.total_seats) * 100)
+  : 0);
 const returnFromRepair = (row) => {
   if (!window.confirm(`Mark ${row.asset_tag} as returned from repair and available?`)) return;
   router.patch(route('it-assets.repairs.return', row.asset_id), {
@@ -96,28 +103,36 @@ const pie = computed(() => {
 });
 </script>
 <template><Head :title="title"/><AuthenticatedLayout><section class="space-y-6" :class="{'dashboard-shell':charts}">
+  <nav v-if="charts" class="inline-flex rounded-2xl border border-[#d8e7d4] bg-white p-1.5 shadow-[0_8px_28px_rgba(39,89,45,.06)]" aria-label="IT dashboard view">
+    <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'assets' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'assets'" @click="activeDashboard='assets'">Assets</button>
+    <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'licenses' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'licenses'" @click="activeDashboard='licenses'">Licences</button>
+  </nav>
   <header v-if="charts" class="relative isolate overflow-hidden rounded-[1.75rem] bg-[linear-gradient(120deg,#064e3b_0%,#0f766e_58%,#115e59_100%)] px-5 py-6 text-white shadow-[0_24px_70px_rgba(6,78,59,.22)] sm:px-8 sm:py-8 lg:px-10">
     <div class="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-cyan-300/20 blur-2xl"></div>
     <div class="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-emerald-300/15 blur-3xl"></div>
     <div class="relative grid items-end gap-8 lg:grid-cols-[minmax(0,1fr),22rem]">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[.24em] text-emerald-200">KL IT Inventory</p>
-        <h1 class="mt-3 text-3xl font-bold tracking-[-.02em] sm:text-4xl lg:text-[2.75rem]">{{title}}</h1>
-        <p class="mt-3 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">{{description}} Monitor allocation, health, location and asset age from one responsive workspace.</p>
+        <h1 class="mt-3 text-3xl font-bold tracking-[-.02em] sm:text-4xl lg:text-[2.75rem]">{{activeDashboard === 'assets' ? title : 'Licence Dashboard'}}</h1>
+        <p class="mt-3 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">{{activeDashboard === 'assets' ? `${description} Monitor allocation, health, location and asset age from one responsive workspace.` : 'Software licence health, seat capacity, renewal dates and cost exposure in one responsive workspace.'}}</p>
         <div class="mt-6 flex flex-wrap gap-3">
-          <Link :href="route('it-assets.index')" class="inline-flex items-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50">View asset register</Link>
-          <Link v-if="canEdit" :href="route('it-assets.create')" class="inline-flex items-center rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15">+ Register asset</Link>
+          <Link :href="route(activeDashboard === 'assets' ? 'it-assets.index' : 'it-licenses.index')" class="inline-flex items-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50">View {{activeDashboard === 'assets' ? 'asset' : 'licence'}} register</Link>
+          <Link v-if="canEdit" :href="route(activeDashboard === 'assets' ? 'it-assets.create' : 'it-licenses.create')" class="inline-flex items-center rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15">+ Register {{activeDashboard === 'assets' ? 'asset' : 'licence'}}</Link>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/[.07] p-4 backdrop-blur-sm">
+      <div v-if="activeDashboard === 'assets'" class="grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/[.07] p-4 backdrop-blur-sm">
         <div class="rounded-xl bg-black/10 p-4"><p class="text-[10px] font-semibold uppercase tracking-[.16em] text-white/50">Utilisation</p><p class="mt-2 text-2xl font-bold text-cyan-200 sm:text-3xl">{{statPercent(statValue('Assigned'))}}%</p><p class="mt-1 text-xs text-white/55">{{statValue('Assigned')}} assigned</p></div>
         <div class="rounded-xl bg-black/10 p-4"><p class="text-[10px] font-semibold uppercase tracking-[.16em] text-white/50">Ready now</p><p class="mt-2 text-2xl font-bold text-emerald-300 sm:text-3xl">{{statPercent(statValue('Available'))}}%</p><p class="mt-1 text-xs text-white/55">{{statValue('Available')}} available</p></div>
+      </div>
+      <div v-else class="grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/[.07] p-4 backdrop-blur-sm">
+        <div class="rounded-xl bg-black/10 p-4"><p class="text-[10px] font-semibold uppercase tracking-[.16em] text-white/50">Seat utilisation</p><p class="mt-2 text-2xl font-bold text-cyan-200 sm:text-3xl">{{licenseUtilisation}}%</p><p class="mt-1 text-xs text-white/55">{{licenseSummary.assigned_seats || 0}} of {{licenseSummary.total_seats || 0}} seats</p></div>
+        <div class="rounded-xl bg-black/10 p-4"><p class="text-[10px] font-semibold uppercase tracking-[.16em] text-white/50">Renewal risk</p><p class="mt-2 text-2xl font-bold text-amber-300 sm:text-3xl">{{(licenseSummary.expiring_soon || 0) + (licenseSummary.expired || 0)}}</p><p class="mt-1 text-xs text-white/55">expiring or expired</p></div>
       </div>
     </div>
   </header>
   <header v-else class="flex flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-[#d8e7d4] bg-white p-7"><div><p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">KL IT Inventory</p><h1 class="mt-2 text-3xl font-bold text-[#234222]">{{title}}</h1><p class="mt-2 text-sm text-[#60745d]">{{description}}</p></div><button v-if="repairMode && canEdit" type="button" class="btn border-amber-600 bg-amber-500 text-white hover:bg-amber-600" @click="repairModalOpen=true">+ Send asset for repair</button></header>
 
-  <div v-if="stats.length" class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+  <div v-if="stats.length && (!charts || activeDashboard === 'assets')" class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
     <button v-for="stat in stats" :key="stat.label" type="button" class="group relative overflow-hidden rounded-2xl border border-[#d8e7d4] bg-white p-4 text-left shadow-[0_8px_28px_rgba(39,89,45,.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(39,89,45,.12)] focus:outline-none focus:ring-2 focus:ring-emerald-300 sm:p-5" :class="statSelected(stat.label) ? 'ring-2 ring-emerald-400' : (hasFilters ? 'opacity-80' : '')" :aria-pressed="statSelected(stat.label)" @click="selectStat(stat.label)">
       <div class="absolute inset-x-0 top-0 h-1" :class="statTheme(stat.label).accent"></div>
       <div class="absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition group-hover:opacity-100" :class="statTheme(stat.label).glow"></div>
@@ -128,13 +143,13 @@ const pie = computed(() => {
     </button>
   </div>
 
-  <div v-if="charts && hasFilters" class="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3" aria-live="polite">
+  <div v-if="charts && activeDashboard === 'assets' && hasFilters" class="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3" aria-live="polite">
     <span class="mr-1 text-xs font-bold uppercase tracking-wider text-emerald-800">{{filteredTotal}} matching</span>
     <button v-for="key in dimensionKeys.filter((key) => filters[key] !== null)" :key="key" type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-900 shadow-sm hover:border-emerald-400" :aria-label="`Remove ${key} filter ${filters[key]}`" @click="filters[key]=null">{{key === 'purchaseYear' ? 'Purchase year' : key}}: {{filters[key]}} <span aria-hidden="true">×</span></button>
     <button type="button" class="ml-auto text-xs font-bold text-emerald-800 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-950" @click="clearFilters">Clear all</button>
   </div>
 
-  <div v-if="charts" class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+  <div v-if="charts && activeDashboard === 'assets'" class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
     <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-5">
       <div class="flex items-start justify-between gap-4"><div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-blue-500">Asset allocation</p><h2 class="mt-1 text-xl font-black tracking-tight text-slate-800">Lifecycle status</h2></div><span class="text-right text-xs text-slate-400"><strong class="block text-lg text-slate-700">{{filteredTotal}}</strong>{{hasFilters ? 'matching' : 'assets'}}</span></div>
       <div class="mt-7 grid items-center gap-7 sm:grid-cols-[12rem,minmax(0,1fr)]">
@@ -222,6 +237,7 @@ const pie = computed(() => {
       <div v-else class="p-10 text-center text-sm text-slate-500">No assets match the current selection.</div>
     </article>
   </div>
+  <ItLicenseDashboard v-if="charts && activeDashboard === 'licenses' && licenseDashboard" :dashboard="licenseDashboard" />
   <div v-if="rowItems.length" class="overflow-hidden rounded-[1.5rem] border border-[#d8e7d4] bg-white">
     <div v-if="repairMode" class="overflow-x-auto"><table class="table"><thead><tr><th>Asset</th><th>Sent on</th><th>Vendor / technician</th><th>Fault / reference</th><th v-if="canEdit" class="text-right">Action</th></tr></thead><tbody><tr v-for="row in rowItems" :key="row.asset_tag"><td><Link class="font-bold text-[#2f7d32]" :href="route('it-assets.show',row.asset_id)">{{row.asset_tag}}</Link><span class="mt-1 block text-xs text-slate-500">{{row.detail||'—'}}</span></td><td>{{row.repair_date||'—'}}</td><td>{{row.handled_by||'Not recorded'}}</td><td><span class="block max-w-md">{{row.remarks||'No details recorded'}}</span><span v-if="row.reference_no" class="mt-1 block text-xs font-semibold text-slate-500">Ref: {{row.reference_no}}</span></td><td v-if="canEdit" class="text-right"><button type="button" class="btn btn-sm border-emerald-300 bg-emerald-50 text-emerald-800" @click="returnFromRepair(row)">Return to service</button></td></tr></tbody></table></div>
     <div v-else class="overflow-x-auto"><table class="table"><thead><tr><th>Asset tag</th><th>Details</th><th>Status</th></tr></thead><tbody><tr v-for="row in rowItems" :key="row.asset_tag"><td class="font-bold"><Link v-if="row.asset_id" class="text-[#2f7d32]" :href="route('it-assets.show',row.asset_id)">{{row.asset_tag}}</Link><template v-else>{{row.asset_tag}}</template></td><td>{{row.detail||'\u2014'}}</td><td>{{row.meta||'\u2014'}}</td></tr></tbody></table></div>
