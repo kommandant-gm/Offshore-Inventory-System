@@ -31,6 +31,7 @@ class AssetController extends Controller
             'assignee' => ['nullable', 'string', 'max:255'],
             'os' => ['nullable', 'string', 'max:100'],
             'assignment' => ['nullable', 'in:assigned,unassigned'],
+            'purchase_year_status' => ['nullable', 'in:missing'],
         ]);
         $categorySummaries = Category::query()
             ->whereIn('type', ['asset', 'both'])
@@ -74,6 +75,7 @@ class AssetController extends Controller
             ->when($filters['os'] ?? null, fn ($query, $os) => $query->where('operating_system', $os))
             ->when(($filters['assignment'] ?? null) === 'assigned', fn ($query) => $query->whereHas('currentAssignment'))
             ->when(($filters['assignment'] ?? null) === 'unassigned', fn ($query) => $query->whereDoesntHave('currentAssignment'))
+            ->when(($filters['purchase_year_status'] ?? null) === 'missing', fn ($query) => $query->whereNull('purchase_year'))
             ->orderBy('asset_tag_no');
 
         $qrCodesMissing = (clone $assetQuery)->whereNull('public_token')->count();
@@ -144,6 +146,7 @@ class AssetController extends Controller
                 'assignee' => $filters['assignee'] ?? '',
                 'os' => $filters['os'] ?? '',
                 'assignment' => $filters['assignment'] ?? '',
+                'purchase_year_status' => $filters['purchase_year_status'] ?? '',
             ],
             'selectedCategoryId' => $selectedCategory?->id,
             'locationOptions' => Location::query()

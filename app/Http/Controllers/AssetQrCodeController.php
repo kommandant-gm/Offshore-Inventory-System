@@ -80,6 +80,7 @@ class AssetQrCodeController extends Controller
             'assignee' => ['nullable', 'string', 'max:255'],
             'os' => ['nullable', 'string', 'max:100'],
             'assignment' => ['nullable', 'in:assigned,unassigned'],
+            'purchase_year_status' => ['nullable', 'in:missing'],
         ]);
 
         $generated = 0;
@@ -135,7 +136,8 @@ class AssetQrCodeController extends Controller
             ))
             ->when($filters['os'] ?? null, fn ($query, $os) => $query->where('operating_system', $os))
             ->when(($filters['assignment'] ?? null) === 'assigned', fn ($query) => $query->whereHas('currentAssignment'))
-            ->when(($filters['assignment'] ?? null) === 'unassigned', fn ($query) => $query->whereDoesntHave('currentAssignment'));
+            ->when(($filters['assignment'] ?? null) === 'unassigned', fn ($query) => $query->whereDoesntHave('currentAssignment'))
+            ->when(($filters['purchase_year_status'] ?? null) === 'missing', fn ($query) => $query->whereNull('purchase_year'));
     }
 
     private function uniqueToken(): string

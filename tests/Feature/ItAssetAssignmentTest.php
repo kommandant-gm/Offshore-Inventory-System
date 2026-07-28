@@ -109,6 +109,30 @@ class ItAssetAssignmentTest extends TestCase
                 ->where('assets.data.0.asset_tag_no', 'KL-TEST-001'));
     }
 
+    public function test_asset_register_can_show_assets_with_a_missing_purchase_year(): void
+    {
+        [$user, $asset, $branch] = $this->editorAndAsset();
+        Asset::withoutGlobalScopes()->create([
+            'branch_id' => $branch->id,
+            'asset_tag_no' => 'KL-TEST-002',
+            'description' => 'Dated laptop',
+            'category_id' => $asset->category_id,
+            'purchase_year' => 2025,
+            'current_status' => 'available',
+            'current_condition' => 'good',
+            'active' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('it-assets.index', ['purchase_year_status' => 'missing']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ItAssets/Index')
+                ->where('filters.purchase_year_status', 'missing')
+                ->has('assets.data', 1)
+                ->where('assets.data.0.asset_tag_no', 'KL-TEST-001'));
+    }
+
     private function editorAndAsset(): array
     {
         $branch = Branch::where('code', 'KL-IT')->firstOrFail();

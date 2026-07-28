@@ -43,6 +43,10 @@ const clearAssignee = () => {
   form.assignee = '';
   applyFilters();
 };
+const toggleMissingPurchaseYear = () => {
+  form.purchase_year_status = form.purchase_year_status === 'missing' ? '' : 'missing';
+  applyFilters();
+};
 const generateAllQr = () => {
   if (!props.qrCodesMissing || !window.confirm(`Generate QR codes for ${props.qrCodesMissing} matching ${props.qrCodesMissing === 1 ? 'asset' : 'assets'}? Existing QR codes will not be changed.`)) return;
   generatingAllQr.value = true;
@@ -182,6 +186,7 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
           <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Assignment</span><CustomSelect v-model="form.assignment" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All assets</option><option value="assigned">Assigned</option><option value="unassigned">Unassigned</option></CustomSelect></label>
           <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Department</span><CustomSelect v-model="form.department" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All departments</option><option v-for="option in departmentOptions" :key="option" :value="option">{{ option }}</option></CustomSelect></label>
           <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Operating system</span><CustomSelect v-model="form.os" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]"><option value="">All operating systems</option><option v-for="option in osOptions" :key="option" :value="option">{{ option }}</option></CustomSelect></label>
+          <div><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Purchase year</span><button type="button" class="flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-amber-300" :class="form.purchase_year_status === 'missing' ? 'border-amber-400 bg-amber-50 text-amber-800' : 'border-[#d8e7d4] bg-white text-[#60745d] hover:border-amber-300 hover:bg-amber-50/50'" :aria-pressed="form.purchase_year_status === 'missing'" @click="toggleMissingPurchaseYear"><span class="h-2 w-2 rounded-full" :class="form.purchase_year_status === 'missing' ? 'bg-amber-500' : 'bg-slate-300'"></span>{{form.purchase_year_status === 'missing' ? 'Missing details ×' : 'Show missing details'}}</button></div>
         </div>
       </form>
       <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
