@@ -9,11 +9,123 @@ use App\Services\BranchContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class KemamanInventoryController extends Controller
 {
+    public function dashboard(Request $request, BranchContext $branchContext): Response
+    {
+        $this->authorizeBranch($request, $branchContext);
+        abort_unless($request->user()?->canRead('assets'), 403);
+
+        $summary = KemamanInventoryItem::query()->selectRaw(
+            'COUNT(*) as records, COALESCE(SUM(total_quantity), 0) as total_quantity, COALESCE(SUM(available_quantity), 0) as available_quantity, COALESCE(SUM(quantity_out), 0) as quantity_out, COALESCE(SUM(damaged_quantity), 0) as damaged_quantity, COALESCE(SUM(beyond_repair_quantity), 0) as beyond_repair_quantity, COALESCE(SUM(not_traceable_quantity), 0) as not_traceable_quantity'
+        )->first();
+
+        $expiry = [
+            'expired' => KemamanInventoryItem::query()->whereNotNull('test_expiry_date')->whereDate('test_expiry_date', '<', today())->count(),
+            'due_30_days' => KemamanInventoryItem::query()->whereBetween('test_expiry_date', [today(), today()->addDays(30)])->count(),
+            'due_90_days' => KemamanInventoryItem::query()->whereBetween('test_expiry_date', [today()->addDays(31), today()->addDays(90)])->count(),
+            'valid' => KemamanInventoryItem::query()->whereDate('test_expiry_date', '>', today()->addDays(90))->count(),
+            'not_recorded' => KemamanInventoryItem::query()->whereNull('test_expiry_date')->count(),
+        ];
+
+        return Inertia::render('KemamanInventory/Dashboard', [
+            'summary' => [
+                'records' => (int) $summary->records,
+                'total_quantity' => (int) $summary->total_quantity,
+                'available_quantity' => (int) $summary->available_quantity,
+                'quantity_out' => (int) $summary->quantity_out,
+                'damaged_quantity' => (int) $summary->damaged_quantity,
+                'beyond_repair_quantity' => (int) $summary->beyond_repair_quantity,
+                'not_traceable_quantity' => (int) $summary->not_traceable_quantity,
+            ],
+            'statusDistribution' => KemamanInventoryItem::query()
+                ->selectRaw('equipment_status as label, COUNT(*) as records, COALESCE(SUM(total_quantity), 0) as value')
+                ->groupBy('equipment_status')
+                ->orderByDesc('value')
+                ->get()
+                ->map(fn ($row) => [
+                    'key' => $row->label,
+                    'label' => Str::headline($row->label),
+                    'records' => (int) $row->records,
+                    'value' => (int) $row->value,
+                ]),
+            'categories' => KemamanInventoryItem::query()
+                ->selectRaw('category as label, COUNT(*) as records, COALESCE(SUM(total_quantity), 0) as value')
+                ->groupBy('category')
+                ->orderByDesc('value')
+                ->limit(10)
+                ->get()
+                ->map(fn ($row) => ['label' => $row->label, 'records' => (int) $row->records, 'value' => (int) $row->value]),
+            'locations' => KemamanInventoryItem::query()
+                ->selectRaw("COALESCE(location, 'Unassigned') as label, COUNT(*) as records, COALESCE(SUM(total_quantity), 0) as value")
+                ->groupBy('location')
+                ->orderByDesc('value')
+                ->limit(8)
+                ->get()
+                ->map(fn ($row) => ['label' => $row->label, 'records' => (int) $row->records, 'value' => (int) $row->value]),
+            'condition' => [
+                ['label' => 'Available', 'value' => (int) $summary->available_quantity],
+                ['label' => 'At Location', 'value' => KemamanInventoryItem::query()->sum('location_quantity')],
+                ['label' => 'Damaged', 'value' => (int) $summary->damaged_quantity],
+                ['label' => 'Beyond Repair', 'value' => (int) $summary->beyond_repair_quantity],
+                ['label' => 'Traceability Variance', 'value' => abs((int) $summary->not_traceable_quantity)],
+            ],
+            'expiry' => $expiry,
+            'expiringItems' => KemamanInventoryItem::query()
+                ->whereNotNull('test_expiry_date')
+                ->whereDate('test_expiry_date', '<=', today()->addDays(90))
+                ->orderBy('test_expiry_date')
+                ->limit(8)
+                ->get()
+                ->map(fn (KemamanInventoryItem $item) => [
+                    'id' => $item->id,
+                    'description' => $item->item_description,
+                    'tag_no' => $item->tag_no,
+                    'certificate_no' => $item->certificate_no,
+                    'test_expiry_date' => $item->test_expiry_date?->format('Y-m-d'),
+                    'days_remaining' => today()->diffInDays($item->test_expiry_date, false),
+                ]),
+            'attentionItems' => KemamanInventoryItem::query()
+                ->where(fn (Builder $query) => $query
+                    ->where('damaged_quantity', '>', 0)
+                    ->orWhere('beyond_repair_quantity', '>', 0)
+                    ->orWhere('not_traceable_quantity', '!=', 0)
+                    ->orWhereIn('equipment_status', ['under_inspection', 'damaged', 'beyond_repair', 'not_traceable']))
+                ->orderByDesc('damaged_quantity')
+                ->orderByDesc('beyond_repair_quantity')
+                ->limit(8)
+                ->get()
+                ->map(fn (KemamanInventoryItem $item) => [
+                    'id' => $item->id,
+                    'description' => $item->item_description,
+                    'tag_no' => $item->tag_no,
+                    'category' => $item->category,
+                    'status' => Str::headline($item->equipment_status),
+                    'damaged' => $item->damaged_quantity,
+                    'beyond_repair' => $item->beyond_repair_quantity,
+                    'not_traceable' => $item->not_traceable_quantity,
+                ]),
+            'recentItems' => KemamanInventoryItem::query()
+                ->latest('updated_at')
+                ->limit(6)
+                ->get()
+                ->map(fn (KemamanInventoryItem $item) => [
+                    'id' => $item->id,
+                    'description' => $item->item_description,
+                    'tag_no' => $item->tag_no,
+                    'category' => $item->category,
+                    'status' => Str::headline($item->equipment_status),
+                    'location' => $item->location,
+                    'updated_at' => $item->updated_at?->format('d M Y, H:i'),
+                ]),
+            'canEdit' => $request->user()->canEdit('assets'),
+        ]);
+    }
+
     public function index(Request $request, BranchContext $branchContext): Response
     {
         $this->authorizeBranch($request, $branchContext);

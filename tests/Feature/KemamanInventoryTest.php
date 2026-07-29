@@ -14,6 +14,38 @@ class KemamanInventoryTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_equipment_dashboard_reports_live_operational_and_compliance_metrics(): void
+    {
+        [$user, $branch] = $this->userWithKemamanAccess('read');
+
+        foreach ([
+            $this->record(['total_quantity' => 4, 'available_quantity' => 3, 'not_traceable_quantity' => 0, 'test_expiry_date' => today()->addDays(20)->toDateString()]),
+            $this->record(['category' => 'Pneumatic', 'tag_no' => 'PNEU-001', 'total_quantity' => 2, 'available_quantity' => 0, 'damaged_quantity' => 1, 'not_traceable_quantity' => 0, 'equipment_status' => 'damaged', 'location' => 'KSB', 'test_expiry_date' => today()->subDay()->toDateString()]),
+            $this->record(['category' => 'Pneumatic', 'tag_no' => 'PNEU-002', 'total_quantity' => 1, 'available_quantity' => 0, 'not_traceable_quantity' => 1, 'equipment_status' => 'not_traceable', 'location' => null, 'test_expiry_date' => null]),
+        ] as $record) {
+            KemamanInventoryItem::withoutGlobalScopes()->create([...$record, 'branch_id' => $branch->id]);
+        }
+
+        $this->actingAs($user)->get(route('kemaman-inventory.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('KemamanInventory/Dashboard')
+                ->where('summary.records', 3)
+                ->where('summary.total_quantity', 7)
+                ->where('summary.available_quantity', 3)
+                ->where('summary.damaged_quantity', 1)
+                ->where('expiry.expired', 1)
+                ->where('expiry.due_30_days', 1)
+                ->where('expiry.not_recorded', 1)
+                ->where('statusDistribution.0.key', 'available')
+                ->where('statusDistribution.0.value', 4)
+                ->has('categories', 2)
+                ->has('locations', 3)
+                ->has('attentionItems', 2)
+                ->has('expiringItems', 2)
+                ->has('recentItems', 3));
+    }
+
     public function test_editor_can_create_filter_update_and_delete_kemaman_equipment(): void
     {
         [$user, $branch] = $this->userWithKemamanAccess('edit');

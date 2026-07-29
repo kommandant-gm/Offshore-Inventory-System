@@ -70,6 +70,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/settings/users/{user}/access', [SettingsController::class, 'updateUserAccess'])->name('settings.users.update');
     Route::get('/settings/issue-logs', [IssueLogController::class, 'index'])->name('settings.issue-logs.index');
     Route::get('/audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');
+    Route::get('/kemaman-equipment-dashboard', [KemamanInventoryController::class, 'dashboard'])->name('kemaman-inventory.dashboard');
     Route::get('/kemaman-inventory', [KemamanInventoryController::class, 'index'])->name('kemaman-inventory.index');
     Route::post('/kemaman-inventory', [KemamanInventoryController::class, 'store'])->name('kemaman-inventory.store');
     Route::patch('/kemaman-inventory/{item}', [KemamanInventoryController::class, 'update'])->name('kemaman-inventory.update');

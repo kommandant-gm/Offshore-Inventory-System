@@ -62,6 +62,7 @@
         { name: 'Repairs', icon: ExclamationTriangleIcon, route: 'it-assets.repairs', can: 'it_assets_read' },
     ];
     const kemamanItems = [
+        { name: 'Equipment Dashboard', icon: Squares2X2Icon, route: 'kemaman-inventory.dashboard' },
         { name: 'Equipment Register', icon: ClipboardDocumentListIcon, route: 'kemaman-inventory.index' },
     ];
     const administrationItems = [
