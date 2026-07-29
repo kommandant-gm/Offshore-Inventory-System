@@ -21,6 +21,7 @@ use App\Http\Controllers\ItAssetSectionController;
 use App\Http\Controllers\ItLicenseController;
 use App\Http\Controllers\ItLicenseImportController;
 use App\Http\Controllers\ItPeopleController;
+use App\Http\Controllers\KemamanInventoryController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicAssetController;
@@ -69,6 +70,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/settings/users/{user}/access', [SettingsController::class, 'updateUserAccess'])->name('settings.users.update');
     Route::get('/settings/issue-logs', [IssueLogController::class, 'index'])->name('settings.issue-logs.index');
     Route::get('/audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');
+    Route::get('/kemaman-inventory', [KemamanInventoryController::class, 'index'])->name('kemaman-inventory.index');
+    Route::post('/kemaman-inventory', [KemamanInventoryController::class, 'store'])->name('kemaman-inventory.store');
+    Route::patch('/kemaman-inventory/{item}', [KemamanInventoryController::class, 'update'])->name('kemaman-inventory.update');
+    Route::delete('/kemaman-inventory/{item}', [KemamanInventoryController::class, 'destroy'])->name('kemaman-inventory.destroy');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

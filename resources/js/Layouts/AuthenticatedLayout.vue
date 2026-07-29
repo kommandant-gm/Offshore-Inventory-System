@@ -25,8 +25,10 @@
         : localStorage.getItem(key) === 'true';
     const miriExpanded = ref(storedSection('sidebar.miri.expanded', currentUser?.active_branch?.code === 'MIRI'));
     const klExpanded = ref(storedSection('sidebar.kl.expanded', currentUser?.active_branch?.code === 'KL-IT'));
+    const kemamanExpanded = ref(storedSection('sidebar.kemaman.expanded', currentUser?.active_branch?.code === 'KEMAMAN'));
     watch(miriExpanded, (value) => localStorage.setItem('sidebar.miri.expanded', String(value)));
     watch(klExpanded, (value) => localStorage.setItem('sidebar.kl.expanded', String(value)));
+    watch(kemamanExpanded, (value) => localStorage.setItem('sidebar.kemaman.expanded', String(value)));
     const hasBranch = (code) => currentUser?.branches?.some((branch) => branch.code === code);
     const isItemActive = (item) => route().current(item.active ?? item.route);
     const openBranchRoute = (branchCode, routeName) => {
@@ -58,6 +60,9 @@
         { name: 'IT Licence Register', icon: KeyIcon, route: 'it-licenses.index', can: 'it_assets_read' },
         { name: 'People', icon: UserGroupIcon, route: 'it-people.index', active: 'it-people.*', can: 'it_assets_read' },
         { name: 'Repairs', icon: ExclamationTriangleIcon, route: 'it-assets.repairs', can: 'it_assets_read' },
+    ];
+    const kemamanItems = [
+        { name: 'Equipment Register', icon: ClipboardDocumentListIcon, route: 'kemaman-inventory.index' },
     ];
     const administrationItems = [
         { name: 'Categories', icon: TagIcon, route: 'categories.index' },
@@ -250,7 +255,7 @@
                     <slot />
                 </main>
 
-                <AssistantWidget v-if="currentUser?.can?.assistant_read" />
+                <AssistantWidget v-if="currentUser?.can?.assistant_read && currentUser?.active_branch?.code !== 'KEMAMAN'" />
             </div> 
             
             <div class="drawer-side z-40">
@@ -285,6 +290,17 @@
                             </button>
                             <div v-show="klExpanded" class="space-y-0.5">
                                 <button v-for="item in klItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`kl-${item.name}`" type="button" @click="openBranchRoute('KL-IT', item.route)" :class="currentUser?.active_branch?.code === 'KL-IT' && isItemActive(item) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                    <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
+                                </button>
+                            </div>
+                        </section>
+
+                        <section v-if="hasBranch('KEMAMAN')">
+                            <button type="button" class="mb-2 flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.24em] text-[#60745d] hover:bg-[#f2f8ef]" :aria-expanded="kemamanExpanded" @click="kemamanExpanded = !kemamanExpanded">
+                                <span>Kemaman Inventory</span><ChevronDownIcon class="h-4 w-4 transition-transform" :class="kemamanExpanded ? 'rotate-180' : ''" />
+                            </button>
+                            <div v-show="kemamanExpanded" class="space-y-0.5">
+                                <button v-for="item in kemamanItems" :key="`kemaman-${item.name}`" type="button" @click="openBranchRoute('KEMAMAN', item.route)" :class="currentUser?.active_branch?.code === 'KEMAMAN' && isItemActive(item) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
                                     <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
                                 </button>
                             </div>
