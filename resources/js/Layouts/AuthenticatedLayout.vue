@@ -38,9 +38,11 @@
             router.visit(route(routeName));
             return;
         }
-        router.patch(route('branches.activate'), { branch_id: branch.id }, {
-            preserveScroll: true,
-            onSuccess: () => router.visit(route(routeName)),
+        router.patch(route('branches.activate'), {
+            branch_id: branch.id,
+            destination_route: routeName,
+        }, {
+            preserveScroll: false,
         });
     };
     const miriItems = [

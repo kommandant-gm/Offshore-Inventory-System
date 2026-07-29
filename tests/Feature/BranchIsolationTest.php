@@ -17,14 +17,37 @@ class BranchIsolationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_switching_from_kemaman_to_kl_redirects_directly_to_the_requested_kl_page(): void
+    {
+        $kemaman = Branch::where('code', 'KEMAMAN')->firstOrFail();
+        $kl = Branch::where('code', 'KL-IT')->firstOrFail();
+        $user = User::factory()->create([
+            'role' => 'supervisor',
+            'permissions' => AccessMatrix::permissionsForRole('supervisor'),
+        ]);
+        $user->branches()->attach($kemaman, ['access_level' => 'edit', 'is_default' => true]);
+        $user->branches()->attach($kl, ['access_level' => 'edit', 'is_default' => false]);
+
+        $this->actingAs($user)
+            ->from(route('kemaman-inventory.dashboard'))
+            ->patch(route('branches.activate'), [
+                'branch_id' => $kl->id,
+                'destination_route' => 'it-assets.dashboard',
+            ])
+            ->assertRedirect(route('it-assets.dashboard'));
+
+        $this->assertSame($kl->id, session('branch_id'));
+        $this->get(route('it-assets.dashboard'))->assertOk();
+    }
+
     public function test_miri_user_cannot_list_or_open_kl_inventory(): void
     {
         [$miri, $kl] = [Branch::where('code', 'MIRI')->firstOrFail(), Branch::where('code', 'KL-IT')->firstOrFail()];
         $user = User::factory()->create(['role' => 'viewer', 'permissions' => AccessMatrix::permissionsForRole('viewer')]);
         $user->branches()->attach($miri, ['access_level' => 'read', 'is_default' => true]);
-        $category = Category::create(['code'=>'TEST','name'=>'Test','type'=>CategoryType::Asset,'active'=>true]);
-        $miriLocation = Location::withoutGlobalScopes()->create(['branch_id'=>$miri->id,'code'=>'MRI-T','name'=>'Miri Test','type'=>LocationType::Yard,'active'=>true]);
-        $klLocation = Location::withoutGlobalScopes()->create(['branch_id'=>$kl->id,'code'=>'KL-T','name'=>'KL Test','type'=>LocationType::Yard,'active'=>true]);
+        $category = Category::create(['code' => 'TEST', 'name' => 'Test', 'type' => CategoryType::Asset, 'active' => true]);
+        $miriLocation = Location::withoutGlobalScopes()->create(['branch_id' => $miri->id, 'code' => 'MRI-T', 'name' => 'Miri Test', 'type' => LocationType::Yard, 'active' => true]);
+        $klLocation = Location::withoutGlobalScopes()->create(['branch_id' => $kl->id, 'code' => 'KL-T', 'name' => 'KL Test', 'type' => LocationType::Yard, 'active' => true]);
         $miriItem = InventoryItem::withoutGlobalScopes()->create($this->item($miri->id, $miriLocation->id, 'MRI-ITEM'));
         $klItem = InventoryItem::withoutGlobalScopes()->create($this->item($kl->id, $klLocation->id, 'KL-ITEM'));
 
@@ -35,17 +58,18 @@ class BranchIsolationTest extends TestCase
 
     public function test_read_only_miri_membership_blocks_edit_when_kl_staff_switches_branch(): void
     {
-        $miri=Branch::where('code','MIRI')->firstOrFail(); $kl=Branch::where('code','KL-IT')->firstOrFail();
-        $user=User::factory()->create(['role'=>'supervisor','permissions'=>AccessMatrix::permissionsForRole('supervisor')]);
-        $user->branches()->attach($kl,['access_level'=>'edit','is_default'=>true]);
-        $user->branches()->attach($miri,['access_level'=>'read','is_default'=>false]);
-        $this->actingAs($user)->patch(route('branches.activate'),['branch_id'=>$miri->id])->assertRedirect();
+        $miri = Branch::where('code', 'MIRI')->firstOrFail();
+        $kl = Branch::where('code', 'KL-IT')->firstOrFail();
+        $user = User::factory()->create(['role' => 'supervisor', 'permissions' => AccessMatrix::permissionsForRole('supervisor')]);
+        $user->branches()->attach($kl, ['access_level' => 'edit', 'is_default' => true]);
+        $user->branches()->attach($miri, ['access_level' => 'read', 'is_default' => false]);
+        $this->actingAs($user)->patch(route('branches.activate'), ['branch_id' => $miri->id])->assertRedirect();
         $this->assertFalse($user->canEdit('assets'));
         $this->actingAs($user)->get(route('assets.create'))->assertForbidden();
     }
 
     private function item(int $branchId, int $locationId, string $code): array
     {
-        return ['branch_id'=>$branchId,'item_code'=>$code,'description'=>$code,'category_id'=>Category::first()->id,'uom'=>'EA','default_location_id'=>$locationId,'opening_stock'=>1,'standard_cost'=>1,'active'=>true];
+        return ['branch_id' => $branchId, 'item_code' => $code, 'description' => $code, 'category_id' => Category::first()->id, 'uom' => 'EA', 'default_location_id' => $locationId, 'opening_stock' => 1, 'standard_cost' => 1, 'active' => true];
     }
 }
