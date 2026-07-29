@@ -58,29 +58,86 @@ class DashboardController extends Controller
                 'total' => $transaction->total,
             ]);
 
-        $attentionItems = InventoryItem::query()
+        $inventoryItems = InventoryItem::query()
             ->with([
                 'category',
                 'defaultLocation',
                 'locationBalances.location',
             ])
             ->where('active', true)
-            ->get()
-            ->map(function (InventoryItem $item) use ($itemProjector) {
-                $currentStock = $itemProjector->currentStock($item);
-                $minimumStock = $item->minimum_stock !== null ? (float) $item->minimum_stock : null;
-                $stockGap = $minimumStock !== null ? $minimumStock - $currentStock : null;
+            ->get();
 
-                return [
-                    ...$itemProjector->listPayload($item),
-                    'stock_gap' => $stockGap,
-                ];
-            })
+        $inventoryRows = $inventoryItems->map(function (InventoryItem $item) use ($itemProjector) {
+            $currentStock = $itemProjector->currentStock($item);
+            $minimumStock = $item->minimum_stock !== null ? (float) $item->minimum_stock : null;
+
+            return [
+                ...$itemProjector->listPayload($item),
+                'category_id' => $item->category_id,
+                'stock_gap' => $minimumStock !== null ? $minimumStock - $currentStock : null,
+            ];
+        });
+
+        $lowStockItems = $inventoryRows
             ->filter(fn (array $item) => $item['stock_gap'] !== null && $item['stock_gap'] > 0)
-            ->sortByDesc(fn (array $item) => $item['stock_gap'])
+            ->sortByDesc(fn (array $item) => $item['stock_gap']);
+
+        $attentionItems = $lowStockItems
             ->take(4)
             ->values()
             ->map(fn (array $item) => collect($item)->except('stock_gap')->all());
+
+        $inStockItems = $inventoryRows->filter(fn (array $item) => (float) $item['current_stock'] > 0);
+        $outOfStockItems = $inventoryRows->filter(fn (array $item) => (float) $item['current_stock'] <= 0);
+        $healthyItems = $inStockItems->reject(fn (array $item) => $lowStockItems->contains('id', $item['id']));
+        $totalStockQuantity = round((float) $inventoryRows->sum('current_stock'), 2);
+        $totalInventoryValue = round((float) $inventoryRows->sum(fn (array $item) => (float) $item['current_stock'] * (float) $item['standard_cost']), 2);
+
+        $categoryDistribution = $inventoryRows
+            ->groupBy(fn (array $item) => $item['category'] ?: 'Uncategorised')
+            ->map(function ($items, string $label) {
+                return [
+                    'key' => $items->first()['category_id'],
+                    'label' => $label,
+                    'value' => $items->count(),
+                    'quantity' => round((float) $items->sum('current_stock'), 2),
+                ];
+            })
+            ->sortByDesc('value')
+            ->values()
+            ->take(10);
+
+        $locationDistribution = $inventoryItems
+            ->flatMap(function (InventoryItem $item) use ($itemProjector) {
+                $balances = $item->locationBalances
+                    ->filter(fn ($balance) => (float) $balance->quantity != 0.0)
+                    ->map(fn ($balance) => [
+                        'item_id' => $item->id,
+                        'label' => $balance->location?->name ?? 'Unassigned',
+                        'quantity' => (float) $balance->quantity,
+                    ]);
+
+                if ($balances->isNotEmpty()) {
+                    return $balances;
+                }
+
+                $currentStock = $itemProjector->currentStock($item);
+
+                return $currentStock != 0.0 ? [[
+                    'item_id' => $item->id,
+                    'label' => $item->defaultLocation?->name ?? 'Unassigned',
+                    'quantity' => $currentStock,
+                ]] : [];
+            })
+            ->groupBy('label')
+            ->map(fn ($balances, string $label) => [
+                'label' => $label,
+                'value' => $balances->pluck('item_id')->unique()->count(),
+                'quantity' => round((float) $balances->sum('quantity'), 2),
+            ])
+            ->sortByDesc('quantity')
+            ->values()
+            ->take(8);
 
         $featuredMovement = $latestTransactions->first();
 
@@ -106,6 +163,22 @@ class DashboardController extends Controller
                 'categories' => Category::count(),
                 'locations' => Location::count(),
             ],
+            'inventorySummary' => [
+                'active_items' => $inventoryRows->count(),
+                'in_stock' => $inStockItems->count(),
+                'healthy' => $healthyItems->count(),
+                'low_stock' => $lowStockItems->count(),
+                'out_of_stock' => $outOfStockItems->count(),
+                'total_quantity' => $totalStockQuantity,
+                'total_value' => $totalInventoryValue,
+            ],
+            'stockStatus' => [
+                ['key' => 'healthy', 'label' => 'Healthy Stock', 'value' => $healthyItems->count()],
+                ['key' => 'low', 'label' => 'Low Stock', 'value' => $lowStockItems->count()],
+                ['key' => 'out', 'label' => 'Out of Stock', 'value' => $outOfStockItems->count()],
+            ],
+            'categoryDistribution' => $categoryDistribution,
+            'locationDistribution' => $locationDistribution,
             'featuredMovement' => $featuredMovement ? [
                 'item_code' => $featuredMovement->item?->item_code,
                 'description' => $featuredMovement->item?->description,
