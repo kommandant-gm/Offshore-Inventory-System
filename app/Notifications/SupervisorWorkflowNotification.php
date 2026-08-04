@@ -14,7 +14,7 @@ class SupervisorWorkflowNotification extends Notification
         private readonly string $subject,
         private readonly string $intro,
         private readonly array $details,
-        private readonly string $url,
+        private readonly ?string $url,
         private readonly string $actionLabel,
     ) {}
 
@@ -28,6 +28,10 @@ class SupervisorWorkflowNotification extends Notification
     {
         $mail = (new MailMessage)->subject($this->subject)->greeting('Hello Supervisor,')->line($this->intro);
         foreach ($this->details as $label => $value) $mail->line("{$label}: {$value}");
-        return $mail->action($this->actionLabel, $this->url)->line('This is an acknowledgement notification from the Dayang Inventory Management System.');
+        if ($this->url) {
+            $mail->action($this->actionLabel, $this->url);
+        }
+
+        return $mail->line('This is an acknowledgement notification from the Dayang Inventory Management System.');
     }
 }

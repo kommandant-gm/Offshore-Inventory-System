@@ -107,8 +107,8 @@ class SettingsController extends Controller
                 subject: 'Test email - Dayang Inventory Management System',
                 intro: request()->user()->name.' sent a test email from the Settings page.',
                 details: ['Recipients' => implode(', ', $recipients), 'Sent at' => now()->format('Y-m-d H:i:s')],
-                url: route('settings.index'),
-                actionLabel: 'Open Settings',
+                url: null,
+                actionLabel: '',
             );
             foreach ($recipients as $address) {
                 Notification::route('mail', $address)->notify($notification);
