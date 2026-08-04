@@ -72,6 +72,11 @@ class Asset extends Model
 
     public function currentAssignment(): HasOne
     {
-        return $this->hasOne(AssetAssignment::class)->whereNull('returned_at')->latestOfMany();
+        // Qualify the projection because latestOfMany joins asset_assignments
+        // to its aggregate subquery, which also contains asset_id.
+        return $this->hasOne(AssetAssignment::class)
+            ->select('asset_assignments.*')
+            ->whereNull('returned_at')
+            ->latestOfMany();
     }
 }
