@@ -291,6 +291,21 @@ class AssetController extends Controller
         return redirect()->route('it-assets.show', $asset)->with('success', 'IT asset updated.');
     }
 
+    public function bulkEdit(Request $request): Response
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+        $ids = $request->validate(['asset_ids' => ['required', 'array', 'min:1', 'max:100'], 'asset_ids.*' => ['integer', 'distinct']])['asset_ids'];
+        $assets = Asset::query()->with('category')->whereIn('id', $ids)->orderBy('asset_tag_no')->get(['id', 'asset_tag_no', 'model', 'description', 'category_id']);
+        abort_if($assets->count() !== count($ids), 422, 'One or more selected assets are not available.');
+
+        return Inertia::render('ItAssets/BulkEdit', [
+            'assets' => $assets->map(fn (Asset $asset) => ['id' => $asset->id, 'asset_tag_no' => $asset->asset_tag_no, 'label' => $asset->model ?: $asset->description, 'category' => $asset->category?->name]),
+            'categories' => Category::query()->whereIn('type', ['asset', 'both'])->orderBy('name')->get(['id', 'name']),
+            'locations' => Location::query()->orderBy('name')->get(['id', 'code', 'name']),
+            'conditions' => AssetCondition::options(),
+        ]);
+    }
+
     public function bulkUpdate(BulkUpdateAssetRequest $request): RedirectResponse
     {
         $data = $request->validated();
