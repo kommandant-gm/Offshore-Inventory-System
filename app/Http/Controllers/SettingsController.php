@@ -14,8 +14,11 @@ use App\Models\Branch;
 use App\Models\IssueLog;
 use App\Services\AuditLogger;
 use App\Support\AccessMatrix;
+use App\Notifications\SupervisorWorkflowNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -43,6 +46,7 @@ class SettingsController extends Controller
             ],
             'latestMovementDate' => $latestMovement?->transaction_date?->format('Y-m-d'),
             'canEditSettings' => true,
+            'supervisorEmails' => config('mail.supervisor_addresses', []),
             'issueSummary' => [
                 'total' => IssueLog::count(),
                 'errors' => IssueLog::where('level', 'error')->count(),
@@ -75,6 +79,34 @@ class SettingsController extends Controller
                     'default_branch_id' => $user->branches->first(fn ($branch) => (bool) $branch->pivot->is_default)?->id,
                 ]),
         ]);
+    }
+
+    public function sendSupervisorTestEmail(): RedirectResponse
+    {
+        abort_unless(request()->user()?->isSuperAdmin(), 403);
+        $recipients = config('mail.supervisor_addresses', []);
+
+        if (empty($recipients)) {
+            return back()->with('error', 'No supervisor email recipients are configured.');
+        }
+
+        try {
+            $notification = new SupervisorWorkflowNotification(
+                subject: 'Test email - Dayang Inventory Management System',
+                intro: request()->user()->name.' sent a test email from the Settings page.',
+                details: ['Recipients' => implode(', ', $recipients), 'Sent at' => now()->format('Y-m-d H:i:s')],
+                url: route('settings.index'),
+                actionLabel: 'Open Settings',
+            );
+            foreach ($recipients as $address) {
+                Notification::route('mail', $address)->notify($notification);
+            }
+        } catch (\Throwable $exception) {
+            Log::error('Unable to send supervisor test email.', ['exception' => $exception]);
+            return back()->with('error', 'Test email could not be sent. Check the mail settings and application log.');
+        }
+
+        return back()->with('success', 'Test email sent to '.implode(', ', $recipients).'.');
     }
 
     public function updateUserAccess(UpdateUserAccessRequest $request, User $user, AuditLogger $auditLogger): RedirectResponse

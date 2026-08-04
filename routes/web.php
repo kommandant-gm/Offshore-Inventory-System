@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/assistant/query', [AssistantController::class, 'query'])->name('assistant.query');
     Route::get('/stock-anomalies', [StockAnomalyController::class, 'index'])->name('anomalies.index');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings/test-supervisor-email', [SettingsController::class, 'sendSupervisorTestEmail'])->name('settings.test-supervisor-email');
     Route::patch('/settings/users/{user}/access', [SettingsController::class, 'updateUserAccess'])->name('settings.users.update');
     Route::get('/settings/issue-logs', [IssueLogController::class, 'index'])->name('settings.issue-logs.index');
     Route::get('/audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');

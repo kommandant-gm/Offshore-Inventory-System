@@ -17,6 +17,7 @@ const props = defineProps({
     branchOptions: Array,
     issueSummary: Object,
     recentIssues: Array,
+    supervisorEmails: Array,
 });
 
 const adminGroups = [
@@ -69,6 +70,7 @@ const userForms = reactive(
 
 const selectedUserId = ref(props.users[0]?.id ?? null);
 const permissionSearch = ref('');
+const sendingTestEmail = ref(false);
 
 const accessSummary = (userId) => {
     const levels = Object.values(userForms[userId].permissions);
@@ -117,6 +119,11 @@ const saveAccess = (userId) => {
         },
     );
 };
+
+const sendSupervisorTestEmail = () => {
+    sendingTestEmail.value = true;
+    router.post(route('settings.test-supervisor-email'), {}, { preserveScroll: true, onFinish: () => { sendingTestEmail.value = false; } });
+};
 </script>
 
 <template>
@@ -141,6 +148,13 @@ const saveAccess = (userId) => {
                 </div>
                 <div v-if="recentIssues.length" class="mt-5 space-y-3"><article v-for="issue in recentIssues" :key="issue.id" class="rounded-2xl border border-[#dce3ed] p-4"><div class="flex flex-wrap items-center gap-3"><span class="rounded-full px-3 py-1 text-[11px] font-bold uppercase" :class="issue.level==='error'?'bg-[#ffe4e8] text-[#c41635]':'bg-[#fff1bd] text-[#a65300]'">{{issue.level}}</span><strong class="text-xs text-[#172033]">{{issue.created_at}}</strong></div><p class="mt-3 break-words text-sm text-[#31415b]">{{issue.message}}</p><p v-if="issue.location" class="mt-2 break-all text-xs text-[#718096]">{{issue.location}}</p></article></div>
                 <div v-else class="mt-5 rounded-2xl border border-dashed border-[#dce3ed] px-5 py-10 text-center text-sm text-[#718096]">No application issues have been recorded.</div>
+            </div>
+        </section>
+
+        <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div><p class="text-sm font-semibold text-[#234222]">Supervisor email notifications</p><p class="mt-1 text-sm text-[#65748b]">Send a test email using the configured mail server and supervisor recipients.</p><p class="mt-2 text-xs text-[#7f9a7a]">{{ supervisorEmails.join(', ') }}</p></div>
+                <button type="button" class="btn shrink-0 bg-[#4f9f4a] text-white" :disabled="sendingTestEmail" @click="sendSupervisorTestEmail">{{ sendingTestEmail ? 'Sending...' : 'Send test email' }}</button>
             </div>
         </section>
 
