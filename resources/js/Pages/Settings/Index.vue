@@ -18,6 +18,7 @@ const props = defineProps({
     issueSummary: Object,
     recentIssues: Array,
     supervisorEmails: Array,
+    emailActivity: Object,
 });
 
 const adminGroups = [
@@ -155,6 +156,24 @@ const sendSupervisorTestEmail = () => {
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div><p class="text-sm font-semibold text-[#234222]">Supervisor email notifications</p><p class="mt-1 text-sm text-[#65748b]">Send a test email using the configured mail server and supervisor recipients.</p><p class="mt-2 text-xs text-[#7f9a7a]">{{ supervisorEmails.join(', ') }}</p></div>
                 <button type="button" class="btn shrink-0 bg-[#4f9f4a] text-white" :disabled="sendingTestEmail" @click="sendSupervisorTestEmail">{{ sendingTestEmail ? 'Sending...' : 'Send test email' }}</button>
+            </div>
+            <div v-if="$page.props.flash.success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.success }}</div>
+            <div v-if="$page.props.flash.error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.error }}</div>
+        </section>
+
+        <section class="overflow-hidden rounded-[2rem] border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+            <div class="flex flex-col gap-3 border-b border-[#edf3eb] bg-[#f8fafc] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div><p class="font-semibold text-[#172033]">Email Activity Log</p><p class="mt-1 text-sm text-[#65748b]">System email history for supervisor notifications and test emails.</p></div>
+            </div>
+            <div class="p-6">
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="rounded-2xl border border-[#dce3ed] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#8290a8]">Total</p><p class="mt-3 text-2xl font-bold text-[#111a2e]">{{ emailActivity.total }}</p></div>
+                    <div class="rounded-2xl border border-[#b8e0ae] bg-[#f2fff8] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#087f5b]">Sent</p><p class="mt-3 text-2xl font-bold text-[#087f5b]">{{ emailActivity.sent }}</p></div>
+                    <div class="rounded-2xl border border-[#f7d56b] bg-[#fffdf5] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#b45b00]">Pending</p><p class="mt-3 text-2xl font-bold text-[#914400]">{{ emailActivity.pending }}</p></div>
+                    <div class="rounded-2xl border border-[#ffc6cc] bg-[#fff8f8] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#d61f3c]">Failed</p><p class="mt-3 text-2xl font-bold text-[#a70f29]">{{ emailActivity.failed }}</p></div>
+                </div>
+                <div v-if="emailActivity.recent.length" class="mt-6 overflow-x-auto"><table class="table"><thead><tr><th>Time</th><th>Recipient</th><th>Subject</th><th>Type</th><th>Status</th></tr></thead><tbody><tr v-for="entry in emailActivity.recent" :key="entry.id"><td class="whitespace-nowrap text-xs">{{ entry.time }}</td><td>{{ entry.recipient }}</td><td>{{ entry.subject }}</td><td class="text-xs text-[#65748b]">{{ entry.type }}</td><td><span class="rounded-full px-3 py-1 text-xs font-bold capitalize" :class="entry.status === 'sent' ? 'bg-[#d1fae5] text-[#047857]' : entry.status === 'failed' ? 'bg-[#ffe4e8] text-[#a70f29]' : 'bg-[#fff1bd] text-[#914400]'">{{ entry.status }}</span></td></tr></tbody></table></div>
+                <div v-else class="mt-6 rounded-2xl border border-dashed border-[#dce3ed] px-5 py-10 text-center text-sm text-[#718096]">No email activity has been recorded yet.</div>
             </div>
         </section>
 

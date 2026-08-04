@@ -12,6 +12,7 @@ use App\Models\Stocktake;
 use App\Models\User;
 use App\Models\Branch;
 use App\Models\IssueLog;
+use App\Models\EmailActivityLog;
 use App\Services\AuditLogger;
 use App\Support\AccessMatrix;
 use App\Notifications\SupervisorWorkflowNotification;
@@ -47,6 +48,16 @@ class SettingsController extends Controller
             'latestMovementDate' => $latestMovement?->transaction_date?->format('Y-m-d'),
             'canEditSettings' => true,
             'supervisorEmails' => config('mail.supervisor_addresses', []),
+            'emailActivity' => [
+                'total' => EmailActivityLog::count(),
+                'sent' => EmailActivityLog::where('status', 'sent')->count(),
+                'pending' => EmailActivityLog::where('status', 'pending')->count(),
+                'failed' => EmailActivityLog::where('status', 'failed')->count(),
+                'recent' => EmailActivityLog::latest()->take(10)->get()->map(fn (EmailActivityLog $log) => [
+                    'id' => $log->id, 'time' => $log->created_at?->format('d M Y h:i A'), 'recipient' => $log->recipient,
+                    'subject' => $log->subject, 'type' => $log->notification_type, 'status' => $log->status,
+                ]),
+            ],
             'issueSummary' => [
                 'total' => IssueLog::count(),
                 'errors' => IssueLog::where('level', 'error')->count(),

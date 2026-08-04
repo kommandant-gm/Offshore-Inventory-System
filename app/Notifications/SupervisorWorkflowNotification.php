@@ -20,6 +20,10 @@ class SupervisorWorkflowNotification extends Notification
 
     public function via(object $notifiable): array { return ['mail']; }
 
+    public function activitySubject(): string { return $this->subject; }
+
+    public function activityType(): string { return class_basename(static::class); }
+
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)->subject($this->subject)->greeting('Hello Supervisor,')->line($this->intro);

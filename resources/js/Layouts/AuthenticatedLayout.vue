@@ -255,6 +255,12 @@
                     >
                         {{ $page.props.flash.success }}
                     </div>
+                    <div
+                        v-if="$page.props.flash.error"
+                        class="rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm text-[#a70f29]"
+                    >
+                        {{ $page.props.flash.error }}
+                    </div>
                     <slot />
                 </main>
 
