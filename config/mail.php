@@ -115,4 +115,6 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    'supervisor_addresses' => array_values(array_filter(array_map('trim', explode(',', env('SUPERVISOR_EMAILS', 'jasri.ishak@desb.net,shahrydan.azmy@desb.net'))))),
+
 ];

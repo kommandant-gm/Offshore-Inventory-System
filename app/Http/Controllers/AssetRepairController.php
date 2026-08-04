@@ -7,10 +7,13 @@ use App\Enums\AssetCondition;
 use App\Enums\AssetMovementType;
 use App\Enums\AssetStatus;
 use App\Models\Asset;
+use App\Notifications\SupervisorWorkflowNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class AssetRepairController extends Controller
 {
@@ -39,6 +42,21 @@ class AssetRepairController extends Controller
             'movement_type' => AssetMovementType::SendForRepair->value,
             'from_location_id' => $asset->current_location_id,
         ], $request->user()->id);
+
+        try {
+            $notification = new SupervisorWorkflowNotification(
+                subject: "Asset sent for repair: {$asset->asset_tag_no}",
+                intro: "{$request->user()->name} sent an IT asset for repair.",
+                details: ['Asset tag' => $asset->asset_tag_no, 'Handled by' => $data['handled_by'] ?: '-', 'Reference' => $data['reference_no'] ?: '-', 'Details' => $data['remarks']],
+                url: route('it-assets.repairs'),
+                actionLabel: 'View repairs',
+            );
+            foreach (config('mail.supervisor_addresses', []) as $address) {
+                Notification::route('mail', $address)->notify($notification);
+            }
+        } catch (\Throwable $exception) {
+            Log::error('Unable to send repair supervisor notification.', ['exception' => $exception]);
+        }
 
         return back()->with('success', "{$asset->asset_tag_no} is now under repair.");
     }

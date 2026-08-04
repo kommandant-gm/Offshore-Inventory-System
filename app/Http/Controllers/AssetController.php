@@ -11,9 +11,12 @@ use App\Models\Asset;
 use App\Models\Category;
 use App\Models\Location;
 use App\Models\User;
+use App\Notifications\SupervisorWorkflowNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -185,7 +188,7 @@ class AssetController extends Controller
     {
         abort_unless($request->user()?->canEdit('it_assets'), 403);
         $data = $request->validated();
-        DB::transaction(function () use ($data, $request) {
+        $asset = DB::transaction(function () use ($data, $request) {
             $asset = Asset::create(collect($data)->except(['assigned_to_name', 'department', 'assigned_at'])->all());
             if (! empty($data['assigned_to_name'])) {
                 $asset->assignments()->create([
@@ -195,7 +198,17 @@ class AssetController extends Controller
                     'assigned_by' => $request->user()->id,
                 ]);
             }
+
+            return $asset;
         });
+
+        $this->notifySupervisor(new SupervisorWorkflowNotification(
+            subject: "New IT asset registered: {$asset->asset_tag_no}",
+            intro: "{$request->user()->name} registered a new IT asset.",
+            details: ['Asset tag' => $asset->asset_tag_no, 'Description' => $asset->description, 'Model' => $asset->model ?: '-', 'Serial number' => $asset->serial_no ?: '-'],
+            url: route('it-assets.show', $asset),
+            actionLabel: 'View asset',
+        ));
 
         return redirect()->route('it-assets.index')->with('success', 'IT asset registered.');
     }
@@ -332,5 +345,16 @@ class AssetController extends Controller
                 'employee_id' => $user->username,
                 'email' => $user->email,
             ])->all();
+    }
+
+    private function notifySupervisor(SupervisorWorkflowNotification $notification): void
+    {
+        try {
+            foreach (config('mail.supervisor_addresses', []) as $address) {
+                Notification::route('mail', $address)->notify($notification);
+            }
+        } catch (\Throwable $exception) {
+            Log::error('Unable to send IT asset supervisor notification.', ['exception' => $exception]);
+        }
     }
 }

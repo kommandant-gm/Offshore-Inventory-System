@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreItLicenseRequest;
 use App\Http\Requests\UpdateItLicenseRequest;
 use App\Models\ItLicense;
+use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\AuditLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -106,6 +109,21 @@ class ItLicenseController extends Controller
             user: $request->user(),
             request: $request,
         );
+
+        try {
+            $notification = new SupervisorWorkflowNotification(
+                subject: "New IT licence registered: {$license->license_code}",
+                intro: "{$request->user()->name} registered a new IT licence.",
+                details: ['Licence code' => $license->license_code, 'Software' => $license->software_name, 'Vendor' => $license->vendor ?: '-', 'Seats' => $license->seats_total],
+                url: route('it-licenses.show', $license),
+                actionLabel: 'View licence',
+            );
+            foreach (config('mail.supervisor_addresses', []) as $address) {
+                Notification::route('mail', $address)->notify($notification);
+            }
+        } catch (\Throwable $exception) {
+            Log::error('Unable to send IT licence supervisor notification.', ['exception' => $exception]);
+        }
 
         return redirect()->route('it-licenses.show', $license)->with('success', 'IT licence registered.');
     }
