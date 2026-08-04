@@ -47,6 +47,8 @@ return [
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+            // Internal port-25 relays may advertise STARTTLS with an untrusted certificate.
+            'auto_tls' => filter_var(env('MAIL_AUTO_TLS', 'false'), FILTER_VALIDATE_BOOLEAN),
         ],
 
         'ses' => [
