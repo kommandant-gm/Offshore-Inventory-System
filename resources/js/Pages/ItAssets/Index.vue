@@ -32,6 +32,7 @@ const bulkEnabled = reactive({ category_id: false, current_location_id: false, c
 const selectedCount = computed(() => selectedIds.value.length);
 const pageIds = computed(() => props.assets.data.map((asset) => asset.id));
 const allPageSelected = computed(() => pageIds.value.length > 0 && pageIds.value.every((id) => selectedIds.value.includes(id)));
+const openBulkEdit = () => { bulkEditOpen.value = true; };
 const toggleAsset = (id) => { selectedIds.value = selectedIds.value.includes(id) ? selectedIds.value.filter((selected) => selected !== id) : [...selectedIds.value, id]; };
 const togglePage = () => { selectedIds.value = allPageSelected.value ? selectedIds.value.filter((id) => !pageIds.value.includes(id)) : [...new Set([...selectedIds.value, ...pageIds.value])]; };
 const closeBulkEdit = () => { bulkEditOpen.value = false; bulkForm.reset(); Object.keys(bulkEnabled).forEach((key) => { bulkEnabled[key] = false; }); };
@@ -211,7 +212,7 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]">
           <span><strong class="text-[#234222]">{{ assets.total }}</strong> {{ assets.total === 1 ? 'asset' : 'assets' }} found</span>
           <div class="flex items-center gap-3">
-            <button v-if="canEdit && selectedCount" type="button" class="btn btn-sm bg-[#4f9f4a] font-bold text-white" @click="bulkEditOpen = true">Bulk edit ({{ selectedCount }})</button>
+            <button v-if="canEdit && selectedCount" type="button" class="btn btn-sm cursor-pointer bg-[#4f9f4a] font-bold text-white hover:bg-[#3f8d3d]" @click.stop.prevent="openBulkEdit">Bulk edit ({{ selectedCount }})</button>
             <span v-if="assets.total">Showing {{ assets.from }}&ndash;{{ assets.to }}</span>
             <button
               v-if="canEdit"
