@@ -56,6 +56,7 @@ class SettingsController extends Controller
                 'recent' => EmailActivityLog::latest()->take(10)->get()->map(fn (EmailActivityLog $log) => [
                     'id' => $log->id, 'time' => $log->created_at?->format('d M Y h:i A'), 'recipient' => $log->recipient,
                     'subject' => $log->subject, 'type' => $log->notification_type, 'status' => $log->status,
+                    'error' => $log->error,
                 ]),
             ],
             'issueSummary' => [
