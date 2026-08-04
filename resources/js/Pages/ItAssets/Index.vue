@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import AssetAssignmentModal from '@/Components/AssetAssignmentModal.vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
 
 const props = defineProps({
@@ -12,6 +12,7 @@ const props = defineProps({
   selectedCategoryId: Number,
   locationOptions: Array,
   statusOptions: Array,
+  conditionOptions: { type: Array, default: () => [] },
   departmentOptions: Array,
   assignedAssetsByDepartment: { type: Array, default: () => [] },
   osOptions: Array,
@@ -24,6 +25,23 @@ const canEdit = computed(() => page.props.auth?.user?.can?.it_assets_edit);
 const selectedAsset = ref(null);
 const generatingAllQr = ref(false);
 const assignmentOverviewOpen = ref(false);
+const selectedIds = ref([]);
+const bulkEditOpen = ref(false);
+const bulkForm = useForm({ category_id: '', current_location_id: '', current_condition: '', operating_system: '', purchase_year: '', ownership: '', active: '', remarks: '' });
+const bulkEnabled = reactive({ category_id: false, current_location_id: false, current_condition: false, operating_system: false, purchase_year: false, ownership: false, active: false, remarks: false });
+const selectedCount = computed(() => selectedIds.value.length);
+const pageIds = computed(() => props.assets.data.map((asset) => asset.id));
+const allPageSelected = computed(() => pageIds.value.length > 0 && pageIds.value.every((id) => selectedIds.value.includes(id)));
+const toggleAsset = (id) => { selectedIds.value = selectedIds.value.includes(id) ? selectedIds.value.filter((selected) => selected !== id) : [...selectedIds.value, id]; };
+const togglePage = () => { selectedIds.value = allPageSelected.value ? selectedIds.value.filter((id) => !pageIds.value.includes(id)) : [...new Set([...selectedIds.value, ...pageIds.value])]; };
+const closeBulkEdit = () => { bulkEditOpen.value = false; bulkForm.reset(); Object.keys(bulkEnabled).forEach((key) => { bulkEnabled[key] = false; }); };
+const submitBulkEdit = () => {
+  if (!selectedCount.value || !Object.values(bulkEnabled).some(Boolean)) return;
+  const payload = { asset_ids: selectedIds.value };
+  Object.keys(bulkEnabled).forEach((key) => { if (bulkEnabled[key]) payload[key] = bulkForm[key] === '' ? null : bulkForm[key]; });
+  if (!window.confirm(`Update ${selectedCount.value} selected ${selectedCount.value === 1 ? 'asset' : 'assets'}?`)) return;
+  bulkForm.transform(() => payload).patch(route('it-assets.bulk-update'), { preserveScroll: true, onSuccess: () => { selectedIds.value = []; closeBulkEdit(); } });
+};
 const form = reactive({ ...props.filters });
 const activeFilters = computed(() => Object.values(form).filter((value) => value !== '' && value !== null).length);
 const applyFilters = () => router.get(route('it-assets.index'), form, { preserveState: true, preserveScroll: true, replace: true });
@@ -193,6 +211,7 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]">
           <span><strong class="text-[#234222]">{{ assets.total }}</strong> {{ assets.total === 1 ? 'asset' : 'assets' }} found</span>
           <div class="flex items-center gap-3">
+            <button v-if="canEdit && selectedCount" type="button" class="btn btn-sm bg-[#4f9f4a] font-bold text-white" @click="bulkEditOpen = true">Bulk edit ({{ selectedCount }})</button>
             <span v-if="assets.total">Showing {{ assets.from }}&ndash;{{ assets.to }}</span>
             <button
               v-if="canEdit"
@@ -206,8 +225,9 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
           </div>
         </div>
         <div class="overflow-x-auto"><table class="table">
-          <thead><tr><th>Asset tag</th><th>Device</th><th>Serial</th><th>Assigned to</th><th>Department</th><th>OS</th><th>Status</th><th v-if="canEdit">Actions</th></tr></thead>
+          <thead><tr><th v-if="canEdit" class="w-10"><input type="checkbox" class="checkbox checkbox-sm" :checked="allPageSelected" aria-label="Select all assets on this page" @change="togglePage" /></th><th>Asset tag</th><th>Device</th><th>Serial</th><th>Assigned to</th><th>Department</th><th>OS</th><th>Status</th><th v-if="canEdit">Actions</th></tr></thead>
           <tbody><tr v-for="asset in assets.data" :key="asset.id">
+            <td v-if="canEdit"><input type="checkbox" class="checkbox checkbox-sm" :checked="selectedIds.includes(asset.id)" :aria-label="`Select ${asset.asset_tag_no}`" @change="toggleAsset(asset.id)" /></td>
             <td><Link class="font-bold text-[#2f7d32]" :href="route('it-assets.show', asset.id)">{{ asset.asset_tag_no }}</Link></td>
             <td>{{ asset.model || asset.description }}<div class="text-xs text-slate-500">{{ asset.category }}</div></td>
             <td>{{ asset.serial_no || '\u2014' }}</td><td><button v-if="asset.assigned_to" type="button" class="text-left font-medium text-[#194568] hover:text-[#2f7d32] hover:underline" :title="`Show all assets assigned to ${asset.assigned_to}`" @click="viewAssigneeAssets(asset.assigned_to)">{{ asset.assigned_to }}</button><span v-else>Unassigned</span></td><td>{{ asset.department || '\u2014' }}</td><td>{{ asset.operating_system || '\u2014' }}</td>
@@ -226,8 +246,20 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
               <button v-if="asset.is_assigned" type="button" class="btn btn-xs border-[#d9a74d] bg-[#fff8e8] text-[#805d17]" @click="checkIn(asset)">Check in</button>
               <button v-else-if="asset.status === 'available'" type="button" class="btn btn-xs bg-[#4f9f4a] text-white" @click="selectedAsset = asset">Checkout</button>
             </div></td>
-          </tr><tr v-if="!assets.data.length"><td :colspan="canEdit ? 8 : 7" class="py-12 text-center text-slate-500">No IT assets match the selected filters.</td></tr></tbody>
+          </tr><tr v-if="!assets.data.length"><td :colspan="canEdit ? 9 : 7" class="py-12 text-center text-slate-500">No IT assets match the selected filters.</td></tr></tbody>
         </table></div>
+        <div v-if="bulkEditOpen" class="border-t border-[#d8e7d4] bg-[#f8fcf7] p-5">
+          <div class="flex flex-wrap items-start justify-between gap-3"><div><h3 class="font-bold text-[#234222]">Bulk edit {{ selectedCount }} {{ selectedCount === 1 ? 'asset' : 'assets' }}</h3><p class="mt-1 text-xs text-[#60745d]">Tick a field to apply it. Unticked fields will not change.</p></div><button type="button" class="text-sm font-semibold text-[#60745d]" @click="closeBulkEdit">Cancel</button></div>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label class="rounded-xl border border-[#d8e7d4] bg-white p-3"><span class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#60745d]"><input v-model="bulkEnabled.category_id" type="checkbox" class="checkbox checkbox-xs" />Category</span><CustomSelect v-model="bulkForm.category_id" class="select select-sm mt-2 w-full" :disabled="!bulkEnabled.category_id"><option value="">Choose category</option><option v-for="category in categories" :key="category.id" :value="String(category.id)">{{ category.name }}</option></CustomSelect></label>
+            <label class="rounded-xl border border-[#d8e7d4] bg-white p-3"><span class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#60745d]"><input v-model="bulkEnabled.current_location_id" type="checkbox" class="checkbox checkbox-xs" />Location</span><CustomSelect v-model="bulkForm.current_location_id" class="select select-sm mt-2 w-full" :disabled="!bulkEnabled.current_location_id"><option value="">Clear location</option><option v-for="option in locationOptions" :key="option.value" :value="String(option.value)">{{ option.label }}</option></CustomSelect></label>
+            <label class="rounded-xl border border-[#d8e7d4] bg-white p-3"><span class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#60745d]"><input v-model="bulkEnabled.current_condition" type="checkbox" class="checkbox checkbox-xs" />Condition</span><CustomSelect v-model="bulkForm.current_condition" class="select select-sm mt-2 w-full" :disabled="!bulkEnabled.current_condition"><option value="">Clear condition</option><option v-for="option in conditionOptions" :key="option.value" :value="option.value">{{ option.label }}</option></CustomSelect></label>
+            <label v-for="field in [{ key: 'operating_system', label: 'Operating system' }, { key: 'purchase_year', label: 'Purchase year' }, { key: 'ownership', label: 'Ownership' }]" :key="field.key" class="rounded-xl border border-[#d8e7d4] bg-white p-3"><span class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#60745d]"><input v-model="bulkEnabled[field.key]" type="checkbox" class="checkbox checkbox-xs" />{{ field.label }}</span><input v-model="bulkForm[field.key]" :type="field.key === 'purchase_year' ? 'number' : 'text'" class="input input-sm mt-2 w-full" :disabled="!bulkEnabled[field.key]" :placeholder="field.key === 'purchase_year' ? 'e.g. 2026' : 'Set value'" /></label>
+            <label class="rounded-xl border border-[#d8e7d4] bg-white p-3"><span class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#60745d]"><input v-model="bulkEnabled.active" type="checkbox" class="checkbox checkbox-xs" />Active</span><CustomSelect v-model="bulkForm.active" class="select select-sm mt-2 w-full" :disabled="!bulkEnabled.active"><option value="">Choose</option><option :value="true">Active</option><option :value="false">Inactive</option></CustomSelect></label>
+            <label class="rounded-xl border border-[#d8e7d4] bg-white p-3 sm:col-span-2 lg:col-span-4"><span class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#60745d]"><input v-model="bulkEnabled.remarks" type="checkbox" class="checkbox checkbox-xs" />Remarks</span><textarea v-model="bulkForm.remarks" class="textarea textarea-sm mt-2 w-full" :disabled="!bulkEnabled.remarks" placeholder="Set remarks (leave blank to clear)"></textarea></label>
+          </div>
+          <div class="mt-4 flex justify-end"><button type="button" class="btn bg-[#4f9f4a] text-white" :disabled="bulkForm.processing" @click="submitBulkEdit">{{ bulkForm.processing ? 'Updating...' : 'Apply bulk changes' }}</button></div>
+        </div>
       </div>
       <div class="flex flex-wrap gap-2"><Link v-for="link in assets.links" :key="link.label" v-html="link.label" :href="link.url || '#'" class="btn btn-sm" :class="{ 'btn-disabled': !link.url, 'btn-success text-white': link.active }" /></div>
     </section>

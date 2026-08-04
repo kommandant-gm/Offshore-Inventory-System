@@ -42,6 +42,7 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verif
 
 Route::middleware('auth')->group(function () {
     Route::patch('/active-branch', [BranchContextController::class, 'update'])->name('branches.activate');
+    Route::patch('/it-assets/bulk-update', [AssetController::class, 'bulkUpdate'])->name('it-assets.bulk-update');
     Route::resource('it-assets', AssetController::class)->parameters(['it-assets' => 'asset'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::resource('it-licenses', ItLicenseController::class)->parameters(['it-licenses' => 'it_license'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::post('/it-assets/{asset}/checkout', [AssetAssignmentController::class, 'store'])->name('it-assets.checkout');

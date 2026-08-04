@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\AssetCondition;
 use App\Enums\AssetStatus;
 use App\Http\Requests\StoreAssetRequest;
+use App\Http\Requests\BulkUpdateAssetRequest;
 use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Category;
@@ -288,6 +289,18 @@ class AssetController extends Controller
         $asset->update($request->validated());
 
         return redirect()->route('it-assets.show', $asset)->with('success', 'IT asset updated.');
+    }
+
+    public function bulkUpdate(BulkUpdateAssetRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $fields = collect($data)->except('asset_ids')->all();
+        $assets = Asset::query()->whereIn('id', $data['asset_ids'])->get();
+
+        abort_if($assets->count() !== count($data['asset_ids']), 422, 'One or more selected assets are not available.');
+        DB::transaction(fn () => $assets->each->update($fields));
+
+        return redirect()->route('it-assets.index')->with('success', $assets->count().' IT '.str('asset')->plural($assets->count()).' updated.');
     }
 
     private function assignmentUsers(Request $request): array
