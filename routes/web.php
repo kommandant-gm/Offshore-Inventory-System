@@ -42,6 +42,7 @@ Route::get('/asset-checkout/{token}', [PublicAssetCheckoutController::class, 'sh
 Route::post('/asset-checkout/{token}/sign', [PublicAssetCheckoutController::class, 'sign'])->name('public.asset-checkout.sign');
 Route::get('/asset-checkout-complete', [PublicAssetCheckoutController::class, 'complete'])->name('public.asset-checkout.complete');
 Route::get('/asset-checkout-test-preview', [PublicAssetCheckoutController::class, 'testPreview'])->name('settings.asset-checkout-test.preview');
+Route::post('/asset-checkout-test-preview/sign', [PublicAssetCheckoutController::class, 'testSign'])->name('settings.asset-checkout-test.sign');
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 

@@ -172,6 +172,8 @@ const sendCheckoutTestEmail = () => {
                 <div><p class="text-sm font-semibold text-[#234222]">Digital asset checkout test</p><p class="mt-1 text-sm text-[#65748b]">Send a sample checkout form using the first IT asset. This does not change any asset records.</p></div>
                 <div class="flex w-full gap-2 sm:w-auto"><input v-model.trim="checkoutTestEmail" type="email" placeholder="your@email.com" class="input input-bordered w-full sm:w-64" /><button type="button" class="btn bg-[#194568] text-white" :disabled="sendingCheckoutTest || !checkoutTestEmail" @click="sendCheckoutTestEmail">{{ sendingCheckoutTest ? 'Sending...' : 'Send checkout test' }}</button></div>
             </div>
+            <div v-if="$page.props.flash.checkout_success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.checkout_success }}</div>
+            <div v-if="$page.props.flash.checkout_error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.checkout_error }}</div>
         </section>
 
         <section class="overflow-hidden rounded-[2rem] border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">

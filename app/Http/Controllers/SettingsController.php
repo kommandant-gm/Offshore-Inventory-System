@@ -133,7 +133,7 @@ class SettingsController extends Controller
         $asset = Asset::query()->first();
 
         if (! $asset) {
-            return back()->with('error', 'Create at least one IT asset before sending the checkout form test.');
+            return back()->with('checkout_error', 'Create at least one IT asset before sending the checkout form test.');
         }
 
         $assignment = new AssetAssignment([
@@ -146,10 +146,10 @@ class SettingsController extends Controller
             Mail::to($data['email'])->send(new AssetCheckoutSignatureMail($assignment, route('settings.asset-checkout-test.preview', ['email' => $data['email']]), true));
         } catch (\Throwable $exception) {
             Log::error('Unable to send asset checkout test email.', ['exception' => $exception]);
-            return back()->with('error', 'Asset checkout test email could not be sent. Check the mail settings.');
+            return back()->with('checkout_error', 'Asset checkout test email could not be sent. Check the mail settings.');
         }
 
-        return back()->with('success', 'Asset checkout test email sent to '.$data['email'].'.');
+        return back()->with('checkout_success', 'Asset checkout test email sent to '.$data['email'].'.');
     }
 
     public function updateUserAccess(UpdateUserAccessRequest $request, User $user, AuditLogger $auditLogger): RedirectResponse

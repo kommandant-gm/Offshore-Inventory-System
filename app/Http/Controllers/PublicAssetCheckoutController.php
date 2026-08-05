@@ -59,6 +59,12 @@ class PublicAssetCheckoutController extends Controller
         return view('it-assets.checkout-sign', ['assignment' => $assignment, 'token' => null, 'preview' => true]);
     }
 
+    public function testSign(Request $request): RedirectResponse
+    {
+        $request->validate(['signature' => ['required', 'string', 'max:200000']]);
+        return redirect()->route('public.asset-checkout.complete')->with('status', 'test');
+    }
+
     private function resolve(string $token, bool $lock = false): AssetAssignment
     {
         $query = AssetAssignment::query()->where('checkout_token', $token)->where('checkout_status', 'pending');
