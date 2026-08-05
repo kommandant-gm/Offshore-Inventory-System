@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\User;
 use App\Support\AccessMatrix;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -17,6 +18,7 @@ class ItAssetAssignmentTest extends TestCase
 
     public function test_editor_can_edit_checkout_reassign_and_check_in_an_asset(): void
     {
+        Mail::fake();
         [$user, $asset] = $this->editorAndAsset();
         $target = User::factory()->create(['name' => 'Target User', 'username' => 'EMP-100']);
         $target->branches()->attach($asset->branch_id, ['access_level' => 'read', 'is_default' => true]);
@@ -35,12 +37,23 @@ class ItAssetAssignmentTest extends TestCase
         ])->assertRedirect();
 
         $asset->refresh()->load('currentAssignment');
-        $this->assertSame('deployed', $asset->current_status->value);
+        $this->assertSame('pending_checkout', $asset->current_status->value);
         $this->assertSame('Target User', $asset->currentAssignment->assigned_to_name);
         $this->assertSame('EMP-100', $asset->currentAssignment->employee_id);
+        $this->assertNotNull($asset->currentAssignment->checkout_token);
+
+        $this->get(route('public.asset-checkout.show', $asset->currentAssignment->checkout_token))->assertOk();
+        $this->post(route('public.asset-checkout.sign', $asset->currentAssignment->checkout_token), [
+            'signature' => 'data:image/png;base64,test-signature',
+        ])->assertRedirect(route('public.asset-checkout.complete'));
+
+        $asset->refresh();
+        $this->assertSame('deployed', $asset->current_status->value);
+        $this->assertNotNull($asset->assignments()->first()->signed_at);
 
         $this->post(route('it-assets.checkout', $asset), [
             'assigned_to_name' => 'Another User',
+            'assigned_email' => 'another@example.com',
             'employee_id' => 'EMP-200',
             'assigned_at' => '2026-07-21',
             'department' => 'QHSE',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AssetStatus;
+use App\Mail\AssetCheckoutSignatureMail;
 use App\Models\Asset;
 use App\Models\User;
 use App\Notifications\SupervisorWorkflowNotification;
@@ -11,6 +12,8 @@ use App\Services\SupervisorNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AssetAssignmentController extends Controller
@@ -22,6 +25,7 @@ class AssetAssignmentController extends Controller
         $data = $request->validate([
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'assigned_to_name' => ['required_without:user_id', 'nullable', 'string', 'max:255'],
+            'assigned_email' => ['nullable', 'email', 'max:255'],
             'employee_id' => ['nullable', 'string', 'max:100'],
             'department' => ['nullable', 'string', 'max:255'],
             'assigned_at' => ['required', 'date'],
@@ -40,7 +44,12 @@ class AssetAssignmentController extends Controller
             }
         }
 
-        DB::transaction(function () use ($asset, $data, $request, $selectedUser) {
+        $data['assigned_email'] ??= $selectedUser?->email;
+        if (! $data['assigned_email']) {
+            throw ValidationException::withMessages(['assigned_email' => 'A staff email is required for digital signature.']);
+        }
+
+        $assignment = DB::transaction(function () use ($asset, $data, $request, $selectedUser) {
             $lockedAsset = Asset::query()->lockForUpdate()->findOrFail($asset->id);
             $current = $lockedAsset->assignments()->whereNull('returned_at')->lockForUpdate()->first();
 
@@ -59,20 +68,25 @@ class AssetAssignmentController extends Controller
 
             $lockedAsset->assignments()->create([
                 'assigned_to_name' => $selectedUser?->name ?? $data['assigned_to_name'],
+                'assigned_email' => $data['assigned_email'],
                 'employee_id' => $selectedUser?->username ?? ($data['employee_id'] ?? null),
                 'department' => $data['department'] ?? null,
                 'assigned_at' => $data['assigned_at'],
                 'assigned_by' => $request->user()->id,
                 'remarks' => $data['remarks'] ?? null,
+                'checkout_status' => 'pending',
+                'checkout_token' => Str::random(64),
+                'checkout_sent_at' => now(),
             ]);
-            $lockedAsset->update(['current_status' => AssetStatus::Deployed]);
+            $lockedAsset->update(['current_status' => AssetStatus::PendingCheckout]);
+            return $lockedAsset->assignments()->whereNull('returned_at')->latest('id')->first();
         });
 
-        $asset->load('currentAssignment');
-        $assignment = $asset->currentAssignment;
+        $assignment->load('asset');
+        Mail::to($assignment->assigned_email)->send(new AssetCheckoutSignatureMail($assignment, route('public.asset-checkout.show', $assignment->checkout_token)));
         $supervisorNotifications->send(new SupervisorWorkflowNotification(
-            subject: "IT asset checked out: {$asset->asset_tag_no}",
-            intro: "{$request->user()->name} checked out an IT asset.",
+            subject: "IT asset checkout signature requested: {$asset->asset_tag_no}",
+            intro: "{$request->user()->name} created an IT asset checkout form awaiting staff signature.",
             details: [
                 'Asset tag' => $asset->asset_tag_no,
                 'Assigned to' => $assignment?->assigned_to_name ?: '-',
@@ -84,7 +98,7 @@ class AssetAssignmentController extends Controller
             actionLabel: 'View asset',
         ), 'Unable to send IT asset checkout supervisor notification.');
 
-        return back()->with('success', 'Asset checked out successfully.');
+        return back()->with('success', 'Checkout form sent to the staff member for digital signature.');
     }
 
     public function destroy(Request $request, Asset $asset, SupervisorNotificationService $supervisorNotifications): RedirectResponse

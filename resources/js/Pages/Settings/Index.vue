@@ -72,6 +72,8 @@ const userForms = reactive(
 const selectedUserId = ref(props.users[0]?.id ?? null);
 const permissionSearch = ref('');
 const sendingTestEmail = ref(false);
+const checkoutTestEmail = ref('');
+const sendingCheckoutTest = ref(false);
 
 const accessSummary = (userId) => {
     const levels = Object.values(userForms[userId].permissions);
@@ -125,6 +127,10 @@ const sendSupervisorTestEmail = () => {
     sendingTestEmail.value = true;
     router.post(route('settings.test-supervisor-email'), {}, { preserveScroll: true, onFinish: () => { sendingTestEmail.value = false; } });
 };
+const sendCheckoutTestEmail = () => {
+    sendingCheckoutTest.value = true;
+    router.post(route('settings.test-asset-checkout-email'), { email: checkoutTestEmail.value }, { preserveScroll: true, onFinish: () => { sendingCheckoutTest.value = false; } });
+};
 </script>
 
 <template>
@@ -159,6 +165,13 @@ const sendSupervisorTestEmail = () => {
             </div>
             <div v-if="$page.props.flash.success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.success }}</div>
             <div v-if="$page.props.flash.error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.error }}</div>
+        </section>
+
+        <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div><p class="text-sm font-semibold text-[#234222]">Digital asset checkout test</p><p class="mt-1 text-sm text-[#65748b]">Send a sample checkout form using the first IT asset. This does not change any asset records.</p></div>
+                <div class="flex w-full gap-2 sm:w-auto"><input v-model.trim="checkoutTestEmail" type="email" placeholder="your@email.com" class="input input-bordered w-full sm:w-64" /><button type="button" class="btn bg-[#194568] text-white" :disabled="sendingCheckoutTest || !checkoutTestEmail" @click="sendCheckoutTestEmail">{{ sendingCheckoutTest ? 'Sending...' : 'Send checkout test' }}</button></div>
+            </div>
         </section>
 
         <section class="overflow-hidden rounded-[2rem] border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">

@@ -5,6 +5,7 @@ namespace App\Enums;
 enum AssetStatus: string
 {
     case Available = 'available';
+    case PendingCheckout = 'pending_checkout';
     case InTransit = 'in_transit';
     case Deployed = 'deployed';
     case UnderRepair = 'under_repair';

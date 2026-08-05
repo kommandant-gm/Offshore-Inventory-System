@@ -13,12 +13,16 @@ use App\Models\User;
 use App\Models\Branch;
 use App\Models\IssueLog;
 use App\Models\EmailActivityLog;
+use App\Models\Asset;
+use App\Models\AssetAssignment;
+use App\Mail\AssetCheckoutSignatureMail;
 use App\Services\AuditLogger;
 use App\Support\AccessMatrix;
 use App\Notifications\SupervisorWorkflowNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -119,6 +123,32 @@ class SettingsController extends Controller
         }
 
         return back()->with('success', 'Test email sent to '.implode(', ', $recipients).'.');
+    }
+
+    public function sendAssetCheckoutTestEmail(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+        $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
+        $asset = Asset::query()->first();
+
+        if (! $asset) {
+            return back()->with('error', 'Create at least one IT asset before sending the checkout form test.');
+        }
+
+        $assignment = new AssetAssignment([
+            'assigned_to_name' => 'Test Staff Member', 'assigned_email' => $data['email'],
+            'employee_id' => 'TEST-001', 'department' => 'IT', 'assigned_at' => now()->toDateString(),
+        ]);
+        $assignment->setRelation('asset', $asset);
+
+        try {
+            Mail::to($data['email'])->send(new AssetCheckoutSignatureMail($assignment, route('settings.asset-checkout-test.preview', ['email' => $data['email']]), true));
+        } catch (\Throwable $exception) {
+            Log::error('Unable to send asset checkout test email.', ['exception' => $exception]);
+            return back()->with('error', 'Asset checkout test email could not be sent. Check the mail settings.');
+        }
+
+        return back()->with('success', 'Asset checkout test email sent to '.$data['email'].'.');
     }
 
     public function updateUserAccess(UpdateUserAccessRequest $request, User $user, AuditLogger $auditLogger): RedirectResponse

@@ -25,6 +25,7 @@ use App\Http\Controllers\KemamanInventoryController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicAssetController;
+use App\Http\Controllers\PublicAssetCheckoutController;
 use App\Http\Controllers\QuickSearchController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StockAnomalyController;
@@ -37,6 +38,10 @@ Route::get('/cog/approval/{token}', [CogApprovalController::class, 'show'])->nam
 Route::post('/cog/approval/{token}/approve', [CogApprovalController::class, 'approve'])->name('cogs.approval.approve');
 Route::post('/cog/approval/{token}/reject', [CogApprovalController::class, 'reject'])->name('cogs.approval.reject');
 Route::get('/asset/{publicToken}', PublicAssetController::class)->name('public.it-assets.show');
+Route::get('/asset-checkout/{token}', [PublicAssetCheckoutController::class, 'show'])->name('public.asset-checkout.show');
+Route::post('/asset-checkout/{token}/sign', [PublicAssetCheckoutController::class, 'sign'])->name('public.asset-checkout.sign');
+Route::get('/asset-checkout-complete', [PublicAssetCheckoutController::class, 'complete'])->name('public.asset-checkout.complete');
+Route::get('/asset-checkout-test-preview', [PublicAssetCheckoutController::class, 'testPreview'])->name('settings.asset-checkout-test.preview');
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -70,6 +75,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/stock-anomalies', [StockAnomalyController::class, 'index'])->name('anomalies.index');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings/test-supervisor-email', [SettingsController::class, 'sendSupervisorTestEmail'])->name('settings.test-supervisor-email');
+    Route::post('/settings/test-asset-checkout-email', [SettingsController::class, 'sendAssetCheckoutTestEmail'])->name('settings.test-asset-checkout-email');
     Route::patch('/settings/users/{user}/access', [SettingsController::class, 'updateUserAccess'])->name('settings.users.update');
     Route::get('/settings/issue-logs', [IssueLogController::class, 'index'])->name('settings.issue-logs.index');
     Route::get('/audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');

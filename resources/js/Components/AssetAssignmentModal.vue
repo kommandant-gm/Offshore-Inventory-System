@@ -16,6 +16,7 @@ const form = useForm({
   user_id: '',
   assigned_to_name: '',
   employee_id: '',
+  assigned_email: '',
   department: '',
   assigned_at: today,
   remarks: '',
@@ -26,6 +27,7 @@ watch(() => form.user_id, (id) => {
   if (!user) return;
   form.assigned_to_name = user.name;
   form.employee_id = user.employee_id || '';
+  form.assigned_email = user.email || '';
 });
 
 const submit = () => form.post(route('it-assets.checkout', props.asset.id), {
@@ -59,6 +61,11 @@ const submit = () => form.post(route('it-assets.checkout', props.asset.id), {
           <span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">Assigned to *</span>
           <input v-model.trim="form.assigned_to_name" class="input input-bordered" :readonly="Boolean(form.user_id)" />
           <InputError :message="form.errors.assigned_to_name" />
+        </label>
+        <label class="form-control">
+          <span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">Staff email *</span>
+          <input v-model.trim="form.assigned_email" type="email" class="input input-bordered" :readonly="Boolean(form.user_id)" />
+          <InputError :message="form.errors.assigned_email" />
         </label>
         <label class="form-control">
           <span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">Employee ID</span>
