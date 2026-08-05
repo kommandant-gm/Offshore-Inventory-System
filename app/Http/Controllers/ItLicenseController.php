@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateItLicenseRequest;
 use App\Models\ItLicense;
 use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\AuditLogger;
+use App\Services\SupervisorNotificationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,7 +99,7 @@ class ItLicenseController extends Controller
         ]);
     }
 
-    public function store(StoreItLicenseRequest $request, AuditLogger $auditLogger): RedirectResponse
+    public function store(StoreItLicenseRequest $request, AuditLogger $auditLogger, SupervisorNotificationService $supervisorNotifications): RedirectResponse
     {
         $license = ItLicense::create($request->validated());
         $auditLogger->record(
@@ -124,6 +125,8 @@ class ItLicenseController extends Controller
         } catch (\Throwable $exception) {
             Log::error('Unable to send IT licence supervisor notification.', ['exception' => $exception]);
         }
+
+        $this->notifyIfFullyAllocated($license, $request, $supervisorNotifications);
 
         return redirect()->route('it-licenses.show', $license)->with('success', 'IT licence registered.');
     }
@@ -178,8 +181,9 @@ class ItLicenseController extends Controller
         ]);
     }
 
-    public function update(UpdateItLicenseRequest $request, ItLicense $itLicense, AuditLogger $auditLogger): RedirectResponse
+    public function update(UpdateItLicenseRequest $request, ItLicense $itLicense, AuditLogger $auditLogger, SupervisorNotificationService $supervisorNotifications): RedirectResponse
     {
+        $wasFullyAllocated = (int) $itLicense->seats_assigned >= (int) $itLicense->seats_total;
         $itLicense->update($request->validated());
         $auditLogger->record(
             module: 'it_assets',
@@ -190,7 +194,32 @@ class ItLicenseController extends Controller
             request: $request,
         );
 
+        if (! $wasFullyAllocated) {
+            $this->notifyIfFullyAllocated($itLicense, $request, $supervisorNotifications);
+        }
+
         return redirect()->route('it-licenses.show', $itLicense)->with('success', 'IT licence updated.');
+    }
+
+    private function notifyIfFullyAllocated(ItLicense $license, Request $request, SupervisorNotificationService $supervisorNotifications): void
+    {
+        if (! $license->active || (int) $license->seats_assigned < (int) $license->seats_total) {
+            return;
+        }
+
+        $supervisorNotifications->send(new SupervisorWorkflowNotification(
+            subject: "IT licence fully allocated: {$license->license_code}",
+            intro: "The IT licence {$license->software_name} has no seats remaining.",
+            details: [
+                'Licence code' => $license->license_code,
+                'Software' => $license->software_name,
+                'Seats assigned' => $license->seats_assigned,
+                'Total seats' => $license->seats_total,
+                'Updated by' => $request->user()->name,
+            ],
+            url: route('it-licenses.show', $license),
+            actionLabel: 'View licence',
+        ), 'Unable to send fully allocated IT licence supervisor notification.');
     }
 
     private function applyStatusFilter(Builder $query, ?string $status): void

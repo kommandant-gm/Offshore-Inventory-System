@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Enums\AssetStatus;
 use App\Models\Asset;
 use App\Models\User;
+use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\BranchContext;
+use App\Services\SupervisorNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 class AssetAssignmentController extends Controller
 {
-    public function store(Request $request, Asset $asset): RedirectResponse
+    public function store(Request $request, Asset $asset, SupervisorNotificationService $supervisorNotifications): RedirectResponse
     {
         abort_unless($request->user()?->canEdit('it_assets'), 403);
 
@@ -66,12 +68,31 @@ class AssetAssignmentController extends Controller
             $lockedAsset->update(['current_status' => AssetStatus::Deployed]);
         });
 
+        $asset->load('currentAssignment');
+        $assignment = $asset->currentAssignment;
+        $supervisorNotifications->send(new SupervisorWorkflowNotification(
+            subject: "IT asset checked out: {$asset->asset_tag_no}",
+            intro: "{$request->user()->name} checked out an IT asset.",
+            details: [
+                'Asset tag' => $asset->asset_tag_no,
+                'Assigned to' => $assignment?->assigned_to_name ?: '-',
+                'Employee ID' => $assignment?->employee_id ?: '-',
+                'Department' => $assignment?->department ?: '-',
+                'Assigned date' => $assignment?->assigned_at?->format('Y-m-d') ?: '-',
+            ],
+            url: route('it-assets.show', $asset),
+            actionLabel: 'View asset',
+        ), 'Unable to send IT asset checkout supervisor notification.');
+
         return back()->with('success', 'Asset checked out successfully.');
     }
 
-    public function destroy(Request $request, Asset $asset): RedirectResponse
+    public function destroy(Request $request, Asset $asset, SupervisorNotificationService $supervisorNotifications): RedirectResponse
     {
         abort_unless($request->user()?->canEdit('it_assets'), 403);
+
+        $asset->load('currentAssignment');
+        $previousAssignment = $asset->currentAssignment;
 
         DB::transaction(function () use ($asset, $request) {
             $lockedAsset = Asset::query()->lockForUpdate()->findOrFail($asset->id);
@@ -87,6 +108,20 @@ class AssetAssignmentController extends Controller
             ]);
             $lockedAsset->update(['current_status' => AssetStatus::Available]);
         });
+
+        $supervisorNotifications->send(new SupervisorWorkflowNotification(
+            subject: "IT asset checked in: {$asset->asset_tag_no}",
+            intro: "{$request->user()->name} checked in an IT asset.",
+            details: [
+                'Asset tag' => $asset->asset_tag_no,
+                'Previously assigned to' => $previousAssignment?->assigned_to_name ?: '-',
+                'Employee ID' => $previousAssignment?->employee_id ?: '-',
+                'Department' => $previousAssignment?->department ?: '-',
+                'Returned date' => now()->toDateString(),
+            ],
+            url: route('it-assets.show', $asset),
+            actionLabel: 'View asset',
+        ), 'Unable to send IT asset check-in supervisor notification.');
 
         return back()->with('success', 'Asset checked in and is now available.');
     }
