@@ -7,6 +7,7 @@ use App\Mail\AssetCheckoutSignatureMail;
 use App\Mail\AssetCheckinSignatureMail;
 use App\Models\Asset;
 use App\Models\User;
+use App\Models\EmailActivityLog;
 use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\BranchContext;
 use App\Services\SupervisorNotificationService;
@@ -87,7 +88,7 @@ class AssetAssignmentController extends Controller
         });
 
         $assignment->load('asset');
-        Mail::to($assignment->assigned_email)->send(new AssetCheckoutSignatureMail($assignment, route('public.asset-checkout.show', $assignment->checkout_token)));
+        $this->sendCheckoutSignatureEmail($assignment);
         $supervisorNotifications->send(new SupervisorWorkflowNotification(
             subject: "IT asset checkout signature requested: {$asset->asset_tag_no}",
             intro: "{$request->user()->name} created an IT asset checkout form awaiting staff signature.",
@@ -133,7 +134,7 @@ class AssetAssignmentController extends Controller
         $asset->load('currentAssignment');
         $assignment = $asset->currentAssignment;
         $technicianEmail = User::query()->where('role', 'technician')->where('directory_active', true)->whereNotNull('email')->value('email') ?: 'muhd.isa@desb.net';
-        Mail::to($technicianEmail)->send(new AssetCheckinSignatureMail($assignment, route('public.asset-checkin.show', $assignment->checkin_token)));
+        $this->sendCheckinSignatureEmail($assignment, $technicianEmail);
         $supervisorNotifications->send(new SupervisorWorkflowNotification(
             subject: "IT asset check-in requested: {$asset->asset_tag_no}",
             intro: "{$request->user()->name} sent an IT asset check-in request to the IT Team for acknowledgment.",
@@ -167,11 +168,114 @@ class AssetAssignmentController extends Controller
             'checkout_sent_at' => now(),
         ]);
 
-        Mail::to($assignment->assigned_email)->send(new AssetCheckoutSignatureMail(
-            $assignment,
-            route('public.asset-checkout.show', $assignment->checkout_token),
-        ));
+        $this->sendCheckoutSignatureEmail($assignment);
 
         return back()->with('success', 'A fresh checkout signing link was sent to '.$assignment->assigned_email.'.');
+    }
+
+    public function reopen(Request $request, Asset $asset): RedirectResponse
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+
+        $asset->load('currentAssignment');
+        $assignment = $asset->currentAssignment;
+        if (! $assignment || $assignment->checkout_status !== 'signed' || $assignment->checkin_status === 'signed' || ! $assignment->assigned_email) {
+            throw ValidationException::withMessages(['asset' => 'This checkout cannot be reopened.']);
+        }
+
+        $assignment->update([
+            'checkout_status' => 'pending',
+            'checkout_token' => Str::random(64),
+            'checkout_sent_at' => now(),
+            'signature' => null,
+            'policy_acknowledgments' => null,
+            'policy_acknowledged_at' => null,
+            'signed_at' => null,
+            'signed_ip' => null,
+            'signed_user_agent' => null,
+        ]);
+        $asset->update(['current_status' => AssetStatus::PendingCheckout]);
+
+        $this->sendCheckoutSignatureEmail($assignment);
+
+        return back()->with('success', 'The checkout was reopened and a new signing link was sent to '.$assignment->assigned_email.'.');
+    }
+
+    private function sendCheckoutSignatureEmail($assignment): void
+    {
+        $url = route('public.asset-checkout.show', $assignment->checkout_token);
+        $mail = new AssetCheckoutSignatureMail($assignment, $url);
+
+        try {
+            $body = $mail->render();
+            Mail::to($assignment->assigned_email)->send($mail);
+            EmailActivityLog::create([
+                'recipient' => $assignment->assigned_email,
+                'subject' => "Asset checkout signature required: {$assignment->asset->asset_tag_no}",
+                'body' => $body,
+                'details' => [
+                    'Asset tag' => $assignment->asset->asset_tag_no,
+                    'Assigned to' => $assignment->assigned_to_name ?: '-',
+                    'Employee ID' => $assignment->employee_id ?: '-',
+                    'Department' => $assignment->department ?: '-',
+                    'Assigned date' => $assignment->assigned_at?->format('Y-m-d') ?: '-',
+                ],
+                'action_url' => $url,
+                'action_label' => 'Open checkout form',
+                'notification_type' => class_basename($mail),
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
+        } catch (\Throwable $error) {
+            EmailActivityLog::create([
+                'recipient' => $assignment->assigned_email,
+                'subject' => "Asset checkout signature required: {$assignment->asset->asset_tag_no}",
+                'details' => ['Asset tag' => $assignment->asset->asset_tag_no],
+                'action_url' => $url,
+                'action_label' => 'Open checkout form',
+                'notification_type' => class_basename($mail),
+                'status' => 'failed',
+                'error' => $error->getMessage(),
+            ]);
+            throw $error;
+        }
+    }
+
+    private function sendCheckinSignatureEmail($assignment, string $recipient): void
+    {
+        $url = route('public.asset-checkin.show', $assignment->checkin_token);
+        $mail = new AssetCheckinSignatureMail($assignment, $url);
+
+        try {
+            $body = $mail->render();
+            Mail::to($recipient)->send($mail);
+            EmailActivityLog::create([
+                'recipient' => $recipient,
+                'subject' => "IT asset check-in acknowledgment required: {$assignment->asset->asset_tag_no}",
+                'body' => $body,
+                'details' => [
+                    'Asset tag' => $assignment->asset->asset_tag_no,
+                    'Previously assigned to' => $assignment->assigned_to_name ?: '-',
+                    'Technician' => $recipient,
+                ],
+                'action_url' => $url,
+                'action_label' => 'Open check-in form',
+                'notification_type' => class_basename($mail),
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
+        } catch (\Throwable $error) {
+            EmailActivityLog::create([
+                'recipient' => $recipient,
+                'subject' => "IT asset check-in acknowledgment required: {$assignment->asset->asset_tag_no}",
+                'details' => ['Asset tag' => $assignment->asset->asset_tag_no],
+                'action_url' => $url,
+                'action_label' => 'Open check-in form',
+                'notification_type' => class_basename($mail),
+                'status' => 'failed',
+                'error' => $error->getMessage(),
+            ]);
+            throw $error;
+        }
     }
 }

@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -41,9 +42,32 @@ class PublicAssetCheckoutController extends Controller
         });
 
         $document = null;
-        $this->downloadCheckoutPdf($assignment, null, true, function (ItMovementDocument $movementDocument) use (&$document) {
-            $document = $movementDocument;
-        });
+        try {
+            $this->downloadCheckoutPdf($assignment, null, true, function (ItMovementDocument $movementDocument) use (&$document) {
+                $document = $movementDocument;
+            });
+        } catch (\Throwable $exception) {
+            $retryToken = Str::random(64);
+            $assignment->update([
+                'checkout_status' => 'pending',
+                'checkout_token' => $retryToken,
+                'signature' => null,
+                'policy_acknowledgments' => null,
+                'policy_acknowledged_at' => null,
+                'signed_at' => null,
+                'signed_ip' => null,
+                'signed_user_agent' => null,
+            ]);
+            $assignment->asset()->update(['current_status' => 'pending_checkout']);
+            Log::error('Unable to generate signed asset checkout PDF.', [
+                'assignment_id' => $assignment->id,
+                'asset_id' => $assignment->asset_id,
+                'exception' => $exception,
+            ]);
+
+            return redirect()->route('public.asset-checkout.show', $retryToken)
+                ->with('checkout_error', 'The signature was not completed because the PDF could not be generated. Please sign again.');
+        }
 
         $notifications->send(new SupervisorWorkflowNotification(
             subject: "Asset checkout signed: {$assignment->asset->asset_tag_no}",

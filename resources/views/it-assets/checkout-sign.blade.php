@@ -13,6 +13,7 @@
     <h1>Asset Checkout Form</h1>
     <p>Please review the asset details, acknowledge each policy item, and sign below.</p>
     @if($preview ?? false)<div class="notice">This is a test preview. It will not create or change an asset checkout.</div>@endif
+    @if(session('checkout_error'))<div class="notice">{{ session('checkout_error') }}</div>@endif
     <table>
         <tr><td>Asset tag</td><td>{{ $assignment->asset->asset_tag_no }}</td></tr>
         <tr><td>Description</td><td>{{ $assignment->asset->description ?: $assignment->asset->model }}</td></tr>

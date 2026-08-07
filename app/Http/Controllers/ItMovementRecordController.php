@@ -29,6 +29,8 @@ class ItMovementRecordController extends Controller
                 'description' => $document->assignment?->asset?->description ?: $document->assignment?->asset?->model,
                 'staff' => $document->assignment?->assigned_to_name,
                 'url' => route('it-movement-records.download', $document),
+                'assignment_id' => $document->asset_assignment_id,
+                'reopen_url' => route('it-assets.checkout.reopen', $document->assignment?->asset_id),
             ])->values();
 
         $pending = AssetAssignment::query()

@@ -17,6 +17,10 @@ const resend = (pending) => {
   if (!window.confirm(`Send a new checkout link to ${pending.email}?`)) return;
   router.post(pending.resend_url, {}, { preserveScroll: true });
 };
+const reopen = (document) => {
+  if (!window.confirm(`Reopen checkout for ${document.staff || 'this staff member'} and send a new signing link?`)) return;
+  router.post(document.reopen_url, {}, { preserveScroll: true });
+};
 </script>
 
 <template>
@@ -74,7 +78,7 @@ const resend = (pending) => {
                 <td>{{ document.staff || '—' }}</td>
                 <td class="whitespace-nowrap text-[#60745d]">{{ document.generated_at }}</td>
                 <td class="max-w-xs truncate text-xs text-[#7f9a7a]">{{ document.filename }}</td>
-                <td class="text-right"><a :href="document.url" class="btn btn-sm border-[#cfe6c8] bg-white text-[#2f7d32]">Download PDF</a></td>
+                <td class="text-right"><div class="flex justify-end gap-2"><button v-if="activeTab === 'deployment'" type="button" class="btn btn-sm border-[#d9a74d] bg-[#fff8e8] text-[#805d17]" @click="reopen(document)">Reopen checkout</button><a :href="document.url" class="btn btn-sm border-[#cfe6c8] bg-white text-[#2f7d32]">Download PDF</a></div></td>
               </tr>
               <tr v-if="!visibleRecords.length"><td colspan="6" class="py-12 text-center text-[#7f9a7a]">No signed PDF records have been generated yet.</td></tr>
             </tbody>

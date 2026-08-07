@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -42,9 +43,32 @@ class PublicAssetCheckinController extends Controller
         });
 
         $document = null;
-        $this->downloadCheckinPdf($assignment, null, true, function (ItMovementDocument $movementDocument) use (&$document) {
-            $document = $movementDocument;
-        });
+        try {
+            $this->downloadCheckinPdf($assignment, null, true, function (ItMovementDocument $movementDocument) use (&$document) {
+                $document = $movementDocument;
+            });
+        } catch (\Throwable $exception) {
+            $retryToken = Str::random(64);
+            $assignment->update([
+                'checkin_status' => 'pending',
+                'checkin_token' => $retryToken,
+                'checkin_signature' => null,
+                'checkin_signed_at' => null,
+                'checkin_signed_ip' => null,
+                'checkin_signed_user_agent' => null,
+                'checkin_received_by_email' => null,
+                'returned_at' => null,
+            ]);
+            $assignment->asset()->update(['current_status' => 'deployed']);
+            Log::error('Unable to generate signed asset check-in PDF.', [
+                'assignment_id' => $assignment->id,
+                'asset_id' => $assignment->asset_id,
+                'exception' => $exception,
+            ]);
+
+            return redirect()->route('public.asset-checkin.show', $retryToken)
+                ->with('checkout_error', 'The acknowledgment was not completed because the PDF could not be generated. Please sign again.');
+        }
 
         $notifications->send(new SupervisorWorkflowNotification(
             subject: "Asset check-in acknowledged: {$assignment->asset->asset_tag_no}",
