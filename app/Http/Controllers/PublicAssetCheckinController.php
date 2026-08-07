@@ -171,7 +171,9 @@ class PublicAssetCheckinController extends Controller
                 'path' => $path,
                 'generated_at' => now(),
             ]);
-            $onDocument?->call($document);
+            if ($onDocument) {
+                $onDocument($document);
+            }
         }
 
         return $pdf->download($downloadName);
