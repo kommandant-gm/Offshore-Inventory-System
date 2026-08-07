@@ -220,7 +220,7 @@ class AssetAssignmentController extends Controller
         abort_unless($request->user()?->canEdit('it_assets'), 403);
 
         $assignment->load('asset');
-        if ($assignment->checkin_status !== 'signed' || ! $assignment->returned_at) {
+        if ($assignment->checkin_status !== 'signed') {
             throw ValidationException::withMessages(['assignment' => 'This check-in cannot be reopened.']);
         }
 
@@ -255,7 +255,8 @@ class AssetAssignmentController extends Controller
             ->value('email') ?: 'muhd.isa@desb.net';
         $this->sendCheckinSignatureEmail($assignment, $technicianEmail);
 
-        return back()->with('success', 'The check-in was reset and a fresh acknowledgment link was sent to '.$technicianEmail.'.');
+        return redirect()->route('it-movement-records.index')
+            ->with('success', 'The check-in was reset and a fresh acknowledgment link was sent to '.$technicianEmail.'.');
     }
 
     private function sendCheckoutSignatureEmail($assignment): void
