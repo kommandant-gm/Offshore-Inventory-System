@@ -151,4 +151,27 @@ class AssetAssignmentController extends Controller
 
         return back()->with('success', 'Check-in form sent to the IT Team for acknowledgment.');
     }
+
+    public function resend(Request $request, Asset $asset): RedirectResponse
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+
+        $asset->load('currentAssignment');
+        $assignment = $asset->currentAssignment;
+        if (! $assignment || $assignment->checkout_status !== 'pending' || ! $assignment->assigned_email) {
+            throw ValidationException::withMessages(['asset' => 'There is no pending checkout that can be resent.']);
+        }
+
+        $assignment->update([
+            'checkout_token' => Str::random(64),
+            'checkout_sent_at' => now(),
+        ]);
+
+        Mail::to($assignment->assigned_email)->send(new AssetCheckoutSignatureMail(
+            $assignment,
+            route('public.asset-checkout.show', $assignment->checkout_token),
+        ));
+
+        return back()->with('success', 'A fresh checkout signing link was sent to '.$assignment->assigned_email.'.');
+    }
 }

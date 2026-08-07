@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AssetAssignment;
 use App\Models\ItMovementDocument;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -30,12 +31,55 @@ class ItMovementRecordController extends Controller
                 'url' => route('it-movement-records.download', $document),
             ])->values();
 
+        $pending = AssetAssignment::query()
+            ->with('asset')
+            ->where('checkout_status', 'pending')
+            ->whereNull('returned_at')
+            ->latest('checkout_sent_at')
+            ->get()
+            ->map(fn (AssetAssignment $assignment) => [
+                'asset_id' => $assignment->asset_id,
+                'asset_tag' => $assignment->asset?->asset_tag_no,
+                'description' => $assignment->asset?->description ?: $assignment->asset?->model,
+                'staff' => $assignment->assigned_to_name,
+                'email' => $assignment->assigned_email,
+                'sent_at' => $assignment->checkout_sent_at?->format('Y-m-d H:i'),
+                'resend_url' => route('it-assets.checkout.resend', $assignment->asset_id),
+            ])->values();
+
+        $staffMovements = AssetAssignment::query()
+            ->with('asset')
+            ->latest('assigned_at')
+            ->latest('id')
+            ->get()
+            ->groupBy(fn (AssetAssignment $assignment) => mb_strtolower(trim((string) $assignment->assigned_to_name)))
+            ->map(function ($assignments) {
+                $first = $assignments->first();
+                return [
+                    'name' => $first->assigned_to_name,
+                    'employee_id' => $first->employee_id,
+                    'department' => $first->department,
+                    'email' => $first->assigned_email,
+                    'assets' => $assignments->map(fn (AssetAssignment $assignment) => [
+                        'asset_tag' => $assignment->asset?->asset_tag_no,
+                        'description' => $assignment->asset?->description ?: $assignment->asset?->model,
+                        'assigned_at' => $assignment->assigned_at?->format('Y-m-d'),
+                        'returned_at' => $assignment->returned_at?->format('Y-m-d'),
+                        'status' => $assignment->returned_at ? 'Returned' : ($assignment->checkout_status === 'pending' ? 'Awaiting signature' : 'Deployed'),
+                    ])->values(),
+                ];
+            })->values();
+
         return Inertia::render('ItMovementRecords/Index', [
             'documents' => $documents,
+            'pending' => $pending,
+            'staffMovements' => $staffMovements,
             'summary' => [
                 'total' => $documents->count(),
                 'checkouts' => $documents->where('type', 'checkout')->count(),
                 'checkins' => $documents->where('type', 'checkin')->count(),
+                'pending' => $pending->count(),
+                'staff' => $staffMovements->count(),
             ],
         ]);
     }

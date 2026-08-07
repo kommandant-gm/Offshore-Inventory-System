@@ -60,6 +60,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::resource('it-assets', AssetController::class)->parameters(['it-assets' => 'asset'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::resource('it-licenses', ItLicenseController::class)->parameters(['it-licenses' => 'it_license'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::post('/it-assets/{asset}/checkout', [AssetAssignmentController::class, 'store'])->name('it-assets.checkout');
+    Route::post('/it-assets/{asset}/checkout/resend', [AssetAssignmentController::class, 'resend'])->name('it-assets.checkout.resend');
     Route::patch('/it-assets/{asset}/check-in', [AssetAssignmentController::class, 'destroy'])->name('it-assets.check-in');
     Route::post('/it-asset-repairs', [AssetRepairController::class, 'store'])->name('it-assets.repairs.store');
     Route::patch('/it-assets/{asset}/return-from-repair', [AssetRepairController::class, 'returnFromRepair'])->name('it-assets.repairs.return');
