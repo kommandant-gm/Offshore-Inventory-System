@@ -73,6 +73,7 @@ const directoryDepartment = 'IT & DIGITAL';
 const selectedUserId = ref(props.users.find((user) => (user.department || '').trim().toUpperCase() === directoryDepartment)?.id ?? null);
 const permissionSearch = ref('');
 const userSearch = ref('');
+const departmentFilter = ref('IT & DIGITAL');
 const directoryView = ref('cards');
 const sendingTestEmail = ref(false);
 const checkoutTestEmail = ref('');
@@ -93,6 +94,12 @@ const accessSummary = (userId) => {
 };
 
 const selectedUser = computed(() => props.users.find((user) => user.id === selectedUserId.value) ?? null);
+const departments = computed(() => [...new Set(props.users.map((user) => user.department || 'N/A'))].sort((a, b) => a.localeCompare(b)));
+const departmentCounts = computed(() => props.users.reduce((counts, user) => {
+    const department = user.department || 'N/A';
+    counts[department] = (counts[department] || 0) + 1;
+    return counts;
+}, {}));
 const accessLabel = (user) => ({
     admin: 'ADMIN',
     it: 'IT & DIGITAL',
@@ -105,7 +112,7 @@ const accessLabel = (user) => ({
 const visibleUsers = computed(() => {
     const query = userSearch.value.trim().toLowerCase();
     return props.users.filter((user) => {
-        const matchesDepartment = (user.department || '').trim().toUpperCase() === directoryDepartment;
+        const matchesDepartment = !departmentFilter.value || (user.department || 'N/A') === departmentFilter.value;
         const matchesSearch = !query || [user.name, user.username, user.email, user.department, user.job_title].filter(Boolean).some((value) => value.toLowerCase().includes(query));
         return matchesDepartment && matchesSearch;
     });
@@ -325,10 +332,10 @@ const importLdapUsers = () => {
         <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
             <div class="mb-5 rounded-[1.5rem] border border-[#edf3eb] bg-white p-1">
                 <div class="flex flex-col gap-4 px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div><p class="text-xl font-bold text-[#172033]">Employee Directory</p><p class="mt-1 text-sm text-[#65748b]">{{ visibleUsers.length }} IT &amp; DIGITAL employee(s)</p></div>
+                    <div><p class="text-xl font-bold text-[#172033]">Employee Directory</p><p class="mt-1 text-sm text-[#65748b]">{{ visibleUsers.length }} of {{ users.length }} active employee(s)</p></div>
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center"><div class="flex rounded-xl border border-[#dce3ed] bg-[#f8fafc] p-1"><button type="button" class="rounded-lg px-3 py-2 text-xs font-bold" :class="directoryView === 'cards' ? 'bg-white text-[#9b0000] shadow-sm' : 'text-[#718096]'" @click="directoryView = 'cards'">▦ CARDS</button><button type="button" class="rounded-lg px-3 py-2 text-xs font-bold" :class="directoryView === 'list' ? 'bg-white text-[#9b0000] shadow-sm' : 'text-[#718096]'" @click="directoryView = 'list'">☷ LIST</button></div><button type="button" class="rounded-xl bg-[#9b0000] px-4 py-3 text-xs font-bold text-white" :disabled="importingLdapUsers" @click="importLdapUsers">↻ {{ importingLdapUsers ? 'REFRESHING...' : 'REFRESH FROM AD' }}</button><input v-model.trim="userSearch" type="search" placeholder="Search employees..." class="input input-bordered w-full sm:w-56" /></div>
                 </div>
-                <div class="rounded-[1.25rem] border border-[#dce3ed] bg-[#fbfcfd] p-3"><p class="text-xs font-bold uppercase tracking-wider text-[#9b0000]">▥ &nbsp; DEPARTMENT</p><p class="mt-2 text-sm font-semibold text-[#31415b]">IT &amp; DIGITAL</p><p class="mt-1 text-xs text-[#718096]">Only active IT &amp; DIGITAL personnel are shown here.</p></div>
+                <div class="rounded-[1.25rem] border border-[#dce3ed] bg-[#fbfcfd] p-3"><p class="mb-3 text-xs font-bold uppercase tracking-wider text-[#9b0000]">▥ &nbsp; FILTER BY DEPARTMENT</p><div class="flex flex-wrap gap-2"><button type="button" class="rounded-xl border px-4 py-2 text-xs font-bold" :class="!departmentFilter ? 'border-[#9b0000] bg-[#9b0000] text-white shadow-sm' : 'border-[#dce3ed] bg-white text-[#31415b]'" @click="departmentFilter = ''">All Departments <span class="ml-1 rounded-full bg-white/20 px-2 py-0.5">{{ users.length }}</span></button><button v-for="department in departments" :key="department" type="button" class="rounded-xl border border-[#dce3ed] bg-white px-4 py-2 text-xs font-bold text-[#31415b]" :class="departmentFilter === department ? 'border-[#9b0000] bg-[#fff4f4] text-[#9b0000]' : ''" @click="departmentFilter = department">{{ department }} <span class="ml-1 rounded-full bg-[#f1f3f5] px-2 py-0.5">{{ departmentCounts[department] }}</span></button></div></div>
             </div>
 
             <div class="space-y-5">

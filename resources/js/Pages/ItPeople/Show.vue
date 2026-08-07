@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -69,10 +70,10 @@ const statusStyles = {
           <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
             <label class="flex-1">
               <span class="mb-1 block text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">Active AD user</span>
-              <select v-model="selectedAdUser" class="w-full rounded-xl border-[#cfe6c8] bg-white text-sm">
+              <CustomSelect v-model="selectedAdUser" class="w-full rounded-xl border-[#cfe6c8] bg-white text-sm" placeholder="Select an AD user">
                 <option value="">Select an AD user</option>
                 <option v-for="user in linkOptions" :key="user.id" :value="String(user.id)">{{ user.name }} ({{ user.username }})</option>
-              </select>
+              </CustomSelect>
             </label>
             <button type="button" class="rounded-xl bg-[#4f9f4a] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50" :disabled="!selectedAdUser || linking" @click="linkAdUser">
               {{ linking ? 'Saving...' : (person.linked_user_id ? 'Update link' : 'Link AD user') }}
