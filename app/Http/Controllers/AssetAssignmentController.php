@@ -6,6 +6,7 @@ use App\Enums\AssetStatus;
 use App\Mail\AssetCheckoutSignatureMail;
 use App\Mail\AssetCheckinSignatureMail;
 use App\Models\Asset;
+use App\Models\AssetAssignment;
 use App\Models\ItMovementDocument;
 use App\Models\User;
 use App\Models\EmailActivityLog;
