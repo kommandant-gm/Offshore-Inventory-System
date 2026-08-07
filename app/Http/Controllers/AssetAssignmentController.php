@@ -303,6 +303,30 @@ class AssetAssignmentController extends Controller
             ->with('success', 'The selected check-in records were cleared and a fresh acknowledgment link was sent to '.$technicianEmail.'.');
     }
 
+    public function resendCheckin(Request $request, AssetAssignment $assignment): RedirectResponse
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+
+        $assignment->load('asset');
+        if ($assignment->checkin_status !== 'pending') {
+            throw ValidationException::withMessages(['assignment' => 'There is no pending check-in that can be resent.']);
+        }
+
+        $assignment->update([
+            'checkin_token' => Str::random(64),
+            'checkin_sent_at' => now(),
+        ]);
+        $technicianEmail = User::query()
+            ->where('role', 'technician')
+            ->where('directory_active', true)
+            ->whereNotNull('email')
+            ->value('email') ?: 'muhd.isa@desb.net';
+        $this->sendCheckinSignatureEmail($assignment, $technicianEmail);
+
+        return redirect()->route('it-movement-records.index')
+            ->with('success', 'A fresh check-in acknowledgment link was sent to '.$technicianEmail.'.');
+    }
+
     private function sendCheckoutSignatureEmail($assignment): void
     {
         $url = route('public.asset-checkout.show', $assignment->checkout_token);

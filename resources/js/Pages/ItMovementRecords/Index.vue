@@ -6,6 +6,7 @@ import { computed, ref } from 'vue';
 const props = defineProps({
   documents: { type: Array, default: () => [] },
   pending: { type: Array, default: () => [] },
+  pendingCheckins: { type: Array, default: () => [] },
   staffMovements: { type: Array, default: () => [] },
   summary: { type: Object, default: () => ({ total: 0, checkouts: 0, checkins: 0, pending: 0 }) },
 });
@@ -15,6 +16,10 @@ const checkinRecords = computed(() => props.documents.filter((document) => docum
 const visibleRecords = computed(() => activeTab.value === 'deployment' ? deploymentRecords.value : checkinRecords.value);
 const resend = (pending) => {
   if (!window.confirm(`Send a new checkout link to ${pending.email}?`)) return;
+  router.post(pending.resend_url, {}, { preserveScroll: true });
+};
+const resendCheckin = (pending) => {
+  if (!window.confirm('Send a new check-in acknowledgment link to the technician?')) return;
   router.post(pending.resend_url, {}, { preserveScroll: true });
 };
 const reopen = (document) => {
@@ -46,7 +51,13 @@ const reopenCheckin = (document) => {
 
       <section class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white shadow-sm">
         <div class="flex flex-wrap gap-2 border-b border-[#edf3eb] px-5 py-4">
-          <button v-for="tab in [{ key: 'pending', label: 'Pending checkout', count: summary.pending }, { key: 'deployment', label: 'Asset deployment', count: summary.checkouts }, { key: 'checkin', label: 'Asset check-in', count: summary.checkins }, { key: 'staff', label: 'Staff asset movement', count: summary.staff }]" :key="tab.key" type="button" class="rounded-xl border px-4 py-2 text-xs font-bold" :class="activeTab === tab.key ? 'border-[#4f9f4a] bg-[#4f9f4a] text-white' : 'border-[#d8e7d4] bg-white text-[#60745d]'" @click="activeTab = tab.key">{{ tab.label }} <span class="ml-1 rounded-full px-2 py-0.5" :class="activeTab === tab.key ? 'bg-white/20' : 'bg-[#f1f3f5]'">{{ tab.count }}</span></button>
+          <button v-for="tab in [{ key: 'pending', label: 'Pending checkout', count: summary.pending }, { key: 'pending-checkin', label: 'Pending check-in', count: summary.pending_checkins }, { key: 'deployment', label: 'Asset deployment', count: summary.checkouts }, { key: 'checkin', label: 'Asset check-in', count: summary.checkins }, { key: 'staff', label: 'Staff asset movement', count: summary.staff }]" :key="tab.key" type="button" class="rounded-xl border px-4 py-2 text-xs font-bold" :class="activeTab === tab.key ? 'border-[#4f9f4a] bg-[#4f9f4a] text-white' : 'border-[#d8e7d4] bg-white text-[#60745d]'" @click="activeTab = tab.key">{{ tab.label }} <span class="ml-1 rounded-full px-2 py-0.5" :class="activeTab === tab.key ? 'bg-white/20' : 'bg-[#f1f3f5]'">{{ tab.count }}</span></button>
+        </div>
+        <div v-if="activeTab === 'pending-checkin'" class="overflow-x-auto">
+          <table class="table"><thead><tr><th>Asset</th><th>Previously assigned to</th><th>Technician</th><th>Sent</th><th></th></tr></thead><tbody>
+            <tr v-for="item in pendingCheckins" :key="item.assignment_id" class="hover:bg-[#f7fbf5]"><td><strong>{{ item.asset_tag || '—' }}</strong><span class="block text-xs text-[#7f9a7a]">{{ item.description || 'No description' }}</span></td><td>{{ item.staff }}</td><td>{{ item.technician_email }}</td><td>{{ item.sent_at }}</td><td class="text-right"><button type="button" class="btn btn-sm border-[#d9a74d] bg-[#fff8e8] text-[#805d17]" @click="resendCheckin(item)">Resend link</button></td></tr>
+            <tr v-if="!pendingCheckins.length"><td colspan="5" class="py-12 text-center text-[#7f9a7a]">No pending check-in forms.</td></tr>
+          </tbody></table>
         </div>
         <div v-if="activeTab === 'pending'" class="overflow-x-auto">
           <table class="table"><thead><tr><th>Asset</th><th>Staff</th><th>Email</th><th>Sent</th><th></th></tr></thead><tbody>

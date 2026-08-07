@@ -76,6 +76,22 @@ class ItMovementRecordController extends Controller
                 'resend_url' => route('it-assets.checkout.resend', $assignment->asset_id),
             ])->values();
 
+        $pendingCheckins = AssetAssignment::query()
+            ->with('asset')
+            ->where('checkin_status', 'pending')
+            ->whereNull('returned_at')
+            ->latest('checkin_sent_at')
+            ->get()
+            ->map(fn (AssetAssignment $assignment) => [
+                'assignment_id' => $assignment->id,
+                'asset_tag' => $assignment->asset?->asset_tag_no,
+                'description' => $assignment->asset?->description ?: $assignment->asset?->model,
+                'staff' => $assignment->assigned_to_name,
+                'technician_email' => 'muhd.isa@desb.net',
+                'sent_at' => $assignment->checkin_sent_at?->format('Y-m-d H:i'),
+                'resend_url' => route('it-assets.checkin.resend', $assignment),
+            ])->values();
+
         $staffMovements = AssetAssignment::query()
             ->with('asset')
             ->latest('assigned_at')
@@ -102,12 +118,14 @@ class ItMovementRecordController extends Controller
         return Inertia::render('ItMovementRecords/Index', [
             'documents' => $documents,
             'pending' => $pending,
+            'pendingCheckins' => $pendingCheckins,
             'staffMovements' => $staffMovements,
             'summary' => [
                 'total' => $documents->count(),
                 'checkouts' => $documents->where('type', 'checkout')->count(),
                 'checkins' => $documents->where('type', 'checkin')->count(),
                 'pending' => $pending->count(),
+                'pending_checkins' => $pendingCheckins->count(),
                 'staff' => $staffMovements->count(),
             ],
         ]);
