@@ -85,6 +85,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::post('/settings/import-ldap-users', [SettingsController::class, 'importLdapUsers'])->name('settings.import-ldap-users');
     Route::post('/settings/test-asset-checkout-email', [SettingsController::class, 'sendAssetCheckoutTestEmail'])->name('settings.test-asset-checkout-email');
     Route::get('/settings/preview-asset-checkout-pdf', [PublicAssetCheckoutController::class, 'previewPdf'])->name('settings.preview-asset-checkout-pdf');
+    Route::get('/settings/preview-asset-checkin-pdf', [PublicAssetCheckinController::class, 'previewPdf'])->name('settings.preview-asset-checkin-pdf');
     Route::post('/settings/test-asset-checkin-email', [SettingsController::class, 'sendAssetCheckinTestEmail'])->name('settings.test-asset-checkin-email');
     Route::patch('/settings/users/{user}/access', [SettingsController::class, 'updateUserAccess'])->name('settings.users.update');
     Route::get('/settings/issue-logs', [IssueLogController::class, 'index'])->name('settings.issue-logs.index');

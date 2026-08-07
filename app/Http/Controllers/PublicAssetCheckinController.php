@@ -6,6 +6,7 @@ use App\Models\AssetAssignment;
 use App\Models\Asset;
 use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\SupervisorNotificationService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -20,7 +21,7 @@ class PublicAssetCheckinController extends Controller
         return view('it-assets.checkin-sign', compact('assignment', 'token'));
     }
 
-    public function sign(Request $request, string $token, SupervisorNotificationService $notifications): RedirectResponse
+    public function sign(Request $request, string $token, SupervisorNotificationService $notifications)
     {
         $data = $request->validate(['signature' => ['required', 'string', 'max:200000'], 'acknowledgment' => ['accepted']]);
         $assignment = DB::transaction(function () use ($token, $data, $request) {
@@ -41,7 +42,7 @@ class PublicAssetCheckinController extends Controller
             url: route('it-assets.show', $assignment->asset), actionLabel: 'View asset',
         ), 'Unable to send signed asset check-in supervisor notification.');
 
-        return redirect()->route('public.asset-checkout.complete')->with('status', 'checkin');
+        return $this->downloadCheckinPdf($assignment);
     }
 
     public function testPreview(): View
@@ -54,10 +55,37 @@ class PublicAssetCheckinController extends Controller
         return view('it-assets.checkin-sign', ['assignment' => $assignment, 'token' => null, 'preview' => true]);
     }
 
-    public function testSign(Request $request): RedirectResponse
+    public function testSign(Request $request)
     {
-        $request->validate(['signature' => ['required', 'string', 'max:200000'], 'acknowledgment' => ['accepted']]);
-        return redirect()->route('public.asset-checkout.complete')->with('status', 'checkin-test');
+        $data = $request->validate(['signature' => ['required', 'string', 'max:200000'], 'acknowledgment' => ['accepted']]);
+        $asset = Asset::query()->with('category', 'currentLocation')->firstOrFail();
+        $assignment = new AssetAssignment([
+            'assigned_to_name' => 'Test Staff Member',
+            'employee_id' => 'TEST-001',
+            'assigned_at' => now()->toDateString(),
+            'checkin_signature' => $data['signature'],
+            'checkin_signed_at' => now(),
+            'checkin_received_by_email' => 'muhd.isa@desb.net',
+        ]);
+        $assignment->setRelation('asset', $asset);
+
+        return $this->downloadCheckinPdf($assignment);
+    }
+
+    public function previewPdf(Request $request)
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+
+        $asset = Asset::query()->with('category', 'currentLocation')->firstOrFail();
+        $assignment = new AssetAssignment([
+            'assigned_to_name' => 'Test Staff Member',
+            'employee_id' => 'TEST-001',
+            'assigned_at' => now()->toDateString(),
+            'checkin_received_by_email' => 'muhd.isa@desb.net',
+        ]);
+        $assignment->setRelation('asset', $asset);
+
+        return $this->downloadCheckinPdf($assignment, 'asset-checkin-preview-'.$asset->asset_tag_no.'.pdf');
     }
 
     private function resolve(string $token, bool $lock = false): AssetAssignment
@@ -66,5 +94,18 @@ class PublicAssetCheckinController extends Controller
         $assignment = ($lock ? $query->lockForUpdate() : $query)->first();
         if (! $assignment) abort(HttpResponse::HTTP_GONE, 'This check-in link has expired or already been used.');
         return $assignment;
+    }
+
+    private function downloadCheckinPdf(AssetAssignment $assignment, ?string $filename = null)
+    {
+        $pdf = Pdf::loadView('it-assets.checkin-pdf', [
+            'assignment' => $assignment,
+            'logoPath' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('images/dayang-logo.png'))),
+        ])->setPaper('a4');
+
+        $downloadName = $filename ?: 'asset-checkin-'.$assignment->asset->asset_tag_no.'.pdf';
+        $downloadName = preg_replace('/[\\\\\/:*?"<>|]+/', '-', $downloadName);
+
+        return $pdf->download($downloadName);
     }
 }
