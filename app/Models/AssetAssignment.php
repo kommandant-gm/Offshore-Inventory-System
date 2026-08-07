@@ -12,7 +12,7 @@ class AssetAssignment extends Model
 
     protected $fillable = [
         'branch_id', 'asset_id', 'assigned_to_name', 'assigned_email', 'employee_id', 'department',
-        'assigned_at', 'returned_at', 'assigned_by', 'received_by', 'remarks', 'checkout_status',
+        'assigned_at', 'returned_at', 'assigned_by', 'received_by', 'remarks', 'job_title', 'checkout_status',
         'checkout_token', 'checkout_sent_at', 'signed_at', 'signature', 'signed_ip', 'signed_user_agent',
         'policy_acknowledgments', 'policy_acknowledged_at',
         'checkin_status', 'checkin_token', 'checkin_sent_at', 'checkin_signed_at', 'checkin_signature', 'checkin_signed_ip', 'checkin_signed_user_agent', 'checkin_received_by_email',
