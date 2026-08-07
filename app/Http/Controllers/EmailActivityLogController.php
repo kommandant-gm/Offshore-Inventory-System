@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmailActivityLog;
+use App\Models\Asset;
+use App\Models\AssetAssignment;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,7 +27,8 @@ class EmailActivityLogController extends Controller
         return Inertia::render('Settings/EmailActivity/Show', [
             'log' => [
                 ...$this->summary($emailActivityLog),
-                'body' => $emailActivityLog->body,
+                'body' => $emailActivityLog->body ?: $this->reconstructBody($emailActivityLog),
+                'reconstructed' => blank($emailActivityLog->body),
                 'details' => $emailActivityLog->details ?? [],
                 'action_url' => $emailActivityLog->action_url,
                 'action_label' => $emailActivityLog->action_label,
@@ -47,5 +50,44 @@ class EmailActivityLogController extends Controller
             'type' => $log->notification_type,
             'status' => $log->status,
         ];
+    }
+
+    private function reconstructBody(EmailActivityLog $log): string
+    {
+        $subject = (string) $log->subject;
+        $lines = [
+            '[Reconstructed content — the original body was not captured at send time.]',
+            'Recipient: '.$log->recipient,
+            'Subject: '.$subject,
+        ];
+
+        if (preg_match('/(?:checkout|check-in|registered|repair|allocated):\s*(\S+)/i', $subject, $match)) {
+            $assetTag = rtrim($match[1], '.,');
+            $asset = Asset::query()->where('asset_tag_no', $assetTag)->first();
+            $assignment = AssetAssignment::query()->with('asset')->whereHas('asset', fn ($query) => $query->where('asset_tag_no', $assetTag))->latest('id')->first();
+
+            if (str_contains(strtolower($subject), 'checkout signed')) {
+                $lines[] = ($assignment?->assigned_to_name ?: 'The staff member').' digitally signed an IT asset checkout form.';
+                $lines[] = 'Asset tag: '.$assetTag;
+                $lines[] = 'Assigned to: '.($assignment?->assigned_to_name ?: '-');
+                $lines[] = 'Signed at: '.($assignment?->signed_at?->format('Y-m-d H:i') ?: '-');
+            } elseif (str_contains(strtolower($subject), 'check-in acknowledged')) {
+                $lines[] = 'The IT Team acknowledged receipt of '.$assetTag.'.';
+                $lines[] = 'Received by: '.($assignment?->checkin_received_by_email ?: 'muhd.isa@desb.net');
+                $lines[] = 'Acknowledged at: '.($assignment?->checkin_signed_at?->format('Y-m-d H:i') ?: '-');
+            } elseif (str_contains(strtolower($subject), 'registered') && $asset) {
+                $lines[] = 'Asset tag: '.$asset->asset_tag_no;
+                $lines[] = 'Description: '.($asset->description ?: '-');
+                $lines[] = 'Model: '.($asset->model ?: '-');
+                $lines[] = 'Serial number: '.($asset->serial_no ?: '-');
+            } else {
+                $lines[] = 'Asset tag: '.$assetTag;
+                $lines[] = 'This message was reconstructed from the saved notification subject and available asset records.';
+            }
+        } else {
+            $lines[] = 'This message was reconstructed from the saved subject because the original message body was not stored.';
+        }
+
+        return implode("\n\n", $lines);
     }
 }
