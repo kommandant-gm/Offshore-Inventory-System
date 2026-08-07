@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AssetAssignment;
 use App\Models\ItLicense;
+use App\Models\ItPersonLink;
 use App\Models\User;
 use App\Services\BranchContext;
 use Illuminate\Http\Request;
@@ -75,7 +76,7 @@ class ItPeopleController extends Controller
             'employee_id' => $assignments->first(fn (AssetAssignment $assignment) => filled($assignment->employee_id))?->employee_id,
             'email' => null,
         ];
-        $profile['department'] = $latestAssignment?->department ?? $latestLicence?->department;
+        $profile['department'] = $profile['department'] ?? $latestAssignment?->department ?? $latestLicence?->department;
 
         $currentAssets = $assignments
             ->whereNull('returned_at')
@@ -120,6 +121,11 @@ class ItPeopleController extends Controller
 
         return Inertia::render('ItPeople/Show', [
             'person' => $profile,
+            'personToken' => $person,
+            'canLink' => $request->user()->canEdit('it_assets'),
+            'linkOptions' => $request->user()->canEdit('it_assets')
+                ? User::query()->where('directory_active', true)->orderBy('name')->get(['id', 'name', 'username', 'email', 'department', 'job_title'])
+                : [],
             'summary' => [
                 'current_assets' => $currentAssets->count(),
                 'licences' => $licences->count(),
@@ -139,9 +145,35 @@ class ItPeopleController extends Controller
         ]);
     }
 
+    public function linkAdUser(Request $request, string $person, BranchContext $branches)
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+
+        $identity = $this->decodeIdentity($person);
+        abort_unless(str_starts_with($identity, 'n:'), 404);
+
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+        $user = User::query()->where('directory_active', true)->findOrFail($data['user_id']);
+
+        $existing = ItPersonLink::query()->where('user_id', $user->id)->first();
+        if ($existing && $existing->manual_identity !== substr($identity, 2)) {
+            return back()->with('error', 'This AD user is already linked to another manual person.');
+        }
+
+        ItPersonLink::updateOrCreate(
+            ['manual_identity' => substr($identity, 2)],
+            ['user_id' => $user->id],
+        );
+
+        return back()->with('success', "Linked {$user->name} to this manual person.");
+    }
+
     private function people(?int $branchId): Collection
     {
         $people = [];
+        $links = ItPersonLink::query()->with('user')->get()->keyBy('manual_identity');
 
         $assignments = AssetAssignment::query()
             ->latest('assigned_at')
@@ -165,6 +197,19 @@ class ItPeopleController extends Controller
             $people[$identity]['department'] ??= $licence->department;
             $people[$identity]['licences']++;
         }
+
+        foreach ($people as $identity => &$person) {
+            $link = $links->get(substr($identity, 2));
+            if ($link?->user && $link->user->directory_active) {
+                $person['name'] = $link->user->name;
+                $person['employee_id'] = $link->user->username;
+                $person['email'] = $link->user->email;
+                $person['department'] = $link->user->department;
+                $person['job_title'] = $link->user->job_title;
+                $person['linked_user_id'] = $link->user->id;
+            }
+        }
+        unset($person);
 
         return collect($people)
             ->map(function (array $person) {
@@ -204,6 +249,17 @@ class ItPeopleController extends Controller
         } elseif (str_starts_with($identity, 'n:')) {
             $name = trim(substr($identity, 2));
             abort_if($name === '', 404);
+            $linkedUser = ItPersonLink::query()->with('user')->where('manual_identity', $name)->first()?->user;
+            if ($linkedUser?->directory_active) {
+                $profile = [
+                    'name' => $linkedUser->name,
+                    'employee_id' => $linkedUser->username,
+                    'email' => $linkedUser->email,
+                    'department' => $linkedUser->department,
+                    'job_title' => $linkedUser->job_title,
+                    'linked_user_id' => $linkedUser->id,
+                ];
+            }
             $assignmentQuery->whereRaw('LOWER(assigned_to_name) = ?', [$name]);
             $licenceQuery->whereRaw('LOWER(assigned_to) = ?', [$name]);
         } else {

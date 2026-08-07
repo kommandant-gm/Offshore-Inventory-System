@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const props = defineProps({
   person: Object,
@@ -8,7 +9,21 @@ const props = defineProps({
   currentAssets: { type: Array, default: () => [] },
   licences: { type: Array, default: () => [] },
   history: { type: Array, default: () => [] },
+  personToken: String,
+  canLink: Boolean,
+  linkOptions: { type: Array, default: () => [] },
 });
+
+const selectedAdUser = ref(String(props.person.linked_user_id || ''));
+const linking = ref(false);
+const linkAdUser = () => {
+  if (!selectedAdUser.value) return;
+  linking.value = true;
+  router.post(route('it-people.link-ad', props.personToken), { user_id: selectedAdUser.value }, {
+    preserveScroll: true,
+    onFinish: () => { linking.value = false; },
+  });
+};
 
 const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 const label = (value) => value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -44,7 +59,26 @@ const statusStyles = {
             <div><dt class="text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">Employee ID</dt><dd class="mt-1 font-semibold text-[#234222]">{{ person.employee_id || 'Not recorded' }}</dd></div>
             <div><dt class="text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">Email</dt><dd class="mt-1 font-semibold text-[#234222]">{{ person.email || 'Not recorded' }}</dd></div>
             <div><dt class="text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">Department</dt><dd class="mt-1 font-semibold text-[#234222]">{{ person.department || 'Not specified' }}</dd></div>
+            <div v-if="person.job_title"><dt class="text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">Job title</dt><dd class="mt-1 font-semibold text-[#234222]">{{ person.job_title }}</dd></div>
           </dl>
+        </article>
+
+        <article v-if="canLink" class="rounded-[1.7rem] border border-[#d8e7d4] bg-[#f8fcf6] p-6 shadow-sm">
+          <p class="text-xs font-bold uppercase tracking-[.2em] text-[#4f9f4a]">Manual linking</p>
+          <p class="mt-2 text-sm text-[#60745d]">Link this manual person to an active AD user to display the official name, email, department, and job title.</p>
+          <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label class="flex-1">
+              <span class="mb-1 block text-xs font-bold uppercase tracking-wider text-[#7f9a7a]">Active AD user</span>
+              <select v-model="selectedAdUser" class="w-full rounded-xl border-[#cfe6c8] bg-white text-sm">
+                <option value="">Select an AD user</option>
+                <option v-for="user in linkOptions" :key="user.id" :value="String(user.id)">{{ user.name }} ({{ user.username }})</option>
+              </select>
+            </label>
+            <button type="button" class="rounded-xl bg-[#4f9f4a] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50" :disabled="!selectedAdUser || linking" @click="linkAdUser">
+              {{ linking ? 'Saving...' : (person.linked_user_id ? 'Update link' : 'Link AD user') }}
+            </button>
+          </div>
+          <p v-if="person.linked_user_id" class="mt-3 text-xs font-semibold text-[#2f7d32]">Linked to the active AD directory.</p>
         </article>
 
         <div class="grid gap-4 sm:grid-cols-3">
