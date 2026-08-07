@@ -142,21 +142,6 @@ class ItPeopleController extends Controller
     private function people(?int $branchId): Collection
     {
         $people = [];
-        $names = [];
-        $employeeIds = [];
-
-        $users = User::query()
-            ->where('directory_active', true)
-            ->when($branchId, fn ($query) => $query->whereHas('branches', fn ($branch) => $branch->where('branches.id', $branchId)))
-            ->orderBy('name')
-            ->get(['id', 'name', 'username', 'email']);
-
-        foreach ($users as $user) {
-            $identity = "u:{$user->id}";
-            $people[$identity] = $this->personRow($identity, $user->name, $user->username, $user->email, $user->department, $user->job_title);
-            $names[$this->normalise($user->name)] ??= $identity;
-            $employeeIds[$this->normalise($user->username)] = $identity;
-        }
 
         $assignments = AssetAssignment::query()
             ->latest('assigned_at')
@@ -164,9 +149,7 @@ class ItPeopleController extends Controller
             ->get();
 
         foreach ($assignments as $assignment) {
-            $identity = $employeeIds[$this->normalise($assignment->employee_id)]
-                ?? $names[$this->normalise($assignment->assigned_to_name)]
-                ?? 'n:'.$this->normalise($assignment->assigned_to_name);
+            $identity = 'n:'.$this->normalise($assignment->assigned_to_name);
             $people[$identity] ??= $this->personRow($identity, $assignment->assigned_to_name, $assignment->employee_id);
             $people[$identity]['employee_id'] ??= $assignment->employee_id;
             $people[$identity]['department'] ??= $assignment->department;
@@ -177,8 +160,7 @@ class ItPeopleController extends Controller
         }
 
         foreach (ItLicense::query()->whereNotNull('assigned_to')->where('assigned_to', '<>', '')->latest('updated_at')->get() as $licence) {
-            $identity = $names[$this->normalise($licence->assigned_to)]
-                ?? 'n:'.$this->normalise($licence->assigned_to);
+            $identity = 'n:'.$this->normalise($licence->assigned_to);
             $people[$identity] ??= $this->personRow($identity, $licence->assigned_to);
             $people[$identity]['department'] ??= $licence->department;
             $people[$identity]['licences']++;

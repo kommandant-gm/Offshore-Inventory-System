@@ -476,7 +476,7 @@ const importLdapUsers = () => {
             </div>
         </section>
 
-        <div class="grid gap-6 2xl:grid-cols-3">
+        <div v-if="false" class="grid gap-6 2xl:grid-cols-3">
             <section
                 v-for="group in adminGroups"
                 :key="group.title"
