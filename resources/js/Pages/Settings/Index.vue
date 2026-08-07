@@ -73,12 +73,14 @@ const selectedUserId = ref(props.users[0]?.id ?? null);
 const permissionSearch = ref('');
 const userSearch = ref('');
 const departmentFilter = ref('');
+const directoryView = ref('cards');
 const sendingTestEmail = ref(false);
 const checkoutTestEmail = ref('');
 const sendingCheckoutTest = ref(false);
 const checkinTestEmail = ref('');
 const sendingCheckinTest = ref(false);
 const importingLdapUsers = ref(false);
+const issueLogOpen = ref(false);
 
 const accessSummary = (userId) => {
     const levels = Object.values(userForms[userId].permissions);
@@ -91,11 +93,16 @@ const accessSummary = (userId) => {
 };
 
 const selectedUser = computed(() => props.users.find((user) => user.id === selectedUserId.value) ?? null);
-const departments = computed(() => [...new Set(props.users.map((user) => user.department).filter(Boolean))].sort((a, b) => a.localeCompare(b)));
+const departments = computed(() => [...new Set(props.users.map((user) => user.department || 'N/A'))].sort((a, b) => a.localeCompare(b)));
+const departmentCounts = computed(() => props.users.reduce((counts, user) => {
+    const department = user.department || 'N/A';
+    counts[department] = (counts[department] || 0) + 1;
+    return counts;
+}, {}));
 const visibleUsers = computed(() => {
     const query = userSearch.value.trim().toLowerCase();
     return props.users.filter((user) => {
-        const matchesDepartment = !departmentFilter.value || user.department === departmentFilter.value;
+        const matchesDepartment = !departmentFilter.value || (user.department || 'N/A') === departmentFilter.value;
         const matchesSearch = !query || [user.name, user.username, user.email, user.department, user.job_title].filter(Boolean).some((value) => value.toLowerCase().includes(query));
         return matchesDepartment && matchesSearch;
     });
@@ -167,13 +174,13 @@ const importLdapUsers = () => {
 
         <section class="overflow-hidden rounded-[2rem] border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
             <div class="flex flex-col gap-3 border-b border-[#edf3eb] bg-[#f8fafc] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-                <div><p class="font-semibold text-[#172033]">Issue Activity Log</p><p class="mt-1 text-sm text-[#65748b]">Persistent Laravel errors, warnings, and stack traces stored in the database.</p></div>
+                <button type="button" class="text-left" @click="issueLogOpen = !issueLogOpen"><p class="font-semibold text-[#172033]">Issue Activity Log <span class="ml-2 text-xs text-[#718096]">{{ issueLogOpen ? '▲' : '▼' }}</span></p><p class="mt-1 text-sm text-[#65748b]">Persistent Laravel errors, warnings, and stack traces stored in the database.</p></button>
                 <Link :href="route('settings.issue-logs.index')" class="w-fit rounded-xl bg-[#111a2e] px-5 py-3 text-sm font-bold text-white">View Full Log</Link>
             </div>
-            <div class="p-6">
+            <div v-if="issueLogOpen" class="p-6">
                 <div class="grid gap-4 md:grid-cols-3">
                     <div class="rounded-2xl border border-[#dce3ed] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#8290a8]">Total</p><p class="mt-3 text-2xl font-bold text-[#111a2e]">{{issueSummary.total}}</p></div>
-                    <div class="rounded-2xl border border-[#ffc6cc] bg-[#fff8f8] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#d61f3c]">Errors</p><p class="mt-3 text-2xl font-bold text-[#a70f29]">{{issueSummary.errors}}</p></div>
+                    <Link :href="route('settings.issue-logs.index', { level: 'error' })" class="rounded-2xl border border-[#ffc6cc] bg-[#fff8f8] p-5 transition hover:border-[#d61f3c] hover:shadow-md"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#d61f3c]">Errors</p><p class="mt-3 text-2xl font-bold text-[#a70f29]">{{issueSummary.errors}}</p><p class="mt-1 text-xs font-semibold text-[#a70f29]">Open errors →</p></Link>
                     <div class="rounded-2xl border border-[#f7d56b] bg-[#fffdf5] p-5"><p class="text-xs font-bold uppercase tracking-[.2em] text-[#b45b00]">Warnings</p><p class="mt-3 text-2xl font-bold text-[#914400]">{{issueSummary.warnings}}</p></div>
                 </div>
                 <div v-if="recentIssues.length" class="mt-5 space-y-3"><article v-for="issue in recentIssues" :key="issue.id" class="rounded-2xl border border-[#dce3ed] p-4"><div class="flex flex-wrap items-center gap-3"><span class="rounded-full px-3 py-1 text-[11px] font-bold uppercase" :class="issue.level==='error'?'bg-[#ffe4e8] text-[#c41635]':'bg-[#fff1bd] text-[#a65300]'">{{issue.level}}</span><strong class="text-xs text-[#172033]">{{issue.created_at}}</strong></div><p class="mt-3 break-words text-sm text-[#31415b]">{{issue.message}}</p><p v-if="issue.location" class="mt-2 break-all text-xs text-[#718096]">{{issue.location}}</p></article></div>
@@ -233,7 +240,7 @@ const importLdapUsers = () => {
             </div>
         </section>
 
-        <div class="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
+        <div v-if="false" class="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
                 <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -305,25 +312,19 @@ const importLdapUsers = () => {
         </div>
 
         <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
-            <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <p class="text-sm text-[#6f8a6b]">Role Permissions</p>
-                    <h2 class="text-xl font-semibold text-[#234222]">Permission workspace</h2>
-                    <p class="mt-1 text-sm text-[#6f8a6b]">Pick one user, then adjust module access in a single compact matrix.</p>
+            <div class="mb-5 rounded-[1.5rem] border border-[#edf3eb] bg-white p-1">
+                <div class="flex flex-col gap-4 px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div><p class="text-xl font-bold text-[#172033]">Employee Directory</p><p class="mt-1 text-sm text-[#65748b]">{{ users.length }} of {{ users.length }} employee(s)</p></div>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center"><div class="flex rounded-xl border border-[#dce3ed] bg-[#f8fafc] p-1"><button type="button" class="rounded-lg px-3 py-2 text-xs font-bold" :class="directoryView === 'cards' ? 'bg-white text-[#9b0000] shadow-sm' : 'text-[#718096]'" @click="directoryView = 'cards'">▦ CARDS</button><button type="button" class="rounded-lg px-3 py-2 text-xs font-bold" :class="directoryView === 'list' ? 'bg-white text-[#9b0000] shadow-sm' : 'text-[#718096]'" @click="directoryView = 'list'">☷ LIST</button></div><button type="button" class="rounded-xl bg-[#9b0000] px-4 py-3 text-xs font-bold text-white" :disabled="importingLdapUsers" @click="importLdapUsers">↻ {{ importingLdapUsers ? 'REFRESHING...' : 'REFRESH FROM AD' }}</button><input v-model.trim="userSearch" type="search" placeholder="Search employees..." class="input input-bordered w-full sm:w-56" /></div>
                 </div>
-                <span class="rounded-full border border-[#b8d7b1] bg-[#eef8ea] px-4 py-1 text-xs font-semibold text-[#3c8a39]">
-                    {{ users.length }} users
-                </span>
+                <div class="rounded-[1.25rem] border border-[#dce3ed] bg-[#fbfcfd] p-3"><p class="mb-3 text-xs font-bold uppercase tracking-wider text-[#9b0000]">▥ &nbsp; FILTER BY DEPARTMENT</p><div class="flex flex-wrap gap-2"><button type="button" class="rounded-xl border px-4 py-2 text-xs font-bold" :class="!departmentFilter ? 'border-[#9b0000] bg-[#9b0000] text-white shadow-sm' : 'border-[#dce3ed] bg-white text-[#31415b]'" @click="departmentFilter = ''">All Departments <span class="ml-1 rounded-full bg-white/20 px-2 py-0.5">{{ users.length }}</span></button><button v-for="department in departments" :key="department" type="button" class="rounded-xl border border-[#dce3ed] bg-white px-4 py-2 text-xs font-bold text-[#31415b]" :class="departmentFilter === department ? 'border-[#9b0000] bg-[#fff4f4] text-[#9b0000]' : ''" @click="departmentFilter = department">{{ department }} <span class="ml-1 rounded-full bg-[#f1f3f5] px-2 py-0.5">{{ departmentCounts[department] }}</span></button></div></div>
             </div>
 
             <div class="space-y-5">
                 <aside class="rounded-[1.6rem] border border-[#d8e7d4] bg-[#fbfefa] p-4">
-                    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                        <div><p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Personnel Directory</p><p class="mt-1 text-sm text-[#6f8a6b]">Select a user card to edit role permissions.</p></div>
-                        <div class="flex w-full flex-col gap-2 sm:flex-row lg:w-auto"><input v-model.trim="userSearch" type="search" placeholder="Search users..." class="input input-sm w-full border-[#cfe6c8] bg-white sm:w-64" /><CustomSelect v-model="departmentFilter" class="select select-sm w-full border-[#cfe6c8] bg-white sm:w-52"><option value="">All departments</option><option v-for="department in departments" :key="department" :value="department">{{ department }}</option></CustomSelect></div>
-                    </div>
+                    <div class="mb-4"><p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Role Permissions</p><p class="mt-1 text-sm text-[#6f8a6b]">Select an employee to edit role, branch, and module access.</p></div>
 
-                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <div class="grid gap-3" :class="directoryView === 'cards' ? 'md:grid-cols-2 xl:grid-cols-3' : 'md:grid-cols-2'">
                         <button
                             v-for="user in visibleUsers"
                             :key="`nav-${user.id}`"
