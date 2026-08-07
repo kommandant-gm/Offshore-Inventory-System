@@ -9,6 +9,7 @@
 </head>
 <body>
 <div class="card">
+    <img src="{{ asset('images/dayang-logo.png') }}" alt="Dayang Enterprise Sdn. Bhd." style="display:block;max-width:245px;max-height:72px;margin-bottom:18px">
     <h1>Asset Checkout Form</h1>
     <p>Please review the asset details, acknowledge each policy item, and sign below.</p>
     @if($preview ?? false)<div class="notice">This is a test preview. It will not create or change an asset checkout.</div>@endif
@@ -19,6 +20,7 @@
         <tr><td>Staff</td><td>{{ $assignment->assigned_to_name }}</td></tr>
         <tr><td>Employee ID</td><td>{{ $assignment->employee_id ?: '-' }}</td></tr>
         <tr><td>Department</td><td>{{ $assignment->department ?: '-' }}</td></tr>
+        <tr><td>Job title</td><td>{{ $assignment->job_title ?: '-' }}</td></tr>
         <tr><td>Checkout date</td><td>{{ $assignment->assigned_at?->format('Y-m-d') }}</td></tr>
     </table>
     <form method="post" action="{{ ($preview ?? false) ? route('settings.asset-checkout-test.sign') : route('public.asset-checkout.sign', $token) }}">

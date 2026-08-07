@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AssetAssignment;
 use App\Models\Asset;
 use App\Models\ItMovementDocument;
+use App\Models\ItPersonLink;
 use App\Mail\AssetCheckoutSignatureMail;
 use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\SupervisorNotificationService;
@@ -24,6 +25,7 @@ class PublicAssetCheckoutController extends Controller
     public function show(string $token): View
     {
         $assignment = $this->resolve($token)->load('asset.category', 'asset.currentLocation');
+        $this->applyLinkedPerson($assignment);
         return view('it-assets.checkout-sign', ['assignment' => $assignment, 'token' => $token, 'policyItems' => AssetCheckoutPolicy::items(), 'policyUrl' => AssetCheckoutPolicy::ICT_POLICY_URL]);
     }
 
@@ -32,9 +34,15 @@ class PublicAssetCheckoutController extends Controller
         $data = $this->validateSignature($request);
         $assignment = DB::transaction(function () use ($token, $data, $request) {
             $assignment = $this->resolve($token, true);
+            $this->applyLinkedPerson($assignment);
             $assignment->update(['checkout_status' => 'signed', 'checkout_token' => null, 'signature' => $data['signature'], 'policy_acknowledgments' => array_values($data['acknowledgments']), 'policy_acknowledged_at' => now(), 'signed_at' => now(), 'signed_ip' => $request->ip(), 'signed_user_agent' => $request->userAgent()]);
             $assignment->asset()->update(['current_status' => 'deployed']);
             return $assignment->load('asset');
+        });
+
+        $document = null;
+        $this->downloadCheckoutPdf($assignment, null, true, function (ItMovementDocument $movementDocument) use (&$document) {
+            $document = $movementDocument;
         });
 
         $notifications->send(new SupervisorWorkflowNotification(
@@ -42,9 +50,14 @@ class PublicAssetCheckoutController extends Controller
             intro: "{$assignment->assigned_to_name} digitally signed an IT asset checkout form.",
             details: ['Asset tag' => $assignment->asset->asset_tag_no, 'Assigned to' => $assignment->assigned_to_name, 'Signed at' => $assignment->signed_at->format('Y-m-d H:i')],
             url: route('it-assets.show', $assignment->asset), actionLabel: 'View asset',
-        ), 'Unable to send signed asset checkout supervisor notification.');
+            attachmentPath: $document?->path,
+            attachmentName: $document?->filename,
+        ), 'Unable to send signed asset checkout supervisor notification.', array_merge(
+            [$assignment->assigned_email],
+            $notifications->technicianRecipients(),
+        ));
 
-        return $this->downloadCheckoutPdf($assignment, null, true);
+        return redirect()->route('public.asset-checkout.complete')->with('status', 'checkout');
     }
 
     public function complete(): View
@@ -107,6 +120,24 @@ class PublicAssetCheckoutController extends Controller
         return $assignment;
     }
 
+    private function applyLinkedPerson(AssetAssignment $assignment): void
+    {
+        $linkedUser = ItPersonLink::query()
+            ->with('user')
+            ->where('manual_identity', mb_strtolower(trim((string) $assignment->assigned_to_name)))
+            ->first()?->user;
+
+        if (! $linkedUser || ! $linkedUser->directory_active) {
+            return;
+        }
+
+        $assignment->assigned_to_name = $linkedUser->name;
+        $assignment->assigned_email = $linkedUser->email;
+        $assignment->employee_id = $linkedUser->username;
+        $assignment->department = $linkedUser->department;
+        $assignment->job_title = $linkedUser->job_title;
+    }
+
     private function validateSignature(Request $request): array
     {
         $expected = array_keys(AssetCheckoutPolicy::items());
@@ -123,7 +154,7 @@ class PublicAssetCheckoutController extends Controller
         return $data;
     }
 
-    private function downloadCheckoutPdf(AssetAssignment $assignment, ?string $filename = null, bool $record = false)
+    private function downloadCheckoutPdf(AssetAssignment $assignment, ?string $filename = null, bool $record = false, ?callable $onDocument = null)
     {
         $pdf = Pdf::loadView('it-assets.checkout-pdf', [
             'assignment' => $assignment,
@@ -137,13 +168,14 @@ class PublicAssetCheckoutController extends Controller
         if ($record) {
             $path = 'asset-movement-documents/'.Str::uuid().'.pdf';
             Storage::disk('local')->put($path, $pdf->output());
-            ItMovementDocument::create([
+            $document = ItMovementDocument::create([
                 'asset_assignment_id' => $assignment->id,
                 'document_type' => 'checkout',
                 'filename' => $downloadName,
                 'path' => $path,
                 'generated_at' => now(),
             ]);
+            $onDocument?->call($document);
         }
 
         return $pdf->download($downloadName);

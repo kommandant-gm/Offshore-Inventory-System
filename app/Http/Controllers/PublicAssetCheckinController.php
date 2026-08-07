@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AssetAssignment;
 use App\Models\Asset;
 use App\Models\ItMovementDocument;
+use App\Models\ItPersonLink;
 use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\SupervisorNotificationService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -21,6 +22,7 @@ class PublicAssetCheckinController extends Controller
     public function show(string $token): View
     {
         $assignment = $this->resolve($token)->load('asset');
+        $this->applyLinkedPerson($assignment);
         return view('it-assets.checkin-sign', compact('assignment', 'token'));
     }
 
@@ -29,6 +31,7 @@ class PublicAssetCheckinController extends Controller
         $data = $request->validate(['signature' => ['required', 'string', 'max:200000'], 'acknowledgment' => ['accepted']]);
         $assignment = DB::transaction(function () use ($token, $data, $request) {
             $assignment = $this->resolve($token, true);
+            $this->applyLinkedPerson($assignment);
             $assignment->update([
                 'checkin_status' => 'signed', 'checkin_token' => null, 'checkin_signature' => $data['signature'],
                 'checkin_signed_at' => now(), 'checkin_signed_ip' => $request->ip(), 'checkin_signed_user_agent' => $request->userAgent(),
@@ -38,14 +41,21 @@ class PublicAssetCheckinController extends Controller
             return $assignment->load('asset');
         });
 
+        $document = null;
+        $this->downloadCheckinPdf($assignment, null, true, function (ItMovementDocument $movementDocument) use (&$document) {
+            $document = $movementDocument;
+        });
+
         $notifications->send(new SupervisorWorkflowNotification(
             subject: "Asset check-in acknowledged: {$assignment->asset->asset_tag_no}",
             intro: "The IT Team acknowledged receipt of {$assignment->asset->asset_tag_no} from {$assignment->assigned_to_name}.",
             details: ['Asset tag' => $assignment->asset->asset_tag_no, 'Received by' => 'muhd.isa@desb.net', 'Acknowledged at' => $assignment->checkin_signed_at->format('Y-m-d H:i')],
             url: route('it-assets.show', $assignment->asset), actionLabel: 'View asset',
-        ), 'Unable to send signed asset check-in supervisor notification.');
+            attachmentPath: $document?->path,
+            attachmentName: $document?->filename,
+        ), 'Unable to send signed asset check-in supervisor notification.', $notifications->technicianRecipients());
 
-        return $this->downloadCheckinPdf($assignment, null, true);
+        return redirect()->route('public.asset-checkout.complete')->with('status', 'checkin');
     }
 
     public function testPreview(): View
@@ -99,7 +109,25 @@ class PublicAssetCheckinController extends Controller
         return $assignment;
     }
 
-    private function downloadCheckinPdf(AssetAssignment $assignment, ?string $filename = null, bool $record = false)
+    private function applyLinkedPerson(AssetAssignment $assignment): void
+    {
+        $linkedUser = ItPersonLink::query()
+            ->with('user')
+            ->where('manual_identity', mb_strtolower(trim((string) $assignment->assigned_to_name)))
+            ->first()?->user;
+
+        if (! $linkedUser || ! $linkedUser->directory_active) {
+            return;
+        }
+
+        $assignment->assigned_to_name = $linkedUser->name;
+        $assignment->assigned_email = $linkedUser->email;
+        $assignment->employee_id = $linkedUser->username;
+        $assignment->department = $linkedUser->department;
+        $assignment->job_title = $linkedUser->job_title;
+    }
+
+    private function downloadCheckinPdf(AssetAssignment $assignment, ?string $filename = null, bool $record = false, ?callable $onDocument = null)
     {
         $pdf = Pdf::loadView('it-assets.checkin-pdf', [
             'assignment' => $assignment,
@@ -112,13 +140,14 @@ class PublicAssetCheckinController extends Controller
         if ($record) {
             $path = 'asset-movement-documents/'.Str::uuid().'.pdf';
             Storage::disk('local')->put($path, $pdf->output());
-            ItMovementDocument::create([
+            $document = ItMovementDocument::create([
                 'asset_assignment_id' => $assignment->id,
                 'document_type' => 'checkin',
                 'filename' => $downloadName,
                 'path' => $path,
                 'generated_at' => now(),
             ]);
+            $onDocument?->call($document);
         }
 
         return $pdf->download($downloadName);

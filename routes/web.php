@@ -13,6 +13,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CogApprovalController;
 use App\Http\Controllers\CogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmailActivityLogController;
 use App\Http\Controllers\InventoryImportController;
 use App\Http\Controllers\InventoryItemController;
 use App\Http\Controllers\InventoryTransactionController;
@@ -92,6 +93,8 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::post('/settings/test-asset-checkin-email', [SettingsController::class, 'sendAssetCheckinTestEmail'])->name('settings.test-asset-checkin-email');
     Route::patch('/settings/users/{user}/access', [SettingsController::class, 'updateUserAccess'])->name('settings.users.update');
     Route::get('/settings/issue-logs', [IssueLogController::class, 'index'])->name('settings.issue-logs.index');
+    Route::get('/settings/email-activity', [EmailActivityLogController::class, 'index'])->name('settings.email-activity.index');
+    Route::get('/settings/email-activity/{emailActivityLog}', [EmailActivityLogController::class, 'show'])->name('settings.email-activity.show');
     Route::get('/audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');
     Route::get('/kemaman-equipment-dashboard', [KemamanInventoryController::class, 'dashboard'])->name('kemaman-inventory.dashboard');
     Route::get('/kemaman-inventory', [KemamanInventoryController::class, 'index'])->name('kemaman-inventory.index');

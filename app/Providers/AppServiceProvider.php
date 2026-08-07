@@ -40,7 +40,28 @@ class AppServiceProvider extends ServiceProvider
     private function recordEmailActivity(string $recipient, SupervisorWorkflowNotification $notification, string $status, mixed $error = null): void
     {
         try {
-            EmailActivityLog::create(['recipient' => $recipient, 'subject' => $notification->activitySubject(), 'notification_type' => $notification->activityType(), 'status' => $status, 'error' => $error instanceof \Throwable ? $error->getMessage() : (is_string($error) ? $error : null), 'sent_at' => $status === 'sent' ? now() : null]);
+            $recipientUser = \App\Models\User::query()->where('email', $recipient)->first();
+            $greeting = $recipientUser?->name ? "Hello {$recipientUser->name}," : 'Hello Supervisor,';
+            $lines = [$greeting, $notification->activityIntro()];
+            if ($recipientUser?->job_title) $lines[] = "Your role: {$recipientUser->job_title}";
+            foreach ($notification->activityDetails() as $label => $value) $lines[] = "{$label}: {$value}";
+            if ($notification->activityUrl()) $lines[] = "{$notification->activityActionLabel()}: {$notification->activityUrl()}";
+            if ($notification->activityAttachmentName()) $lines[] = "Attachment: {$notification->activityAttachmentName()}";
+            $lines[] = 'This is an acknowledgement notification from the Dayang Inventory Management System.';
+
+            EmailActivityLog::create([
+                'recipient' => $recipient,
+                'subject' => $notification->activitySubject(),
+                'body' => implode("\n\n", $lines),
+                'details' => $notification->activityDetails(),
+                'action_url' => $notification->activityUrl(),
+                'action_label' => $notification->activityActionLabel(),
+                'attachment_name' => $notification->activityAttachmentName(),
+                'notification_type' => $notification->activityType(),
+                'status' => $status,
+                'error' => $error instanceof \Throwable ? $error->getMessage() : (is_string($error) ? $error : null),
+                'sent_at' => $status === 'sent' ? now() : null,
+            ]);
         } catch (\Throwable) {
             // Email logging must never prevent the original notification flow.
         }
