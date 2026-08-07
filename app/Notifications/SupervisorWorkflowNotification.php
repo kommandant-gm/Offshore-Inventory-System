@@ -5,6 +5,7 @@ namespace App\Notifications;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 
 class SupervisorWorkflowNotification extends Notification
@@ -52,7 +53,11 @@ class SupervisorWorkflowNotification extends Notification
         }
 
         if ($this->attachmentPath) {
-            $mail->attachFromStorageDisk('local', $this->attachmentPath, $this->attachmentName ?: 'asset-movement.pdf', ['mime' => 'application/pdf']);
+            $mail->attachData(
+                Storage::disk('local')->get($this->attachmentPath),
+                $this->attachmentName ?: 'asset-movement.pdf',
+                ['mime' => 'application/pdf'],
+            );
         }
 
         return $mail->line('This is an acknowledgement notification from the Dayang Inventory Management System.');

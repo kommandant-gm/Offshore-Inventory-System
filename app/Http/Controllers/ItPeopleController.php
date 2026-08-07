@@ -174,6 +174,19 @@ class ItPeopleController extends Controller
     {
         $people = [];
         $links = ItPersonLink::query()->with('user')->get()->keyBy('manual_identity');
+        $directoryUsers = User::query()
+            ->where('directory_active', true)
+            ->get(['id', 'name', 'username', 'email', 'department', 'job_title']);
+        $usersByName = $directoryUsers->filter(fn (User $user) => filled($user->name))->keyBy(fn (User $user) => $this->normalise($user->name));
+        $usersByUsername = $directoryUsers->filter(fn (User $user) => filled($user->username))->keyBy(fn (User $user) => $this->normalise($user->username));
+        $usersByEmail = $directoryUsers->filter(fn (User $user) => filled($user->email))->keyBy(fn (User $user) => $this->normalise($user->email));
+
+        $directoryUserFor = function (?string $name, ?string $employeeId = null, ?string $email = null) use ($links, $usersByName, $usersByUsername, $usersByEmail): ?User {
+            return $links->get($this->normalise($name))?->user
+                ?: $usersByUsername->get($this->normalise($employeeId))
+                ?: $usersByEmail->get($this->normalise($email))
+                ?: $usersByName->get($this->normalise($name));
+        };
 
         $assignments = AssetAssignment::query()
             ->latest('assigned_at')
@@ -181,10 +194,19 @@ class ItPeopleController extends Controller
             ->get();
 
         foreach ($assignments as $assignment) {
-            $identity = 'n:'.$this->normalise($assignment->assigned_to_name);
-            $people[$identity] ??= $this->personRow($identity, $assignment->assigned_to_name, $assignment->employee_id);
-            $people[$identity]['employee_id'] ??= $assignment->employee_id;
-            $people[$identity]['department'] ??= $assignment->department;
+            $directoryUser = $directoryUserFor($assignment->assigned_to_name, $assignment->employee_id, $assignment->assigned_email);
+            $identity = $directoryUser ? 'u:'.$directoryUser->id : 'n:'.$this->normalise($assignment->assigned_to_name);
+            $people[$identity] ??= $this->personRow(
+                $identity,
+                $directoryUser?->name ?: $assignment->assigned_to_name,
+                $directoryUser?->username ?: $assignment->employee_id,
+                $directoryUser?->email ?: $assignment->assigned_email,
+                $directoryUser?->department ?: $assignment->department,
+                $directoryUser?->job_title,
+            );
+            $people[$identity]['employee_id'] ??= $directoryUser?->username ?: $assignment->employee_id;
+            $people[$identity]['email'] ??= $directoryUser?->email ?: $assignment->assigned_email;
+            $people[$identity]['department'] ??= $directoryUser?->department ?: $assignment->department;
             $people[$identity]['assignment_history']++;
             if (! $assignment->returned_at) {
                 $people[$identity]['current_assets']++;
@@ -192,24 +214,20 @@ class ItPeopleController extends Controller
         }
 
         foreach (ItLicense::query()->whereNotNull('assigned_to')->where('assigned_to', '<>', '')->latest('updated_at')->get() as $licence) {
-            $identity = 'n:'.$this->normalise($licence->assigned_to);
-            $people[$identity] ??= $this->personRow($identity, $licence->assigned_to);
-            $people[$identity]['department'] ??= $licence->department;
+            $directoryUser = $directoryUserFor($licence->assigned_to);
+            $identity = $directoryUser ? 'u:'.$directoryUser->id : 'n:'.$this->normalise($licence->assigned_to);
+            $people[$identity] ??= $this->personRow(
+                $identity,
+                $directoryUser?->name ?: $licence->assigned_to,
+                $directoryUser?->username,
+                $directoryUser?->email,
+                $directoryUser?->department ?: $licence->department,
+                $directoryUser?->job_title,
+            );
+            $people[$identity]['email'] ??= $directoryUser?->email;
+            $people[$identity]['department'] ??= $directoryUser?->department ?: $licence->department;
             $people[$identity]['licences']++;
         }
-
-        foreach ($people as $identity => &$person) {
-            $link = $links->get(substr($identity, 2));
-            if ($link?->user && $link->user->directory_active) {
-                $person['name'] = $link->user->name;
-                $person['employee_id'] = $link->user->username;
-                $person['email'] = $link->user->email;
-                $person['department'] = $link->user->department;
-                $person['job_title'] = $link->user->job_title;
-                $person['linked_user_id'] = $link->user->id;
-            }
-        }
-        unset($person);
 
         return collect($people)
             ->map(function (array $person) {
@@ -241,11 +259,25 @@ class ItPeopleController extends Controller
                 'department' => $user->department,
                 'job_title' => $user->job_title,
             ];
-            $assignmentQuery->where(function ($query) use ($user) {
-                $query->whereRaw('LOWER(assigned_to_name) = ?', [$this->normalise($user->name)])
-                    ->orWhereRaw('LOWER(employee_id) = ?', [$this->normalise($user->username)]);
+            $aliases = ItPersonLink::query()
+                ->where('user_id', $user->id)
+                ->pluck('manual_identity')
+                ->push($this->normalise($user->name))
+                ->filter()
+                ->unique()
+                ->values();
+            $assignmentQuery->where(function ($query) use ($user, $aliases) {
+                $query->whereRaw('LOWER(employee_id) = ?', [$this->normalise($user->username)])
+                    ->orWhereRaw('LOWER(assigned_email) = ?', [$this->normalise($user->email)]);
+                foreach ($aliases as $alias) {
+                    $query->orWhereRaw('LOWER(assigned_to_name) = ?', [$alias]);
+                }
             });
-            $licenceQuery->whereRaw('LOWER(assigned_to) = ?', [$this->normalise($user->name)]);
+            $licenceQuery->where(function ($query) use ($aliases) {
+                foreach ($aliases as $alias) {
+                    $query->orWhereRaw('LOWER(assigned_to) = ?', [$alias]);
+                }
+            });
         } elseif (str_starts_with($identity, 'n:')) {
             $name = trim(substr($identity, 2));
             abort_if($name === '', 404);
