@@ -129,6 +129,9 @@ class PublicAssetCheckoutController extends Controller
             'logoPath' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('images/dayang-logo.png'))),
         ])->setPaper('a4');
 
-        return $pdf->download($filename ?: 'asset-checkout-'.$assignment->asset->asset_tag_no.'.pdf');
+        $downloadName = $filename ?: 'asset-checkout-'.$assignment->asset->asset_tag_no.'.pdf';
+        $downloadName = preg_replace('/[\\\\\/:*?"<>|]+/', '-', $downloadName);
+
+        return $pdf->download($downloadName);
     }
 }
