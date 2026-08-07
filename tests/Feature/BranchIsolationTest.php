@@ -43,7 +43,7 @@ class BranchIsolationTest extends TestCase
     public function test_miri_user_cannot_list_or_open_kl_inventory(): void
     {
         [$miri, $kl] = [Branch::where('code', 'MIRI')->firstOrFail(), Branch::where('code', 'KL-IT')->firstOrFail()];
-        $user = User::factory()->create(['role' => 'viewer', 'permissions' => AccessMatrix::permissionsForRole('viewer')]);
+        $user = User::factory()->create(['username' => 'mariesim', 'department' => 'PROJECT', 'role' => 'viewer', 'permissions' => AccessMatrix::permissionsForRole('viewer')]);
         $user->branches()->attach($miri, ['access_level' => 'read', 'is_default' => true]);
         $category = Category::create(['code' => 'TEST', 'name' => 'Test', 'type' => CategoryType::Asset, 'active' => true]);
         $miriLocation = Location::withoutGlobalScopes()->create(['branch_id' => $miri->id, 'code' => 'MRI-T', 'name' => 'Miri Test', 'type' => LocationType::Yard, 'active' => true]);

@@ -55,7 +55,7 @@ class LoginRequest extends FormRequest
                 $this->string('password')->value(),
             );
 
-            if ($ldapUser) {
+            if ($ldapUser && $ldapUser->canAccessSystem()) {
                 Auth::login($ldapUser, $this->boolean('remember'));
                 RateLimiter::clear($this->throttleKey());
 
@@ -65,7 +65,15 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'username' => trans('auth.failed'),
+                'username' => $ldapUser ? 'Your account is not authorized to access this inventory system.' : trans('auth.failed'),
+            ]);
+        }
+
+        if (! Auth::user()?->canAccessSystem()) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'Your account is not authorized to access this inventory system.',
             ]);
         }
 

@@ -132,7 +132,8 @@ class AssetAssignmentController extends Controller
 
         $asset->load('currentAssignment');
         $assignment = $asset->currentAssignment;
-        Mail::to('muhd.isa@desb.net')->send(new AssetCheckinSignatureMail($assignment, route('public.asset-checkin.show', $assignment->checkin_token)));
+        $technicianEmail = User::query()->where('role', 'technician')->where('directory_active', true)->whereNotNull('email')->value('email') ?: 'muhd.isa@desb.net';
+        Mail::to($technicianEmail)->send(new AssetCheckinSignatureMail($assignment, route('public.asset-checkin.show', $assignment->checkin_token)));
         $supervisorNotifications->send(new SupervisorWorkflowNotification(
             subject: "IT asset check-in requested: {$asset->asset_tag_no}",
             intro: "{$request->user()->name} sent an IT asset check-in request to the IT Team for acknowledgment.",
@@ -142,7 +143,7 @@ class AssetAssignmentController extends Controller
                 'Employee ID' => $previousAssignment?->employee_id ?: '-',
                 'Department' => $previousAssignment?->department ?: '-',
                 'Requested at' => now()->toDateString(),
-                'Technician' => 'muhd.isa@desb.net',
+                'Technician' => $technicianEmail,
             ],
             url: route('it-assets.show', $asset),
             actionLabel: 'View asset',

@@ -51,7 +51,7 @@ class AssetRepairController extends Controller
                 url: route('it-assets.repairs'),
                 actionLabel: 'View repairs',
             );
-            foreach (config('mail.supervisor_addresses', []) as $address) {
+            foreach (app(\App\Services\SupervisorNotificationService::class)->recipients() as $address) {
                 Notification::route('mail', $address)->notify($notification);
             }
         } catch (\Throwable $exception) {

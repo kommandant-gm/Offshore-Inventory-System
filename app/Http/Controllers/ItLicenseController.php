@@ -119,7 +119,7 @@ class ItLicenseController extends Controller
                 url: route('it-licenses.show', $license),
                 actionLabel: 'View licence',
             );
-            foreach (config('mail.supervisor_addresses', []) as $address) {
+              foreach (app(\App\Services\SupervisorNotificationService::class)->recipients() as $address) {
                 Notification::route('mail', $address)->notify($notification);
             }
         } catch (\Throwable $exception) {

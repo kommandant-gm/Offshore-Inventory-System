@@ -54,7 +54,7 @@ class SettingsController extends Controller
             ],
             'latestMovementDate' => $latestMovement?->transaction_date?->format('Y-m-d'),
             'canEditSettings' => true,
-            'supervisorEmails' => config('mail.supervisor_addresses', []),
+            'supervisorEmails' => User::query()->where('role', 'supervisor')->where('directory_active', true)->whereNotNull('email')->pluck('email')->all() ?: config('mail.supervisor_addresses', []),
             'emailActivity' => [
                 'total' => EmailActivityLog::count(),
                 'sent' => EmailActivityLog::where('status', 'sent')->count(),
@@ -105,7 +105,7 @@ class SettingsController extends Controller
     public function sendSupervisorTestEmail(): RedirectResponse
     {
         abort_unless(request()->user()?->isSuperAdmin(), 403);
-        $recipients = config('mail.supervisor_addresses', []);
+        $recipients = User::query()->where('role', 'supervisor')->where('directory_active', true)->whereNotNull('email')->pluck('email')->all() ?: config('mail.supervisor_addresses', []);
 
         if (empty($recipients)) {
             return back()->with('error', 'No supervisor email recipients are configured.');
@@ -220,20 +220,18 @@ class SettingsController extends Controller
 
             $target->update([
                 'role' => $newRole,
-                'permissions' => AccessMatrix::normalizePermissions($request->input('permissions', []), $newRole),
+                'permissions' => AccessMatrix::permissionsForRole($newRole),
             ]);
 
-            $branchAccess = collect($request->validated('branch_access'))->reject(fn ($level) => $level === 'none');
-            if ($branchAccess->isEmpty()) {
-                throw ValidationException::withMessages(['branch_access' => 'Every user must have access to at least one branch.']);
+            if ($request->has('branch_access')) {
+                $branchAccess = collect($request->validated('branch_access'))->reject(fn ($level) => $level === 'none');
+                $defaultBranchId = (int) $request->validated('default_branch_id');
+                if ($branchAccess->isNotEmpty() && ($branchAccess->has((string) $defaultBranchId) || $branchAccess->has($defaultBranchId))) {
+                    $target->branches()->sync($branchAccess->mapWithKeys(fn ($level, $branchId) => [(int) $branchId => [
+                        'access_level' => $level, 'is_default' => (int) $branchId === $defaultBranchId,
+                    ]])->all());
+                }
             }
-            $defaultBranchId = (int) $request->validated('default_branch_id');
-            if (! $branchAccess->has((string) $defaultBranchId) && ! $branchAccess->has($defaultBranchId)) {
-                throw ValidationException::withMessages(['default_branch_id' => 'Default branch must be one of the accessible branches.']);
-            }
-            $target->branches()->sync($branchAccess->mapWithKeys(fn ($level, $branchId) => [(int) $branchId => [
-                'access_level' => $level, 'is_default' => (int) $branchId === $defaultBranchId,
-            ]])->all());
 
             $user->setRawAttributes($target->getAttributes(), true);
         });

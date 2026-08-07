@@ -280,6 +280,11 @@ class LdapAuthenticator
             $isNew = true;
         }
 
+        if (($isNew ?? false) || $user->role === 'viewer' || blank($user->role)) {
+            $user->role = User::isMiriUsername($directoryUsername) ? 'miri' : (strtoupper(trim((string) $this->attribute($entry, 'department'))) === 'IT & DIGITAL' ? 'it' : $user->role);
+            $user->permissions = AccessMatrix::permissionsForRole($user->role ?: 'viewer');
+        }
+
         $user->name = $name;
         $user->username = $directoryUsername;
         $user->email = $email;

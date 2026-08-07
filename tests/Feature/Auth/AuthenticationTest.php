@@ -65,4 +65,24 @@ class AuthenticationTest extends TestCase
 
         $response->assertRedirect(route('it-assets.dashboard', absolute: false));
     }
+
+    public function test_non_miri_non_it_digital_user_cannot_login(): void
+    {
+        $user = User::factory()->create(['username' => 'blocked.user', 'department' => 'PROJECT']);
+
+        $this->post('/login', ['username' => 'blocked.user', 'password' => 'password'])
+            ->assertSessionHasErrors(['username' => 'Your account is not authorized to access this inventory system.']);
+
+        $this->assertGuest();
+    }
+
+    public function test_miri_allowlisted_user_can_login_regardless_of_department(): void
+    {
+        $user = User::factory()->create(['username' => 'mariesim', 'department' => 'PROJECT']);
+
+        $this->post('/login', ['username' => 'mariesim', 'password' => 'password'])
+            ->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticatedAs($user);
+    }
 }

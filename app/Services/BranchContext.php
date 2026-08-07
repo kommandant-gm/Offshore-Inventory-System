@@ -11,6 +11,12 @@ class BranchContext
     public function accessibleIds(?User $user = null): array
     {
         $user ??= auth()->user();
+        if ($user?->isMiriRestrictedUser()) {
+            return Branch::query()->where('code', 'MIRI')->where('active', true)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+        if ($user?->isSuperAdmin() || $user?->isItDigitalUser() || in_array($user?->role, ['admin', 'supervisor', 'technician'], true)) {
+            return Branch::query()->where('active', true)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
         return $user?->branches()->pluck('branches.id')->map(fn ($id) => (int) $id)->all() ?? [];
     }
 

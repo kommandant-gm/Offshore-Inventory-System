@@ -350,7 +350,7 @@ class AssetController extends Controller
     private function notifySupervisor(SupervisorWorkflowNotification $notification): void
     {
         try {
-            foreach (config('mail.supervisor_addresses', []) as $address) {
+            foreach (app(\App\Services\SupervisorNotificationService::class)->recipients() as $address) {
                 Notification::route('mail', $address)->notify($notification);
             }
         } catch (\Throwable $exception) {

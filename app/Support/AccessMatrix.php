@@ -29,7 +29,10 @@ class AccessMatrix
     {
         return [
             'admin' => 'Administrator',
+            'it' => 'IT & Digital',
+            'miri' => 'Miri Inventory',
             'supervisor' => 'Supervisor',
+            'technician' => 'Technician',
             'viewer' => 'Viewer',
         ];
     }
@@ -48,19 +51,18 @@ class AccessMatrix
         $allEdit = array_fill_keys(array_keys(self::modules()), self::EDIT);
 
         return match ($role) {
-            'admin' => $allEdit,
-            'supervisor' => [
-                'dashboard' => self::READ,
-                'assistant' => self::READ,
-                'anomalies' => self::READ,
-                'categories' => self::EDIT,
-                'locations' => self::EDIT,
-                'assets' => self::EDIT,
-                'it_assets' => self::EDIT,
-                'movements' => self::EDIT,
-                'ledger' => self::READ,
-                'cogs' => self::EDIT,
-                'settings' => self::READ,
+            'admin', 'it', 'supervisor' => $allEdit,
+            'miri' => [
+                'dashboard' => self::EDIT, 'assistant' => self::READ, 'anomalies' => self::READ,
+                'categories' => self::EDIT, 'locations' => self::EDIT, 'assets' => self::EDIT,
+                'it_assets' => self::NONE, 'movements' => self::EDIT, 'ledger' => self::READ,
+                'cogs' => self::EDIT, 'settings' => self::NONE,
+            ],
+            'technician' => [
+                'dashboard' => self::READ, 'assistant' => self::NONE, 'anomalies' => self::NONE,
+                'categories' => self::NONE, 'locations' => self::NONE, 'assets' => self::NONE,
+                'it_assets' => self::EDIT, 'movements' => self::NONE, 'ledger' => self::NONE,
+                'cogs' => self::NONE, 'settings' => self::NONE,
             ],
             default => [
                 'dashboard' => self::READ,

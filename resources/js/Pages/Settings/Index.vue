@@ -132,9 +132,6 @@ const saveAccess = (userId) => {
         route('settings.users.update', userId),
         {
             role: form.role,
-            permissions: form.permissions,
-            branch_access: form.branch_access,
-            default_branch_id: form.default_branch_id,
         },
         {
             preserveScroll: true,
@@ -144,6 +141,14 @@ const saveAccess = (userId) => {
         },
     );
 };
+const roleDescription = (role) => ({
+    miri: 'Miri inventory access only.',
+    it: 'Full access across all active branches and modules.',
+    supervisor: 'Full access and receives supervisor workflow notifications.',
+    technician: 'IT asset access and receives check-in acknowledgment requests.',
+    admin: 'Full system administration access.',
+    viewer: 'Legacy read-only role.',
+}[role] || 'Role-based access.');
 
 const sendSupervisorTestEmail = () => {
     sendingTestEmail.value = true;
@@ -340,18 +345,20 @@ const importLdapUsers = () => {
                                 <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-[#234222]">{{ user.name }}</p><p class="mt-1 truncate text-xs text-[#6f8a6b]">{{ user.username }}</p><p class="mt-2 truncate text-xs text-[#6f8a6b]">{{ user.job_title || 'No job title recorded' }}</p><p class="truncate text-xs text-[#6f8a6b]">{{ user.department || 'Department not specified' }}</p></div>
                                 <span class="rounded-full border border-[#d8e7d4] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#5f7b5e]">{{ userForms[user.id].role }}</span>
                             </div>
-                            <div class="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold">
-                                <span class="rounded-full border border-[#b8e0ae] bg-[#eef8ea] px-2 py-1 text-[#2f6f2d]">{{ accessSummary(user.id).edit }} edit</span>
-                                <span class="rounded-full border border-[#d8e7d4] bg-[#f8fbf7] px-2 py-1 text-[#5f7b5e]">{{ accessSummary(user.id).read }} read</span>
-                                <span class="rounded-full border border-[#e8ede6] bg-white px-2 py-1 text-[#7f9a7a]">{{ accessSummary(user.id).none }} none</span>
-                            </div>
-                            <p class="mt-3 text-right text-xs font-bold text-[#9b0000]">Edit permissions →</p>
+                            <p class="mt-3 text-right text-xs font-bold text-[#9b0000]">Edit role →</p>
                         </button>
                         <div v-if="visibleUsers.length === 0" class="rounded-[1.15rem] border border-dashed border-[#d8e7d4] px-5 py-10 text-center text-sm text-[#6f8a6b] md:col-span-2 xl:col-span-3">No users match this search or department.</div>
                     </div>
                 </aside>
 
-                <div v-if="selectedUser" class="rounded-[1.6rem] border border-[#d8e7d4] bg-[#fbfefa]">
+                <div v-if="selectedUser" class="rounded-[1.6rem] border border-[#d8e7d4] bg-white p-5">
+                    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div><p class="text-lg font-bold text-[#234222]">{{ selectedUser.name }}</p><p class="mt-1 text-sm text-[#6f8a6b]">{{ selectedUser.email }} · {{ selectedUser.department || 'Department not specified' }}</p><p class="mt-2 text-sm text-[#65748b]">{{ roleDescription(userForms[selectedUser.id].role) }}</p></div>
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-end"><label><span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#7f9a7a]">Role</span><CustomSelect v-model="userForms[selectedUser.id].role" class="select select-bordered w-full border-[#cfe6c8] bg-white sm:w-56" :disabled="!canEditSettings || userForms[selectedUser.id].saving"><option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option></CustomSelect></label><button type="button" class="btn bg-[#4f9f4a] text-white" :disabled="!canEditSettings || userForms[selectedUser.id].saving" @click="saveAccess(selectedUser.id)">{{ userForms[selectedUser.id].saving ? 'Saving...' : 'Save Role' }}</button></div>
+                    </div>
+                </div>
+
+                <div v-if="false && selectedUser" class="rounded-[1.6rem] border border-[#d8e7d4] bg-[#fbfefa]">
                     <div class="border-b border-[#d8e7d4] bg-white px-4 py-4 sm:px-5">
                         <div class="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
                             <div class="min-w-0">
@@ -371,7 +378,7 @@ const importLdapUsers = () => {
                                         v-model="userForms[selectedUser.id].role"
                                         class="select select-sm w-full border-[#cfe6c8] bg-white text-[#234222]"
                                         :disabled="!canEditSettings || userForms[selectedUser.id].saving"
-                                        @change="applyRolePreset(selectedUser.id)"
+                                        
                                     >
                                         <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
                                     </CustomSelect>

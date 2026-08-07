@@ -49,9 +49,9 @@ Route::get('/asset-checkout-complete', [PublicAssetCheckoutController::class, 'c
 Route::get('/asset-checkout-test-preview', [PublicAssetCheckoutController::class, 'testPreview'])->name('settings.asset-checkout-test.preview');
 Route::post('/asset-checkout-test-preview/sign', [PublicAssetCheckoutController::class, 'testSign'])->name('settings.asset-checkout-test.sign');
 
-Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'system.access', 'verified'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'system.access'])->group(function () {
     Route::patch('/active-branch', [BranchContextController::class, 'update'])->name('branches.activate');
     Route::patch('/it-assets/bulk-update', [AssetController::class, 'bulkUpdate'])->name('it-assets.bulk-update');
     Route::get('/it-assets/bulk-edit', [AssetController::class, 'bulkEdit'])->name('it-assets.bulk-edit');

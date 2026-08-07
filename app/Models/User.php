@@ -11,6 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
+    /** @var list<string> */
+    private const MIRI_ALLOWED_USERNAMES = [
+        'mariesim', 'duyan', 'patrickleong', 'leekp', 'christopher', 'alexleong',
+        'terrencelim', 'gevrina', 'dywan', 'frankypilai', 'suhaileysuhailim',
+    ];
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
@@ -64,6 +69,35 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return strtolower((string) $this->username) === 'codex';
+    }
+
+    public function canAccessSystem(): bool
+    {
+        if ($this->directory_active === false) return false;
+        if ($this->isSuperAdmin()) return true;
+        if (in_array($this->role, ['admin', 'it', 'miri', 'supervisor', 'technician'], true)) return true;
+
+        $username = strtolower(trim((string) $this->username));
+        if (in_array($username, self::MIRI_ALLOWED_USERNAMES, true)) return true;
+
+        $department = strtoupper(preg_replace('/\s+/', ' ', trim((string) $this->department)));
+        return $department === 'IT & DIGITAL';
+    }
+
+    public function isMiriRestrictedUser(): bool
+    {
+        return self::isMiriUsername($this->username);
+    }
+
+    public static function isMiriUsername(?string $username): bool
+    {
+        return in_array(strtolower(trim((string) $username)), self::MIRI_ALLOWED_USERNAMES, true);
+    }
+
+    public function isItDigitalUser(): bool
+    {
+        $department = strtoupper(preg_replace('/\s+/', ' ', trim((string) $this->department)));
+        return $this->role === 'it' || $department === 'IT & DIGITAL';
     }
 
     public function permissionLevel(string $module): string
