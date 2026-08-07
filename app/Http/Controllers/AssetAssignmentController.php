@@ -214,6 +214,49 @@ class AssetAssignmentController extends Controller
         return back()->with('success', 'The checkout was reopened and a new signing link was sent to '.$assignment->assigned_email.'.');
     }
 
+    public function reopenCheckin(Request $request, AssetAssignment $assignment): RedirectResponse
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+
+        $assignment->load('asset');
+        if ($assignment->checkin_status !== 'signed' || ! $assignment->returned_at) {
+            throw ValidationException::withMessages(['assignment' => 'This check-in cannot be reopened.']);
+        }
+
+        $documents = ItMovementDocument::query()
+            ->where('asset_assignment_id', $assignment->id)
+            ->where('document_type', 'checkin')
+            ->get();
+        foreach ($documents as $document) {
+            if (Storage::disk('local')->exists($document->path)) {
+                Storage::disk('local')->delete($document->path);
+            }
+            $document->delete();
+        }
+
+        $assignment->update([
+            'checkin_status' => 'pending',
+            'checkin_token' => Str::random(64),
+            'checkin_sent_at' => now(),
+            'checkin_signature' => null,
+            'checkin_signed_at' => null,
+            'checkin_signed_ip' => null,
+            'checkin_signed_user_agent' => null,
+            'checkin_received_by_email' => null,
+            'returned_at' => null,
+        ]);
+        $assignment->asset()->update(['current_status' => AssetStatus::PendingCheckin]);
+
+        $technicianEmail = User::query()
+            ->where('role', 'technician')
+            ->where('directory_active', true)
+            ->whereNotNull('email')
+            ->value('email') ?: 'muhd.isa@desb.net';
+        $this->sendCheckinSignatureEmail($assignment, $technicianEmail);
+
+        return back()->with('success', 'The check-in was reset and a fresh acknowledgment link was sent to '.$technicianEmail.'.');
+    }
+
     private function sendCheckoutSignatureEmail($assignment): void
     {
         $url = route('public.asset-checkout.show', $assignment->checkout_token);

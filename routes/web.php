@@ -62,6 +62,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::post('/it-assets/{asset}/checkout', [AssetAssignmentController::class, 'store'])->name('it-assets.checkout');
     Route::post('/it-assets/{asset}/checkout/resend', [AssetAssignmentController::class, 'resend'])->name('it-assets.checkout.resend');
     Route::post('/it-assets/{asset}/checkout/reopen', [AssetAssignmentController::class, 'reopen'])->name('it-assets.checkout.reopen');
+    Route::post('/it-asset-assignments/{assignment}/check-in/reopen', [AssetAssignmentController::class, 'reopenCheckin'])->name('it-assets.checkin.reopen');
     Route::patch('/it-assets/{asset}/check-in', [AssetAssignmentController::class, 'destroy'])->name('it-assets.check-in');
     Route::post('/it-asset-repairs', [AssetRepairController::class, 'store'])->name('it-assets.repairs.store');
     Route::patch('/it-assets/{asset}/return-from-repair', [AssetRepairController::class, 'returnFromRepair'])->name('it-assets.repairs.return');

@@ -31,6 +31,7 @@ class ItMovementRecordController extends Controller
                 'url' => route('it-movement-records.download', $document),
                 'assignment_id' => $document->asset_assignment_id,
                 'reopen_url' => route('it-assets.checkout.reopen', $document->assignment?->asset_id),
+                'reopen_checkin_url' => route('it-assets.checkin.reopen', $document->asset_assignment_id),
             ])->values();
 
         $documentedAssignmentIds = $documents->pluck('assignment_id')->filter()->all();

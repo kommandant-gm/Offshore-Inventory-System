@@ -21,6 +21,10 @@ const reopen = (document) => {
   if (!window.confirm(`Delete the old checkout PDFs, reset this checkout to pending, and send a new signing link to ${document.staff || 'this staff member'}?`)) return;
   router.post(document.reopen_url, {}, { preserveScroll: true });
 };
+const reopenCheckin = (document) => {
+  if (!window.confirm('Delete the old check-in PDFs, reset this check-in to pending, and send a new link to the technician?')) return;
+  router.post(document.reopen_checkin_url, {}, { preserveScroll: true });
+};
 </script>
 
 <template>
@@ -78,7 +82,7 @@ const reopen = (document) => {
                 <td>{{ document.staff || '—' }}</td>
                 <td class="whitespace-nowrap text-[#60745d]">{{ document.generated_at }}</td>
                 <td class="max-w-xs truncate text-xs text-[#7f9a7a]">{{ document.filename || 'PDF not recorded' }}</td>
-                <td class="text-right"><div class="flex justify-end gap-2"><button v-if="activeTab === 'deployment'" type="button" class="btn btn-sm border-[#d9a74d] bg-[#fff8e8] text-[#805d17]" @click="reopen(document)">{{ document.recovery ? 'Recover checkout' : 'Reset & resend' }}</button><a v-if="document.url" :href="document.url" class="btn btn-sm border-[#cfe6c8] bg-white text-[#2f7d32]">Download PDF</a></div></td>
+                <td class="text-right"><div class="flex justify-end gap-2"><button v-if="activeTab === 'deployment'" type="button" class="btn btn-sm border-[#d9a74d] bg-[#fff8e8] text-[#805d17]" @click="reopen(document)">{{ document.recovery ? 'Recover checkout' : 'Reset & resend' }}</button><button v-if="activeTab === 'checkin'" type="button" class="btn btn-sm border-[#d9a74d] bg-[#fff8e8] text-[#805d17]" @click="reopenCheckin(document)">Reset & resend</button><a v-if="document.url" :href="document.url" class="btn btn-sm border-[#cfe6c8] bg-white text-[#2f7d32]">Download PDF</a></div></td>
               </tr>
               <tr v-if="!visibleRecords.length"><td colspan="6" class="py-12 text-center text-[#7f9a7a]">No signed PDF records have been generated yet.</td></tr>
             </tbody>
