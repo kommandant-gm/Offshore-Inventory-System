@@ -71,6 +71,8 @@ const userForms = reactive(
 
 const selectedUserId = ref(props.users[0]?.id ?? null);
 const permissionSearch = ref('');
+const userSearch = ref('');
+const departmentFilter = ref('');
 const sendingTestEmail = ref(false);
 const checkoutTestEmail = ref('');
 const sendingCheckoutTest = ref(false);
@@ -89,6 +91,16 @@ const accessSummary = (userId) => {
 };
 
 const selectedUser = computed(() => props.users.find((user) => user.id === selectedUserId.value) ?? null);
+const departments = computed(() => [...new Set(props.users.map((user) => user.department).filter(Boolean))].sort((a, b) => a.localeCompare(b)));
+const visibleUsers = computed(() => {
+    const query = userSearch.value.trim().toLowerCase();
+    return props.users.filter((user) => {
+        const matchesDepartment = !departmentFilter.value || user.department === departmentFilter.value;
+        const matchesSearch = !query || [user.name, user.username, user.email, user.department, user.job_title].filter(Boolean).some((value) => value.toLowerCase().includes(query));
+        return matchesDepartment && matchesSearch;
+    });
+});
+const initials = (name) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 
 const filteredPermissionModules = computed(() => {
     const query = permissionSearch.value.trim().toLowerCase();
@@ -304,39 +316,37 @@ const importLdapUsers = () => {
                 </span>
             </div>
 
-            <div class="grid gap-4 xl:grid-cols-[280px,minmax(0,1fr)]">
-                <aside class="rounded-[1.6rem] border border-[#d8e7d4] bg-[#fbfefa] p-3">
-                    <div class="mb-3 rounded-[1.2rem] border border-[#d8e7d4] bg-white px-4 py-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Account List</p>
-                        <p class="mt-1 text-sm text-[#6f8a6b]">Select a user to edit role permissions.</p>
+            <div class="space-y-5">
+                <aside class="rounded-[1.6rem] border border-[#d8e7d4] bg-[#fbfefa] p-4">
+                    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                        <div><p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7f9a7a]">Personnel Directory</p><p class="mt-1 text-sm text-[#6f8a6b]">Select a user card to edit role permissions.</p></div>
+                        <div class="flex w-full flex-col gap-2 sm:flex-row lg:w-auto"><input v-model.trim="userSearch" type="search" placeholder="Search users..." class="input input-sm w-full border-[#cfe6c8] bg-white sm:w-64" /><CustomSelect v-model="departmentFilter" class="select select-sm w-full border-[#cfe6c8] bg-white sm:w-52"><option value="">All departments</option><option v-for="department in departments" :key="department" :value="department">{{ department }}</option></CustomSelect></div>
                     </div>
 
-                    <div class="space-y-2">
+                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <button
-                            v-for="user in users"
+                            v-for="user in visibleUsers"
                             :key="`nav-${user.id}`"
                             type="button"
-                            class="w-full rounded-[1.15rem] border px-4 py-3 text-left transition"
+                            class="w-full rounded-[1.15rem] border bg-white p-4 text-left transition"
                             :class="selectedUserId === user.id
                                 ? 'border-[#86c87b] bg-[linear-gradient(135deg,#eef8ea_0%,#ffffff_100%)] shadow-[0_14px_28px_rgba(79,159,74,0.10)]'
                                 : 'border-[#d8e7d4] bg-white hover:border-[#b8e0ae] hover:bg-[#f7fcf5]'"
                             @click="selectedUserId = user.id"
                         >
-                            <div class="flex items-center justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="truncate text-sm font-semibold text-[#234222]">{{ user.name }}</p>
-                                    <p class="mt-1 truncate text-xs text-[#6f8a6b]">{{ user.username }}</p>
-                                </div>
-                                <span class="rounded-full border border-[#d8e7d4] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#5f7b5e]">
-                                    {{ userForms[user.id].role }}
-                                </span>
+                            <div class="flex items-start gap-3">
+                                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#9b0000] text-sm font-black text-white">{{ initials(user.name) }}</span>
+                                <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-[#234222]">{{ user.name }}</p><p class="mt-1 truncate text-xs text-[#6f8a6b]">{{ user.username }}</p><p class="mt-2 truncate text-xs text-[#6f8a6b]">{{ user.job_title || 'No job title recorded' }}</p><p class="truncate text-xs text-[#6f8a6b]">{{ user.department || 'Department not specified' }}</p></div>
+                                <span class="rounded-full border border-[#d8e7d4] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#5f7b5e]">{{ userForms[user.id].role }}</span>
                             </div>
                             <div class="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold">
                                 <span class="rounded-full border border-[#b8e0ae] bg-[#eef8ea] px-2 py-1 text-[#2f6f2d]">{{ accessSummary(user.id).edit }} edit</span>
                                 <span class="rounded-full border border-[#d8e7d4] bg-[#f8fbf7] px-2 py-1 text-[#5f7b5e]">{{ accessSummary(user.id).read }} read</span>
                                 <span class="rounded-full border border-[#e8ede6] bg-white px-2 py-1 text-[#7f9a7a]">{{ accessSummary(user.id).none }} none</span>
                             </div>
+                            <p class="mt-3 text-right text-xs font-bold text-[#9b0000]">Edit permissions →</p>
                         </button>
+                        <div v-if="visibleUsers.length === 0" class="rounded-[1.15rem] border border-dashed border-[#d8e7d4] px-5 py-10 text-center text-sm text-[#6f8a6b] md:col-span-2 xl:col-span-3">No users match this search or department.</div>
                     </div>
                 </aside>
 

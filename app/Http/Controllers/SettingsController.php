@@ -133,7 +133,12 @@ class SettingsController extends Controller
     public function importLdapUsers(LdapAuthenticator $ldap): RedirectResponse
     {
         abort_unless(request()->user()?->isSuperAdmin(), 403);
-        $result = $ldap->importAllUsers();
+        try {
+            $result = $ldap->importAllUsers();
+        } catch (\Throwable $exception) {
+            Log::error('LDAP user import failed unexpectedly.', ['exception' => $exception]);
+            return back()->with('ldap_import_error', 'LDAP import failed unexpectedly. Check the application log and confirm all database migrations have been run.');
+        }
 
         if (! $result['ok']) {
             return back()->with('ldap_import_error', $result['error']);
