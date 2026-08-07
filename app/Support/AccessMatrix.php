@@ -33,7 +33,7 @@ class AccessMatrix
             'miri' => 'Miri Inventory',
             'supervisor' => 'Supervisor',
             'technician' => 'Technician',
-            'viewer' => 'Viewer',
+            'none' => 'No access',
         ];
     }
 
@@ -64,25 +64,13 @@ class AccessMatrix
                 'it_assets' => self::EDIT, 'movements' => self::NONE, 'ledger' => self::NONE,
                 'cogs' => self::NONE, 'settings' => self::NONE,
             ],
-            default => [
-                'dashboard' => self::READ,
-                'assistant' => self::READ,
-                'anomalies' => self::READ,
-                'categories' => self::READ,
-                'locations' => self::READ,
-                'assets' => self::READ,
-                'it_assets' => self::READ,
-                'movements' => self::READ,
-                'ledger' => self::READ,
-                'cogs' => self::READ,
-                'settings' => self::NONE,
-            ],
+            default => array_fill_keys(array_keys(self::modules()), self::NONE),
         };
     }
 
     public static function normalizePermissions(?array $permissions, ?string $role = null): array
     {
-        $base = self::permissionsForRole($role ?: 'viewer');
+        $base = self::permissionsForRole($role ?: 'none');
         $validLevels = array_keys(self::levelOptions());
 
         foreach (self::modules() as $key => $label) {
@@ -95,9 +83,6 @@ class AccessMatrix
 
     public static function permissionsForKlStaff(): array
     {
-        return [
-            ...self::permissionsForRole('viewer'),
-            'it_assets' => self::EDIT,
-        ];
+        return self::permissionsForRole('none');
     }
 }

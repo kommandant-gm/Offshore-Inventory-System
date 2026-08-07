@@ -274,15 +274,15 @@ class LdapAuthenticator
 
         if (! $user) {
             $user = new User();
-            $user->role = 'viewer';
+            $user->role = 'none';
             $user->permissions = AccessMatrix::permissionsForKlStaff();
             $user->password = Hash::make(Str::random(40));
             $isNew = true;
         }
 
-        if (($isNew ?? false) || $user->role === 'viewer' || blank($user->role)) {
+        if (($isNew ?? false) || in_array($user->role, ['viewer', 'none'], true) || blank($user->role)) {
             $user->role = User::isMiriUsername($directoryUsername) ? 'miri' : (strtoupper(trim((string) $this->attribute($entry, 'department'))) === 'IT & DIGITAL' ? 'it' : $user->role);
-            $user->permissions = AccessMatrix::permissionsForRole($user->role ?: 'viewer');
+            $user->permissions = AccessMatrix::permissionsForRole($user->role ?: 'none');
         }
 
         $user->name = $name;

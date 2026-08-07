@@ -75,6 +75,7 @@ class User extends Authenticatable
     {
         if ($this->directory_active === false) return false;
         if ($this->isSuperAdmin()) return true;
+        if ($this->role === 'none' || $this->role === 'viewer') return false;
         if (in_array($this->role, ['admin', 'it', 'miri', 'supervisor', 'technician'], true)) return true;
 
         $username = strtolower(trim((string) $this->username));

@@ -95,7 +95,7 @@ class SettingsController extends Controller
                     'email' => $user->email,
                     'department' => $user->department,
                     'job_title' => $user->job_title,
-                    'role' => $user->role ?? 'viewer',
+                    'role' => in_array($user->role, ['viewer', null, ''], true) ? 'none' : $user->role,
                     'permissions' => $user->resolvedPermissions(),
                     'branch_access' => $user->branches->mapWithKeys(fn ($branch) => [(string) $branch->id => $branch->pivot->access_level]),
                     'default_branch_id' => $user->branches->first(fn ($branch) => (bool) $branch->pivot->is_default)?->id,
