@@ -1,0 +1,70 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\AssetAssignment;
+use App\Models\Asset;
+use App\Notifications\SupervisorWorkflowNotification;
+use App\Services\SupervisorNotificationService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
+
+class PublicAssetCheckinController extends Controller
+{
+    public function show(string $token): View
+    {
+        $assignment = $this->resolve($token)->load('asset');
+        return view('it-assets.checkin-sign', compact('assignment', 'token'));
+    }
+
+    public function sign(Request $request, string $token, SupervisorNotificationService $notifications): RedirectResponse
+    {
+        $data = $request->validate(['signature' => ['required', 'string', 'max:200000'], 'acknowledgment' => ['accepted']]);
+        $assignment = DB::transaction(function () use ($token, $data, $request) {
+            $assignment = $this->resolve($token, true);
+            $assignment->update([
+                'checkin_status' => 'signed', 'checkin_token' => null, 'checkin_signature' => $data['signature'],
+                'checkin_signed_at' => now(), 'checkin_signed_ip' => $request->ip(), 'checkin_signed_user_agent' => $request->userAgent(),
+                'returned_at' => now()->toDateString(), 'checkin_received_by_email' => 'muhd.isa@desb.net',
+            ]);
+            $assignment->asset()->update(['current_status' => 'available']);
+            return $assignment->load('asset');
+        });
+
+        $notifications->send(new SupervisorWorkflowNotification(
+            subject: "Asset check-in acknowledged: {$assignment->asset->asset_tag_no}",
+            intro: "The IT Team acknowledged receipt of {$assignment->asset->asset_tag_no} from {$assignment->assigned_to_name}.",
+            details: ['Asset tag' => $assignment->asset->asset_tag_no, 'Received by' => 'muhd.isa@desb.net', 'Acknowledged at' => $assignment->checkin_signed_at->format('Y-m-d H:i')],
+            url: route('it-assets.show', $assignment->asset), actionLabel: 'View asset',
+        ), 'Unable to send signed asset check-in supervisor notification.');
+
+        return redirect()->route('public.asset-checkout.complete')->with('status', 'checkin');
+    }
+
+    public function testPreview(): View
+    {
+        $asset = Asset::query()->with('category', 'currentLocation')->firstOrFail();
+        $assignment = new AssetAssignment([
+            'assigned_to_name' => 'Test Staff Member', 'employee_id' => 'TEST-001', 'department' => 'IT', 'assigned_at' => now()->toDateString(),
+        ]);
+        $assignment->setRelation('asset', $asset);
+        return view('it-assets.checkin-sign', ['assignment' => $assignment, 'token' => null, 'preview' => true]);
+    }
+
+    public function testSign(Request $request): RedirectResponse
+    {
+        $request->validate(['signature' => ['required', 'string', 'max:200000'], 'acknowledgment' => ['accepted']]);
+        return redirect()->route('public.asset-checkout.complete')->with('status', 'checkin-test');
+    }
+
+    private function resolve(string $token, bool $lock = false): AssetAssignment
+    {
+        $query = AssetAssignment::query()->where('checkin_token', $token)->where('checkin_status', 'pending');
+        $assignment = ($lock ? $query->lockForUpdate() : $query)->first();
+        if (! $assignment) abort(HttpResponse::HTTP_GONE, 'This check-in link has expired or already been used.');
+        return $assignment;
+    }
+}

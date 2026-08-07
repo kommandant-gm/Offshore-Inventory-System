@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\User;
 use App\Support\AccessMatrix;
+use App\Support\AssetCheckoutPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -43,13 +44,21 @@ class ItAssetAssignmentTest extends TestCase
         $this->assertNotNull($asset->currentAssignment->checkout_token);
 
         $this->get(route('public.asset-checkout.show', $asset->currentAssignment->checkout_token))->assertOk();
+        $this->from(route('public.asset-checkout.show', $asset->currentAssignment->checkout_token))
+            ->post(route('public.asset-checkout.sign', $asset->currentAssignment->checkout_token), [
+                'signature' => 'data:image/png;base64,test-signature',
+            ])->assertSessionHasErrors('acknowledgments');
+
         $this->post(route('public.asset-checkout.sign', $asset->currentAssignment->checkout_token), [
             'signature' => 'data:image/png;base64,test-signature',
+            'acknowledgments' => array_keys(AssetCheckoutPolicy::items()),
         ])->assertRedirect(route('public.asset-checkout.complete'));
 
         $asset->refresh();
         $this->assertSame('deployed', $asset->current_status->value);
         $this->assertNotNull($asset->assignments()->first()->signed_at);
+        $this->assertSame(array_keys(AssetCheckoutPolicy::items()), $asset->assignments()->first()->policy_acknowledgments);
+        $this->assertNotNull($asset->assignments()->first()->policy_acknowledged_at);
 
         $this->post(route('it-assets.checkout', $asset), [
             'assigned_to_name' => 'Another User',
@@ -64,7 +73,21 @@ class ItAssetAssignmentTest extends TestCase
         $this->assertSame('Another User', $asset->currentAssignment->assigned_to_name);
         $this->assertNotNull($asset->assignments->firstWhere('assigned_to_name', 'Target User')->returned_at);
 
+        $this->post(route('public.asset-checkout.sign', $asset->currentAssignment->checkout_token), [
+            'signature' => 'data:image/png;base64,test-second-checkout-signature',
+            'acknowledgments' => array_keys(AssetCheckoutPolicy::items()),
+        ])->assertRedirect(route('public.asset-checkout.complete'));
+
         $this->patch(route('it-assets.check-in', $asset))->assertRedirect();
+
+        $asset->refresh()->load('currentAssignment');
+        $this->assertSame('pending_checkin', $asset->current_status->value);
+        $this->assertSame('pending', $asset->currentAssignment->checkin_status);
+
+        $this->post(route('public.asset-checkin.sign', $asset->currentAssignment->checkin_token), [
+            'signature' => 'data:image/png;base64,test-checkin-signature',
+            'acknowledgment' => '1',
+        ])->assertRedirect(route('public.asset-checkout.complete'));
 
         $asset->refresh()->load('currentAssignment');
         $this->assertSame('available', $asset->current_status->value);

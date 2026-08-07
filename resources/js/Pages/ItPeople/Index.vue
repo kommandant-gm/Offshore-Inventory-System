@@ -73,7 +73,7 @@ const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((pa
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e8f5e4] text-sm font-black text-[#2f7d32]">{{ initials(person.name) }}</span>
                     <span>
                       <span class="block font-bold text-[#234222]">{{ person.name }}</span>
-                      <span class="block text-xs text-[#7f9a7a]">{{ person.employee_id || person.email || 'No employee ID recorded' }}</span>
+                      <span class="block text-xs text-[#7f9a7a]">{{ person.job_title || person.employee_id || person.email || 'No employee ID recorded' }}</span>
                     </span>
                   </Link>
                 </td>

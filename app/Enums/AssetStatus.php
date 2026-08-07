@@ -6,6 +6,7 @@ enum AssetStatus: string
 {
     case Available = 'available';
     case PendingCheckout = 'pending_checkout';
+    case PendingCheckin = 'pending_checkin';
     case InTransit = 'in_transit';
     case Deployed = 'deployed';
     case UnderRepair = 'under_repair';

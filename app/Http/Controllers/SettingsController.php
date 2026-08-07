@@ -16,8 +16,10 @@ use App\Models\EmailActivityLog;
 use App\Models\Asset;
 use App\Models\AssetAssignment;
 use App\Mail\AssetCheckoutSignatureMail;
+use App\Mail\AssetCheckinSignatureMail;
 use App\Services\AuditLogger;
 use App\Support\AccessMatrix;
+use App\Services\LdapAuthenticator;
 use App\Notifications\SupervisorWorkflowNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -90,6 +92,8 @@ class SettingsController extends Controller
                     'name' => $user->name,
                     'username' => $user->username,
                     'email' => $user->email,
+                    'department' => $user->department,
+                    'job_title' => $user->job_title,
                     'role' => $user->role ?? 'viewer',
                     'permissions' => $user->resolvedPermissions(),
                     'branch_access' => $user->branches->mapWithKeys(fn ($branch) => [(string) $branch->id => $branch->pivot->access_level]),
@@ -126,6 +130,18 @@ class SettingsController extends Controller
         return back()->with('success', 'Test email sent to '.implode(', ', $recipients).'.');
     }
 
+    public function importLdapUsers(LdapAuthenticator $ldap): RedirectResponse
+    {
+        abort_unless(request()->user()?->isSuperAdmin(), 403);
+        $result = $ldap->importAllUsers();
+
+        if (! $result['ok']) {
+            return back()->with('ldap_import_error', $result['error']);
+        }
+
+        return back()->with('ldap_import_success', "LDAP import completed: {$result['synced']} users synced ({$result['created']} new, {$result['updated']} updated).");
+    }
+
     public function sendAssetCheckoutTestEmail(Request $request): RedirectResponse
     {
         abort_unless($request->user()?->isSuperAdmin(), 403);
@@ -150,6 +166,27 @@ class SettingsController extends Controller
         }
 
         return back()->with('checkout_success', 'Asset checkout test email sent to '.$data['email'].'.');
+    }
+
+    public function sendAssetCheckinTestEmail(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+        $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
+        $asset = Asset::query()->first();
+        if (! $asset) return back()->with('checkin_error', 'Create at least one IT asset before sending the check-in form test.');
+
+        $assignment = new AssetAssignment([
+            'assigned_to_name' => 'Test Staff Member', 'employee_id' => 'TEST-001', 'department' => 'IT', 'assigned_at' => now()->toDateString(),
+        ]);
+        $assignment->setRelation('asset', $asset);
+
+        try {
+            Mail::to($data['email'])->send(new AssetCheckinSignatureMail($assignment, route('settings.asset-checkin-test.preview')));
+        } catch (\Throwable $exception) {
+            Log::error('Unable to send asset check-in test email.', ['exception' => $exception]);
+            return back()->with('checkin_error', 'Asset check-in test email could not be sent. Check the mail settings.');
+        }
+        return back()->with('checkin_success', 'Asset check-in test email sent to '.$data['email'].'.');
     }
 
     public function updateUserAccess(UpdateUserAccessRequest $request, User $user, AuditLogger $auditLogger): RedirectResponse

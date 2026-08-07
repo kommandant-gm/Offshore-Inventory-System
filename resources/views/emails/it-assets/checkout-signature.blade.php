@@ -6,7 +6,7 @@
         </div>
         <div style="padding:28px;">
             <p style="margin-top:0;">Hello <strong>{{ $assignment->assigned_to_name }}</strong>,</p>
-            <p>Please review the asset details below and digitally sign the checkout form.</p>
+            <p>Please review the asset details below, acknowledge the ICT and equipment-use requirements, and digitally sign the checkout form.</p>
 
             <div style="margin:22px 0;padding:18px;background:#f8fbf7;border:1px solid #d8e7d4;border-radius:12px;">
                 <div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#6f8a6b;">Asset details</div>

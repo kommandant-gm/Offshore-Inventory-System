@@ -152,7 +152,7 @@ class ItPeopleController extends Controller
 
         foreach ($users as $user) {
             $identity = "u:{$user->id}";
-            $people[$identity] = $this->personRow($identity, $user->name, $user->username, $user->email);
+            $people[$identity] = $this->personRow($identity, $user->name, $user->username, $user->email, $user->department, $user->job_title);
             $names[$this->normalise($user->name)] ??= $identity;
             $employeeIds[$this->normalise($user->username)] = $identity;
         }
@@ -210,6 +210,8 @@ class ItPeopleController extends Controller
                 'name' => $user->name,
                 'employee_id' => $user->username,
                 'email' => $user->email,
+                'department' => $user->department,
+                'job_title' => $user->job_title,
             ];
             $assignmentQuery->where(function ($query) use ($user) {
                 $query->whereRaw('LOWER(assigned_to_name) = ?', [$this->normalise($user->name)])
@@ -228,14 +230,15 @@ class ItPeopleController extends Controller
         return [$profile, $assignmentQuery, $licenceQuery];
     }
 
-    private function personRow(string $identity, string $name, ?string $employeeId = null, ?string $email = null): array
+    private function personRow(string $identity, string $name, ?string $employeeId = null, ?string $email = null, ?string $department = null, ?string $jobTitle = null): array
     {
         return [
             'identity' => $identity,
             'name' => $name,
             'employee_id' => $employeeId,
             'email' => $email,
-            'department' => null,
+            'department' => $department,
+            'job_title' => $jobTitle,
             'current_assets' => 0,
             'licences' => 0,
             'assignment_history' => 0,

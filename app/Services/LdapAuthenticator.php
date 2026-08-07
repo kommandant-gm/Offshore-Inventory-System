@@ -115,6 +115,45 @@ class LdapAuthenticator
         }
     }
 
+    /** @return array{ok: bool, total: int, synced: int, created: int, updated: int, error: ?string} */
+    public function importAllUsers(): array
+    {
+        $result = ['ok' => false, 'total' => 0, 'synced' => 0, 'created' => 0, 'updated' => 0, 'error' => null];
+        if (! $this->enabled()) { $result['error'] = 'LDAP is disabled. Set LDAP_ENABLED=true before importing users.'; return $result; }
+        if (! function_exists('ldap_connect')) { $result['error'] = 'The PHP LDAP extension is not available.'; return $result; }
+
+        $baseDn = (string) config('ldap.base_dn');
+        if ($baseDn === '') { $result['error'] = 'LDAP base DN is not configured.'; return $result; }
+        $connection = $this->connect();
+        if (! $connection) { $result['error'] = 'Unable to connect to the LDAP server.'; return $result; }
+
+        try {
+            $this->configureConnection($connection);
+            if (! $this->bindForSearch($connection)) { $result['error'] = $this->ldapError($connection) ?: 'LDAP service-account bind failed.'; return $result; }
+            $attributes = ['cn', 'displayname', 'mail', 'samaccountname', 'userprincipalname', 'department', 'title'];
+            $search = @ldap_search($connection, $baseDn, '(&(objectCategory=person)(objectClass=user))', $attributes);
+            if (! $search) { $result['error'] = $this->ldapError($connection) ?: 'LDAP user search failed.'; return $result; }
+            $entries = @ldap_get_entries($connection, $search);
+            $result['total'] = (int) ($entries['count'] ?? 0);
+
+            for ($index = 0; $index < $result['total']; $index++) {
+                $entry = $entries[$index] ?? null;
+                if (! is_array($entry)) continue;
+                $directoryUsername = Str::lower($this->attribute($entry, 'samaccountname') ?: $this->attribute($entry, 'userprincipalname') ?: '');
+                $email = Str::lower($this->attribute($entry, 'mail') ?: '');
+                if ($directoryUsername === '' && $email === '') continue;
+                $existing = $directoryUsername !== '' ? User::query()->where('username', $directoryUsername)->first() : User::query()->where('email', $email)->first();
+                $this->syncUser($entry, $directoryUsername ?: $email);
+                $result['synced']++;
+                $existing ? $result['updated']++ : $result['created']++;
+            }
+            $result['ok'] = true;
+            return $result;
+        } finally {
+            @ldap_unbind($connection);
+        }
+    }
+
     protected function connect()
     {
         $host = (string) config('ldap.host');
@@ -190,7 +229,7 @@ class LdapAuthenticator
             ? ldap_escape($username, '', LDAP_ESCAPE_FILTER)
             : addcslashes($username, '\\()*'."\x00");
         $filter = sprintf('(|(sAMAccountName=%1$s)(userPrincipalName=%1$s)(mail=%1$s)(cn=%1$s))', $safeUsername);
-        $attributes = ['cn', 'displayname', 'mail', 'samaccountname', 'userprincipalname'];
+        $attributes = ['cn', 'displayname', 'mail', 'samaccountname', 'userprincipalname', 'department', 'title'];
         $search = @ldap_search($connection, $baseDn, $filter, $attributes);
 
         if (! $search) {
@@ -235,6 +274,8 @@ class LdapAuthenticator
         $user->name = $name;
         $user->username = $directoryUsername;
         $user->email = $email;
+        $user->department = $this->attribute($entry, 'department') ?: $user->department;
+        $user->job_title = $this->attribute($entry, 'title') ?: $user->job_title;
         $user->email_verified_at ??= now();
         $user->save();
 

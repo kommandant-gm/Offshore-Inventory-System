@@ -7,6 +7,7 @@ use App\Models\Asset;
 use App\Mail\AssetCheckoutSignatureMail;
 use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\SupervisorNotificationService;
+use App\Support\AssetCheckoutPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -20,15 +21,15 @@ class PublicAssetCheckoutController extends Controller
     public function show(string $token): View
     {
         $assignment = $this->resolve($token)->load('asset.category', 'asset.currentLocation');
-        return view('it-assets.checkout-sign', compact('assignment', 'token'));
+        return view('it-assets.checkout-sign', ['assignment' => $assignment, 'token' => $token, 'policyItems' => AssetCheckoutPolicy::items(), 'policyUrl' => AssetCheckoutPolicy::ICT_POLICY_URL]);
     }
 
     public function sign(Request $request, string $token, SupervisorNotificationService $notifications): RedirectResponse
     {
-        $data = $request->validate(['signature' => ['required', 'string', 'max:200000']]);
+        $data = $this->validateSignature($request);
         $assignment = DB::transaction(function () use ($token, $data, $request) {
             $assignment = $this->resolve($token, true);
-            $assignment->update(['checkout_status' => 'signed', 'checkout_token' => null, 'signature' => $data['signature'], 'signed_at' => now(), 'signed_ip' => $request->ip(), 'signed_user_agent' => $request->userAgent()]);
+            $assignment->update(['checkout_status' => 'signed', 'checkout_token' => null, 'signature' => $data['signature'], 'policy_acknowledgments' => array_values($data['acknowledgments']), 'policy_acknowledged_at' => now(), 'signed_at' => now(), 'signed_ip' => $request->ip(), 'signed_user_agent' => $request->userAgent()]);
             $assignment->asset()->update(['current_status' => 'deployed']);
             return $assignment->load('asset');
         });
@@ -56,12 +57,12 @@ class PublicAssetCheckoutController extends Controller
             'employee_id' => 'TEST-001', 'department' => 'IT', 'assigned_at' => now()->toDateString(),
         ]);
         $assignment->setRelation('asset', $asset);
-        return view('it-assets.checkout-sign', ['assignment' => $assignment, 'token' => null, 'preview' => true]);
+        return view('it-assets.checkout-sign', ['assignment' => $assignment, 'token' => null, 'preview' => true, 'policyItems' => AssetCheckoutPolicy::items(), 'policyUrl' => AssetCheckoutPolicy::ICT_POLICY_URL]);
     }
 
     public function testSign(Request $request): RedirectResponse
     {
-        $request->validate(['signature' => ['required', 'string', 'max:200000']]);
+        $this->validateSignature($request);
         return redirect()->route('public.asset-checkout.complete')->with('status', 'test');
     }
 
@@ -71,5 +72,21 @@ class PublicAssetCheckoutController extends Controller
         $assignment = ($lock ? $query->lockForUpdate() : $query)->first();
         if (! $assignment) abort(HttpResponse::HTTP_GONE, 'This checkout link has expired or already been used.');
         return $assignment;
+    }
+
+    private function validateSignature(Request $request): array
+    {
+        $expected = array_keys(AssetCheckoutPolicy::items());
+        $data = $request->validate([
+            'signature' => ['required', 'string', 'max:200000'],
+            'acknowledgments' => ['required', 'array', 'size:'.count($expected)],
+            'acknowledgments.*' => ['required', 'string', 'in:'.implode(',', $expected)],
+        ]);
+
+        if (count(array_unique($data['acknowledgments'])) !== count($expected) || array_diff($expected, $data['acknowledgments'])) {
+            abort(422, 'All asset checkout policy acknowledgments are required.');
+        }
+
+        return $data;
     }
 }

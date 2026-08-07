@@ -23,6 +23,8 @@ class User extends Authenticatable
         'name',
         'username',
         'email',
+        'department',
+        'job_title',
         'role',
         'permissions',
         'password',

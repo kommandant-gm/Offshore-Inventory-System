@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\AssetStatus;
 use App\Mail\AssetCheckoutSignatureMail;
+use App\Mail\AssetCheckinSignatureMail;
 use App\Models\Asset;
 use App\Models\User;
 use App\Notifications\SupervisorWorkflowNotification;
@@ -60,6 +61,9 @@ class AssetAssignmentController extends Controller
             }
 
             if ($current) {
+                if ($current->checkin_status === 'pending') {
+                    throw ValidationException::withMessages(['asset' => 'This asset is awaiting IT Team check-in acknowledgment.']);
+                }
                 $current->update([
                     'returned_at' => now()->toDateString(),
                     'received_by' => $request->user()->id,
@@ -116,27 +120,34 @@ class AssetAssignmentController extends Controller
                 throw ValidationException::withMessages(['asset' => 'This asset is not currently assigned.']);
             }
 
-            $current->update([
-                'returned_at' => now()->toDateString(),
-                'received_by' => $request->user()->id,
-            ]);
-            $lockedAsset->update(['current_status' => AssetStatus::Available]);
+            if ($current->checkout_status !== 'signed') {
+                throw ValidationException::withMessages(['asset' => 'The checkout must be signed before the asset can be checked in.']);
+            }
+            if ($current->checkin_status === 'pending') {
+                throw ValidationException::withMessages(['asset' => 'A check-in form has already been sent to the IT Team.']);
+            }
+            $current->update(['checkin_status' => 'pending', 'checkin_token' => Str::random(64), 'checkin_sent_at' => now()]);
+            $lockedAsset->update(['current_status' => AssetStatus::PendingCheckin]);
         });
 
+        $asset->load('currentAssignment');
+        $assignment = $asset->currentAssignment;
+        Mail::to('muhd.isa@desb.net')->send(new AssetCheckinSignatureMail($assignment, route('public.asset-checkin.show', $assignment->checkin_token)));
         $supervisorNotifications->send(new SupervisorWorkflowNotification(
-            subject: "IT asset checked in: {$asset->asset_tag_no}",
-            intro: "{$request->user()->name} checked in an IT asset.",
+            subject: "IT asset check-in requested: {$asset->asset_tag_no}",
+            intro: "{$request->user()->name} sent an IT asset check-in request to the IT Team for acknowledgment.",
             details: [
                 'Asset tag' => $asset->asset_tag_no,
                 'Previously assigned to' => $previousAssignment?->assigned_to_name ?: '-',
                 'Employee ID' => $previousAssignment?->employee_id ?: '-',
                 'Department' => $previousAssignment?->department ?: '-',
-                'Returned date' => now()->toDateString(),
+                'Requested at' => now()->toDateString(),
+                'Technician' => 'muhd.isa@desb.net',
             ],
             url: route('it-assets.show', $asset),
             actionLabel: 'View asset',
         ), 'Unable to send IT asset check-in supervisor notification.');
 
-        return back()->with('success', 'Asset checked in and is now available.');
+        return back()->with('success', 'Check-in form sent to the IT Team for acknowledgment.');
     }
 }

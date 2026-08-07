@@ -74,6 +74,9 @@ const permissionSearch = ref('');
 const sendingTestEmail = ref(false);
 const checkoutTestEmail = ref('');
 const sendingCheckoutTest = ref(false);
+const checkinTestEmail = ref('');
+const sendingCheckinTest = ref(false);
+const importingLdapUsers = ref(false);
 
 const accessSummary = (userId) => {
     const levels = Object.values(userForms[userId].permissions);
@@ -131,6 +134,14 @@ const sendCheckoutTestEmail = () => {
     sendingCheckoutTest.value = true;
     router.post(route('settings.test-asset-checkout-email'), { email: checkoutTestEmail.value }, { preserveScroll: true, onFinish: () => { sendingCheckoutTest.value = false; } });
 };
+const sendCheckinTestEmail = () => {
+    sendingCheckinTest.value = true;
+    router.post(route('settings.test-asset-checkin-email'), { email: checkinTestEmail.value }, { preserveScroll: true, onFinish: () => { sendingCheckinTest.value = false; } });
+};
+const importLdapUsers = () => {
+    importingLdapUsers.value = true;
+    router.post(route('settings.import-ldap-users'), {}, { preserveScroll: true, onFinish: () => { importingLdapUsers.value = false; } });
+};
 </script>
 
 <template>
@@ -160,6 +171,15 @@ const sendCheckoutTestEmail = () => {
 
         <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div><p class="text-sm font-semibold text-[#234222]">LDAP / Active Directory personnel</p><p class="mt-1 text-sm text-[#65748b]">Import all directory users, including their name, username, email, and department, into the Personnel directory.</p></div>
+                <button type="button" class="btn shrink-0 bg-[#194568] text-white" :disabled="importingLdapUsers" @click="importLdapUsers">{{ importingLdapUsers ? 'Importing...' : 'Import users from LDAP' }}</button>
+            </div>
+            <div v-if="$page.props.flash.ldap_import_success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.ldap_import_success }}</div>
+            <div v-if="$page.props.flash.ldap_import_error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.ldap_import_error }}</div>
+        </section>
+
+        <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div><p class="text-sm font-semibold text-[#234222]">Supervisor email notifications</p><p class="mt-1 text-sm text-[#65748b]">Send a test email using the configured mail server and supervisor recipients.</p><p class="mt-2 text-xs text-[#7f9a7a]">{{ supervisorEmails.join(', ') }}</p></div>
                 <button type="button" class="btn shrink-0 bg-[#4f9f4a] text-white" :disabled="sendingTestEmail" @click="sendSupervisorTestEmail">{{ sendingTestEmail ? 'Sending...' : 'Send test email' }}</button>
             </div>
@@ -174,6 +194,15 @@ const sendCheckoutTestEmail = () => {
             </div>
             <div v-if="$page.props.flash.checkout_success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.checkout_success }}</div>
             <div v-if="$page.props.flash.checkout_error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.checkout_error }}</div>
+        </section>
+
+        <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div><p class="text-sm font-semibold text-[#234222]">Digital asset check-in test</p><p class="mt-1 text-sm text-[#65748b]">Send a sample IT Team receipt acknowledgment form. This does not change any asset records.</p></div>
+                <div class="flex w-full gap-2 sm:w-auto"><input v-model.trim="checkinTestEmail" type="email" placeholder="technician@email.com" class="input input-bordered w-full sm:w-64" /><button type="button" class="btn bg-[#4f9f4a] text-white" :disabled="sendingCheckinTest || !checkinTestEmail" @click="sendCheckinTestEmail">{{ sendingCheckinTest ? 'Sending...' : 'Send check-in test' }}</button></div>
+            </div>
+            <div v-if="$page.props.flash.checkin_success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.checkin_success }}</div>
+            <div v-if="$page.props.flash.checkin_error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.checkin_error }}</div>
         </section>
 
         <section class="overflow-hidden rounded-[2rem] border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">

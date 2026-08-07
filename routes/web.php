@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AssetAssignmentController;
+use App\Http\Controllers\PublicAssetCheckinController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetLedgerController;
 use App\Http\Controllers\AssetQrCodeController;
@@ -40,6 +41,10 @@ Route::post('/cog/approval/{token}/reject', [CogApprovalController::class, 'reje
 Route::get('/asset/{publicToken}', PublicAssetController::class)->name('public.it-assets.show');
 Route::get('/asset-checkout/{token}', [PublicAssetCheckoutController::class, 'show'])->name('public.asset-checkout.show');
 Route::post('/asset-checkout/{token}/sign', [PublicAssetCheckoutController::class, 'sign'])->name('public.asset-checkout.sign');
+Route::get('/asset-checkin/{token}', [PublicAssetCheckinController::class, 'show'])->name('public.asset-checkin.show');
+Route::post('/asset-checkin/{token}/sign', [PublicAssetCheckinController::class, 'sign'])->name('public.asset-checkin.sign');
+Route::get('/asset-checkin-test-preview', [PublicAssetCheckinController::class, 'testPreview'])->name('settings.asset-checkin-test.preview');
+Route::post('/asset-checkin-test-preview/sign', [PublicAssetCheckinController::class, 'testSign'])->name('settings.asset-checkin-test.sign');
 Route::get('/asset-checkout-complete', [PublicAssetCheckoutController::class, 'complete'])->name('public.asset-checkout.complete');
 Route::get('/asset-checkout-test-preview', [PublicAssetCheckoutController::class, 'testPreview'])->name('settings.asset-checkout-test.preview');
 Route::post('/asset-checkout-test-preview/sign', [PublicAssetCheckoutController::class, 'testSign'])->name('settings.asset-checkout-test.sign');
@@ -76,7 +81,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/stock-anomalies', [StockAnomalyController::class, 'index'])->name('anomalies.index');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings/test-supervisor-email', [SettingsController::class, 'sendSupervisorTestEmail'])->name('settings.test-supervisor-email');
+    Route::post('/settings/import-ldap-users', [SettingsController::class, 'importLdapUsers'])->name('settings.import-ldap-users');
     Route::post('/settings/test-asset-checkout-email', [SettingsController::class, 'sendAssetCheckoutTestEmail'])->name('settings.test-asset-checkout-email');
+    Route::post('/settings/test-asset-checkin-email', [SettingsController::class, 'sendAssetCheckinTestEmail'])->name('settings.test-asset-checkin-email');
     Route::patch('/settings/users/{user}/access', [SettingsController::class, 'updateUserAccess'])->name('settings.users.update');
     Route::get('/settings/issue-logs', [IssueLogController::class, 'index'])->name('settings.issue-logs.index');
     Route::get('/audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');
