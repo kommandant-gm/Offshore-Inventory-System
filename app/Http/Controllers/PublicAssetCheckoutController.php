@@ -8,6 +8,7 @@ use App\Mail\AssetCheckoutSignatureMail;
 use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\SupervisorNotificationService;
 use App\Support\AssetCheckoutPolicy;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -24,7 +25,7 @@ class PublicAssetCheckoutController extends Controller
         return view('it-assets.checkout-sign', ['assignment' => $assignment, 'token' => $token, 'policyItems' => AssetCheckoutPolicy::items(), 'policyUrl' => AssetCheckoutPolicy::ICT_POLICY_URL]);
     }
 
-    public function sign(Request $request, string $token, SupervisorNotificationService $notifications): RedirectResponse
+    public function sign(Request $request, string $token, SupervisorNotificationService $notifications)
     {
         $data = $this->validateSignature($request);
         $assignment = DB::transaction(function () use ($token, $data, $request) {
@@ -41,7 +42,13 @@ class PublicAssetCheckoutController extends Controller
             url: route('it-assets.show', $assignment->asset), actionLabel: 'View asset',
         ), 'Unable to send signed asset checkout supervisor notification.');
 
-        return redirect()->route('public.asset-checkout.complete');
+        $pdf = Pdf::loadView('it-assets.checkout-pdf', [
+            'assignment' => $assignment,
+            'policyItems' => AssetCheckoutPolicy::items(),
+            'logoPath' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('images/dayang-logo.png'))),
+        ])->setPaper('a4');
+
+        return $pdf->download('asset-checkout-'.$assignment->asset->asset_tag_no.'.pdf');
     }
 
     public function complete(): View

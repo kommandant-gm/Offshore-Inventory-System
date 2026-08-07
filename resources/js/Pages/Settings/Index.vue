@@ -211,22 +211,24 @@ const importLdapUsers = () => {
             <div v-if="$page.props.flash.error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.error }}</div>
         </section>
 
-        <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div><p class="text-sm font-semibold text-[#234222]">Digital asset checkout test</p><p class="mt-1 text-sm text-[#65748b]">Send a sample checkout form using the first IT asset. This does not change any asset records.</p></div>
-                <div class="flex w-full gap-2 sm:w-auto"><input v-model.trim="checkoutTestEmail" type="email" placeholder="your@email.com" class="input input-bordered w-full sm:w-64" /><button type="button" class="btn bg-[#194568] text-white" :disabled="sendingCheckoutTest || !checkoutTestEmail" @click="sendCheckoutTestEmail">{{ sendingCheckoutTest ? 'Sending...' : 'Send checkout test' }}</button></div>
+        <section class="space-y-4 rounded-[2rem] border border-[#d8e7d4] bg-transparent shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+            <div class="rounded-[2rem] border border-[#d8e7d4] bg-white px-6 py-5">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div><p class="text-sm font-semibold text-[#234222]">Digital asset checkout test</p><p class="mt-1 text-sm text-[#65748b]">Send a sample checkout form using the first IT asset. This does not change any asset records.</p></div>
+                    <div class="flex w-full gap-2 sm:w-auto"><input v-model.trim="checkoutTestEmail" type="email" placeholder="your@email.com" class="input input-bordered w-full bg-[#f8fbf7] sm:w-60" /><button type="button" class="btn shrink-0 bg-[#4f9f4a] text-white" :disabled="sendingCheckoutTest || !checkoutTestEmail" @click="sendCheckoutTestEmail">{{ sendingCheckoutTest ? 'Sending...' : 'Send checkout test' }}</button></div>
+                </div>
+                <div v-if="$page.props.flash.checkout_success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.checkout_success }}</div>
+                <div v-if="$page.props.flash.checkout_error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.checkout_error }}</div>
             </div>
-            <div v-if="$page.props.flash.checkout_success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.checkout_success }}</div>
-            <div v-if="$page.props.flash.checkout_error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.checkout_error }}</div>
-        </section>
 
-        <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div><p class="text-sm font-semibold text-[#234222]">Digital asset check-in test</p><p class="mt-1 text-sm text-[#65748b]">Send a sample IT Team receipt acknowledgment form. This does not change any asset records.</p></div>
-                <div class="flex w-full gap-2 sm:w-auto"><input v-model.trim="checkinTestEmail" type="email" placeholder="technician@email.com" class="input input-bordered w-full sm:w-64" /><button type="button" class="btn bg-[#4f9f4a] text-white" :disabled="sendingCheckinTest || !checkinTestEmail" @click="sendCheckinTestEmail">{{ sendingCheckinTest ? 'Sending...' : 'Send check-in test' }}</button></div>
+            <div class="rounded-[2rem] border border-[#d8e7d4] bg-white px-6 py-5">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div><p class="text-sm font-semibold text-[#234222]">Digital asset check-in test</p><p class="mt-1 text-sm text-[#65748b]">Send a sample IT Team receipt acknowledgment form. This does not change any asset records.</p></div>
+                    <div class="flex w-full gap-2 sm:w-auto"><input v-model.trim="checkinTestEmail" type="email" placeholder="technician@email.com" class="input input-bordered w-full bg-[#f8fbf7] sm:w-60" /><button type="button" class="btn shrink-0 bg-[#4f9f4a] text-white" :disabled="sendingCheckinTest || !checkinTestEmail" @click="sendCheckinTestEmail">{{ sendingCheckinTest ? 'Sending...' : 'Send check-in test' }}</button></div>
+                </div>
+                <div v-if="$page.props.flash.checkin_success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.checkin_success }}</div>
+                <div v-if="$page.props.flash.checkin_error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.checkin_error }}</div>
             </div>
-            <div v-if="$page.props.flash.checkin_success" class="mt-4 rounded-xl border border-[#b8e0ae] bg-[#eef8ea] px-4 py-3 text-sm font-semibold text-[#2f6f2d]">✓ {{ $page.props.flash.checkin_success }}</div>
-            <div v-if="$page.props.flash.checkin_error" class="mt-4 rounded-xl border border-[#ffc6cc] bg-[#fff8f8] px-4 py-3 text-sm font-semibold text-[#a70f29]">✕ {{ $page.props.flash.checkin_error }}</div>
         </section>
 
         <section class="overflow-hidden rounded-[2rem] border border-[#d8e7d4] bg-white shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
