@@ -84,7 +84,7 @@ class SettingsController extends Controller
             'rolePresets' => collect(AccessMatrix::roleOptions())
                 ->mapWithKeys(fn (string $label, string $value) => [$value => AccessMatrix::permissionsForRole($value)]),
             'branchOptions' => Branch::query()->where('active', true)->orderBy('name')->get(['id', 'code', 'name']),
-            'users' => User::query()
+            'users' => User::query()->where('directory_active', true)
                 ->orderBy('name')
                 ->get()
                 ->map(fn (User $user) => [
@@ -133,6 +133,7 @@ class SettingsController extends Controller
     public function importLdapUsers(LdapAuthenticator $ldap): RedirectResponse
     {
         abort_unless(request()->user()?->isSuperAdmin(), 403);
+        @set_time_limit(120);
         try {
             $result = $ldap->importAllUsers();
         } catch (\Throwable $exception) {

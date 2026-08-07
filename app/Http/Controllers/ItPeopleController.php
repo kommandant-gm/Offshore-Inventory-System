@@ -146,6 +146,7 @@ class ItPeopleController extends Controller
         $employeeIds = [];
 
         $users = User::query()
+            ->where('directory_active', true)
             ->when($branchId, fn ($query) => $query->whereHas('branches', fn ($branch) => $branch->where('branches.id', $branchId)))
             ->orderBy('name')
             ->get(['id', 'name', 'username', 'email']);

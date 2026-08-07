@@ -130,11 +130,15 @@ class LdapAuthenticator
         try {
             $this->configureConnection($connection);
             if (! $this->bindForSearch($connection)) { $result['error'] = $this->ldapError($connection) ?: 'LDAP service-account bind failed.'; return $result; }
-            $attributes = ['cn', 'displayname', 'mail', 'samaccountname', 'userprincipalname', 'department', 'title'];
+            $attributes = ['cn', 'displayname', 'mail', 'samaccountname', 'userprincipalname', 'department', 'title', 'useraccountcontrol'];
             $search = @ldap_search($connection, $baseDn, '(&(objectCategory=person)(objectClass=user))', $attributes);
             if (! $search) { $result['error'] = $this->ldapError($connection) ?: 'LDAP user search failed.'; return $result; }
             $entries = @ldap_get_entries($connection, $search);
             $result['total'] = (int) ($entries['count'] ?? 0);
+
+            $existingUsers = User::query()->get(['id', 'username', 'email'])->keyBy(fn (User $user) => Str::lower((string) $user->username));
+            $existingByEmail = User::query()->get(['id', 'username', 'email'])->filter(fn (User $user) => filled($user->email))->keyBy(fn (User $user) => Str::lower((string) $user->email));
+            $klBranchId = Branch::query()->where('code', 'KL-IT')->value('id');
 
             for ($index = 0; $index < $result['total']; $index++) {
                 $entry = $entries[$index] ?? null;
@@ -142,8 +146,13 @@ class LdapAuthenticator
                 $directoryUsername = Str::lower($this->attribute($entry, 'samaccountname') ?: $this->attribute($entry, 'userprincipalname') ?: '');
                 $email = Str::lower($this->attribute($entry, 'mail') ?: '');
                 if ($directoryUsername === '' && $email === '') continue;
-                $existing = $directoryUsername !== '' ? User::query()->where('username', $directoryUsername)->first() : User::query()->where('email', $email)->first();
-                $this->syncUser($entry, $directoryUsername ?: $email);
+                $existing = $directoryUsername !== '' ? $existingUsers->get($directoryUsername) : $existingByEmail->get($email);
+                $userAccountControl = (int) ($this->attribute($entry, 'useraccountcontrol') ?: 0);
+                if (($userAccountControl & 2) === 2) {
+                    $existing?->update(['directory_active' => false]);
+                    continue;
+                }
+                $this->syncUser($entry, $directoryUsername ?: $email, $existing, $klBranchId);
                 $result['synced']++;
                 $existing ? $result['updated']++ : $result['created']++;
             }
@@ -247,7 +256,7 @@ class LdapAuthenticator
         return $entries[0];
     }
 
-    protected function syncUser(array $entry, string $submittedUsername): User
+    protected function syncUser(array $entry, string $submittedUsername, ?User $existingUser = null, ?int $klBranchId = null): User
     {
         $directoryUsername = Str::lower($this->attribute($entry, 'samaccountname')
             ?: $this->attribute($entry, 'userprincipalname')
@@ -258,7 +267,7 @@ class LdapAuthenticator
             ?: $this->attribute($entry, 'cn')
             ?: Str::title(str_replace(['.', '_'], ' ', $directoryUsername));
 
-        $user = User::query()
+        $user = $existingUser ?: User::query()
             ->where('username', $directoryUsername)
             ->orWhere('email', $email)
             ->first();
@@ -274,15 +283,15 @@ class LdapAuthenticator
         $user->name = $name;
         $user->username = $directoryUsername;
         $user->email = $email;
+        $user->directory_active = true;
         $user->department = $this->attribute($entry, 'department') ?: $user->department;
         $user->job_title = $this->attribute($entry, 'title') ?: $user->job_title;
         $user->email_verified_at ??= now();
         $user->save();
 
         if (($isNew ?? false) && $user->branches()->count() === 0) {
-            $kl = Branch::query()->where('code', 'KL-IT')->first();
-            if ($kl) {
-                $user->branches()->attach($kl->id, ['access_level' => 'edit', 'is_default' => true]);
+            if ($klBranchId) {
+                $user->branches()->attach($klBranchId, ['access_level' => 'edit', 'is_default' => true]);
             }
         }
 

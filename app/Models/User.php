@@ -25,6 +25,7 @@ class User extends Authenticatable
         'email',
         'department',
         'job_title',
+        'directory_active',
         'role',
         'permissions',
         'password',
@@ -51,6 +52,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'permissions' => 'array',
             'password' => 'hashed',
+            'directory_active' => 'boolean',
         ];
     }
 
