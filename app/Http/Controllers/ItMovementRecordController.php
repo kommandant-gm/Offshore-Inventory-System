@@ -33,6 +33,32 @@ class ItMovementRecordController extends Controller
                 'reopen_url' => route('it-assets.checkout.reopen', $document->assignment?->asset_id),
             ])->values();
 
+        $documentedAssignmentIds = $documents->pluck('assignment_id')->filter()->all();
+        $signedWithoutPdf = AssetAssignment::query()
+            ->with('asset')
+            ->where('checkout_status', 'signed')
+            ->where(function ($query) {
+                $query->whereNotNull('signed_at')->orWhereNotNull('checkout_sent_at');
+            })
+            ->whereNull('returned_at')
+            ->whereNotIn('id', $documentedAssignmentIds ?: [0])
+            ->latest('signed_at')
+            ->get()
+            ->map(fn (AssetAssignment $assignment) => [
+                'id' => 'recovery-'.$assignment->id,
+                'type' => 'checkout',
+                'filename' => null,
+                'generated_at' => $assignment->signed_at?->format('Y-m-d H:i'),
+                'asset_tag' => $assignment->asset?->asset_tag_no,
+                'description' => $assignment->asset?->description ?: $assignment->asset?->model,
+                'staff' => $assignment->assigned_to_name,
+                'url' => null,
+                'assignment_id' => $assignment->id,
+                'reopen_url' => route('it-assets.checkout.reopen', $assignment->asset_id),
+                'recovery' => true,
+            ]);
+        $documents = $documents->concat($signedWithoutPdf)->sortByDesc('generated_at')->values();
+
         $pending = AssetAssignment::query()
             ->with('asset')
             ->where('checkout_status', 'pending')
