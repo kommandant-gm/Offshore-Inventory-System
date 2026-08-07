@@ -22,6 +22,7 @@ use App\Http\Controllers\ItAssetSectionController;
 use App\Http\Controllers\ItLicenseController;
 use App\Http\Controllers\ItLicenseImportController;
 use App\Http\Controllers\ItPeopleController;
+use App\Http\Controllers\ItMovementRecordController;
 use App\Http\Controllers\KemamanInventoryController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ProfileController;
@@ -75,6 +76,8 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::get('/it-people', [ItPeopleController::class, 'index'])->name('it-people.index');
     Route::get('/it-people/{person}', [ItPeopleController::class, 'show'])->name('it-people.show');
     Route::post('/it-people/{person}/link-ad', [ItPeopleController::class, 'linkAdUser'])->name('it-people.link-ad');
+    Route::get('/it-movement-records', [ItMovementRecordController::class, 'index'])->name('it-movement-records.index');
+    Route::get('/it-movement-records/{document}/download', [ItMovementRecordController::class, 'download'])->name('it-movement-records.download');
     Route::get('/it-asset-repairs', [ItAssetSectionController::class, 'repairs'])->name('it-assets.repairs');
     Route::get('/quick-search', QuickSearchController::class)->name('quick-search');
     Route::get('/assistant', [AssistantController::class, 'index'])->name('assistant.index');

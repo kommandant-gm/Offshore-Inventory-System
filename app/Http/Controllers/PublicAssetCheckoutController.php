@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AssetAssignment;
 use App\Models\Asset;
+use App\Models\ItMovementDocument;
 use App\Mail\AssetCheckoutSignatureMail;
 use App\Notifications\SupervisorWorkflowNotification;
 use App\Services\SupervisorNotificationService;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -42,7 +44,7 @@ class PublicAssetCheckoutController extends Controller
             url: route('it-assets.show', $assignment->asset), actionLabel: 'View asset',
         ), 'Unable to send signed asset checkout supervisor notification.');
 
-        return $this->downloadCheckoutPdf($assignment);
+        return $this->downloadCheckoutPdf($assignment, null, true);
     }
 
     public function complete(): View
@@ -121,7 +123,7 @@ class PublicAssetCheckoutController extends Controller
         return $data;
     }
 
-    private function downloadCheckoutPdf(AssetAssignment $assignment, ?string $filename = null)
+    private function downloadCheckoutPdf(AssetAssignment $assignment, ?string $filename = null, bool $record = false)
     {
         $pdf = Pdf::loadView('it-assets.checkout-pdf', [
             'assignment' => $assignment,
@@ -131,6 +133,18 @@ class PublicAssetCheckoutController extends Controller
 
         $downloadName = $filename ?: 'asset-checkout-'.$assignment->asset->asset_tag_no.'.pdf';
         $downloadName = preg_replace('/[\\\\\/:*?"<>|]+/', '-', $downloadName);
+
+        if ($record) {
+            $path = 'asset-movement-documents/'.Str::uuid().'.pdf';
+            Storage::disk('local')->put($path, $pdf->output());
+            ItMovementDocument::create([
+                'asset_assignment_id' => $assignment->id,
+                'document_type' => 'checkout',
+                'filename' => $downloadName,
+                'path' => $path,
+                'generated_at' => now(),
+            ]);
+        }
 
         return $pdf->download($downloadName);
     }

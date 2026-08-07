@@ -61,6 +61,7 @@
         { name: 'IT Asset Register', icon: ClipboardDocumentCheckIcon, route: 'it-assets.index', can: 'it_assets_read' },
         { name: 'IT Licence Register', icon: KeyIcon, route: 'it-licenses.index', can: 'it_assets_read' },
         { name: 'People', icon: UserGroupIcon, route: 'it-people.index', active: 'it-people.*', can: 'it_assets_read' },
+        { name: 'Movement Record', icon: ClipboardDocumentListIcon, route: 'it-movement-records.index', active: 'it-movement-records.*', can: 'it_assets_read' },
         { name: 'Repairs', icon: ExclamationTriangleIcon, route: 'it-assets.repairs', can: 'it_assets_read' },
     ];
     const kemamanItems = [

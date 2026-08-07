@@ -20,6 +20,7 @@
         .signature { max-width: 100%; max-height: 110px; }
         .signed { margin-top: 8px; color: #60745d; }
         .footer { border-top: 1px solid #d8e7d4; margin-top: 28px; padding-top: 8px; color: #7f9a7a; font-size: 9px; }
+        .signature-section { page-break-before: always; }
     </style>
 </head>
 <body>
@@ -47,17 +48,19 @@
         @endforeach
     </ol>
 
-    <h2>Digital signature</h2>
-    <p>I confirm that I reviewed the asset details and acknowledged all requirements above.</p>
-    <div class="signature-box">
-        @if($assignment->signature)
-            <img class="signature" src="{{ $assignment->signature }}" alt="Digital signature">
-        @else
-            <span style="color:#7f9a7a;">Signature will appear here after the form is signed.</span>
-        @endif
-    </div>
-    <p class="signed">Signed by {{ $assignment->assigned_to_name }} on {{ $assignment->signed_at?->format('Y-m-d H:i') }}.</p>
+    <div class="signature-section">
+        <h2>Digital signature</h2>
+        <p>I confirm that I reviewed the asset details and acknowledged all requirements above.</p>
+        <div class="signature-box">
+            @if($assignment->signature)
+                <img class="signature" src="{{ $assignment->signature }}" alt="Digital signature">
+            @else
+                <span style="color:#7f9a7a;">Signature will appear here after the form is signed.</span>
+            @endif
+        </div>
+        <p class="signed">Signed by {{ $assignment->assigned_to_name }} on {{ $assignment->signed_at?->format('Y-m-d H:i') }}.</p>
 
-    <div class="footer">Dayang Enterprise Sdn. Bhd. &mdash; This document was generated electronically by the Dayang Inventory Management System.</div>
+        <div class="footer">Dayang Enterprise Sdn. Bhd. &mdash; This document was generated electronically by the Dayang Inventory Management System.</div>
+    </div>
 </body>
 </html>
