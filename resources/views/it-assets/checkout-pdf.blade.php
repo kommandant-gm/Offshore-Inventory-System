@@ -49,7 +49,13 @@
 
     <h2>Digital signature</h2>
     <p>I confirm that I reviewed the asset details and acknowledged all requirements above.</p>
-    <div class="signature-box"><img class="signature" src="{{ $assignment->signature }}" alt="Digital signature"></div>
+    <div class="signature-box">
+        @if($assignment->signature)
+            <img class="signature" src="{{ $assignment->signature }}" alt="Digital signature">
+        @else
+            <span style="color:#7f9a7a;">Signature will appear here after the form is signed.</span>
+        @endif
+    </div>
     <p class="signed">Signed by {{ $assignment->assigned_to_name }} on {{ $assignment->signed_at?->format('Y-m-d H:i') }}.</p>
 
     <div class="footer">Dayang Enterprise Sdn. Bhd. &mdash; This document was generated electronically by the Dayang Inventory Management System.</div>

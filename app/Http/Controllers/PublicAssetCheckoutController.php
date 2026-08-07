@@ -42,13 +42,7 @@ class PublicAssetCheckoutController extends Controller
             url: route('it-assets.show', $assignment->asset), actionLabel: 'View asset',
         ), 'Unable to send signed asset checkout supervisor notification.');
 
-        $pdf = Pdf::loadView('it-assets.checkout-pdf', [
-            'assignment' => $assignment,
-            'policyItems' => AssetCheckoutPolicy::items(),
-            'logoPath' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('images/dayang-logo.png'))),
-        ])->setPaper('a4');
-
-        return $pdf->download('asset-checkout-'.$assignment->asset->asset_tag_no.'.pdf');
+        return $this->downloadCheckoutPdf($assignment);
     }
 
     public function complete(): View
@@ -67,10 +61,40 @@ class PublicAssetCheckoutController extends Controller
         return view('it-assets.checkout-sign', ['assignment' => $assignment, 'token' => null, 'preview' => true, 'policyItems' => AssetCheckoutPolicy::items(), 'policyUrl' => AssetCheckoutPolicy::ICT_POLICY_URL]);
     }
 
-    public function testSign(Request $request): RedirectResponse
+    public function testSign(Request $request)
     {
-        $this->validateSignature($request);
-        return redirect()->route('public.asset-checkout.complete')->with('status', 'test');
+        $data = $this->validateSignature($request);
+        $asset = Asset::query()->with('category', 'currentLocation')->firstOrFail();
+        $assignment = new AssetAssignment([
+            'assigned_to_name' => 'Test Staff Member',
+            'assigned_email' => request()->query('email', 'test@example.com'),
+            'employee_id' => 'TEST-001',
+            'department' => 'IT',
+            'assigned_at' => now()->toDateString(),
+            'signature' => $data['signature'],
+            'policy_acknowledgments' => array_values($data['acknowledgments']),
+            'signed_at' => now(),
+        ]);
+        $assignment->setRelation('asset', $asset);
+
+        return $this->downloadCheckoutPdf($assignment);
+    }
+
+    public function previewPdf(Request $request)
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+
+        $asset = Asset::query()->with('category', 'currentLocation')->firstOrFail();
+        $assignment = new AssetAssignment([
+            'assigned_to_name' => 'Test Staff Member',
+            'employee_id' => 'TEST-001',
+            'department' => 'IT',
+            'assigned_at' => now()->toDateString(),
+            'signed_at' => now(),
+        ]);
+        $assignment->setRelation('asset', $asset);
+
+        return $this->downloadCheckoutPdf($assignment, 'asset-checkout-preview-'.$asset->asset_tag_no.'.pdf');
     }
 
     private function resolve(string $token, bool $lock = false): AssetAssignment
@@ -95,5 +119,16 @@ class PublicAssetCheckoutController extends Controller
         }
 
         return $data;
+    }
+
+    private function downloadCheckoutPdf(AssetAssignment $assignment, ?string $filename = null)
+    {
+        $pdf = Pdf::loadView('it-assets.checkout-pdf', [
+            'assignment' => $assignment,
+            'policyItems' => AssetCheckoutPolicy::items(),
+            'logoPath' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('images/dayang-logo.png'))),
+        ])->setPaper('a4');
+
+        return $pdf->download($filename ?: 'asset-checkout-'.$assignment->asset->asset_tag_no.'.pdf');
     }
 }
