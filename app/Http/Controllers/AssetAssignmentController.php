@@ -6,6 +6,7 @@ use App\Enums\AssetStatus;
 use App\Mail\AssetCheckoutSignatureMail;
 use App\Mail\AssetCheckinSignatureMail;
 use App\Models\Asset;
+use App\Models\ItMovementDocument;
 use App\Models\User;
 use App\Models\EmailActivityLog;
 use App\Notifications\SupervisorWorkflowNotification;
@@ -15,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -181,6 +183,17 @@ class AssetAssignmentController extends Controller
         $assignment = $asset->currentAssignment;
         if (! $assignment || $assignment->checkout_status !== 'signed' || $assignment->checkin_status === 'signed' || ! $assignment->assigned_email) {
             throw ValidationException::withMessages(['asset' => 'This checkout cannot be reopened.']);
+        }
+
+        $documents = ItMovementDocument::query()
+            ->where('asset_assignment_id', $assignment->id)
+            ->where('document_type', 'checkout')
+            ->get();
+        foreach ($documents as $document) {
+            if (Storage::disk('local')->exists($document->path)) {
+                Storage::disk('local')->delete($document->path);
+            }
+            $document->delete();
         }
 
         $assignment->update([
