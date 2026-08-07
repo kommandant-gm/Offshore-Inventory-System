@@ -61,7 +61,7 @@ class EmailActivityLogController extends Controller
             'Subject: '.$subject,
         ];
 
-        if (preg_match('/(?:checkout|check-in|registered|repair|allocated):\s*(\S+)/i', $subject, $match)) {
+        if (preg_match('/(?:checkout|check-in|registered|repair|allocated|requested):\s*(\S+)/i', $subject, $match)) {
             $assetTag = rtrim($match[1], '.,');
             $asset = Asset::query()->where('asset_tag_no', $assetTag)->first();
             $assignment = AssetAssignment::query()->with('asset')->whereHas('asset', fn ($query) => $query->where('asset_tag_no', $assetTag))->latest('id')->first();
@@ -71,6 +71,19 @@ class EmailActivityLogController extends Controller
                 $lines[] = 'Asset tag: '.$assetTag;
                 $lines[] = 'Assigned to: '.($assignment?->assigned_to_name ?: '-');
                 $lines[] = 'Signed at: '.($assignment?->signed_at?->format('Y-m-d H:i') ?: '-');
+            } elseif (str_contains(strtolower($subject), 'checkout') && str_contains(strtolower($subject), 'requested')) {
+                $lines[] = 'An IT asset checkout form was created and is awaiting staff signature.';
+                $lines[] = 'Asset tag: '.$assetTag;
+                $lines[] = 'Assigned to: '.($assignment?->assigned_to_name ?: '-');
+                $lines[] = 'Employee ID: '.($assignment?->employee_id ?: '-');
+                $lines[] = 'Department: '.($assignment?->department ?: '-');
+                $lines[] = 'Assigned date: '.($assignment?->assigned_at?->format('Y-m-d') ?: '-');
+            } elseif (str_contains(strtolower($subject), 'check-in') && str_contains(strtolower($subject), 'requested')) {
+                $lines[] = 'An IT asset check-in request was sent to the IT Team for acknowledgment.';
+                $lines[] = 'Asset tag: '.$assetTag;
+                $lines[] = 'Previously assigned to: '.($assignment?->assigned_to_name ?: '-');
+                $lines[] = 'Employee ID: '.($assignment?->employee_id ?: '-');
+                $lines[] = 'Department: '.($assignment?->department ?: '-');
             } elseif (str_contains(strtolower($subject), 'check-in acknowledged')) {
                 $lines[] = 'The IT Team acknowledged receipt of '.$assetTag.'.';
                 $lines[] = 'Received by: '.($assignment?->checkin_received_by_email ?: 'muhd.isa@desb.net');
