@@ -22,8 +22,8 @@ class MiriDashboardTest extends TestCase
     {
         $branch = Branch::where('code', 'MIRI')->firstOrFail();
         $user = User::factory()->create([
-            'role' => 'viewer',
-            'permissions' => AccessMatrix::permissionsForRole('viewer'),
+            'role' => 'miri',
+            'permissions' => AccessMatrix::permissionsForRole('miri'),
         ]);
         $user->branches()->attach($branch, ['access_level' => 'read', 'is_default' => true]);
 

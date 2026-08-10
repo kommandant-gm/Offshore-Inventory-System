@@ -11,7 +11,7 @@ class BranchContext
     public function accessibleIds(?User $user = null): array
     {
         $user ??= auth()->user();
-        if ($user?->isMiriRestrictedUser()) {
+        if ($user?->role === 'miri' || $user?->isMiriRestrictedUser()) {
             return Branch::query()->where('code', 'MIRI')->where('active', true)->pluck('id')->map(fn ($id) => (int) $id)->all();
         }
         if ($user?->isSuperAdmin() || $user?->isItDigitalUser() || in_array($user?->role, ['admin', 'supervisor', 'technician'], true)) {
@@ -29,8 +29,12 @@ class BranchContext
         $sessionId = (int) session('branch_id', 0);
         if ($sessionId && in_array($sessionId, $accessible, true)) return $sessionId;
 
-        return $user->branches()->wherePivot('is_default', true)->value('branches.id')
-            ?? ($accessible[0] ?? null);
+        $defaultBranchId = $user->branches()
+            ->wherePivot('is_default', true)
+            ->whereIn('branches.id', $accessible)
+            ->value('branches.id');
+
+        return $defaultBranchId ?? ($accessible[0] ?? null);
     }
 
     public function branch(?User $user = null): ?Branch

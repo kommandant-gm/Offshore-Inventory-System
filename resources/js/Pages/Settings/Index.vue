@@ -74,6 +74,7 @@ const selectedUserId = ref(props.users.find((user) => (user.department || '').tr
 const permissionSearch = ref('');
 const userSearch = ref('');
 const departmentFilter = ref('IT & DIGITAL');
+const roleFilter = ref('');
 const directoryView = ref('cards');
 const sendingTestEmail = ref(false);
 const checkoutTestEmail = ref('');
@@ -100,6 +101,12 @@ const departmentCounts = computed(() => props.users.reduce((counts, user) => {
     counts[department] = (counts[department] || 0) + 1;
     return counts;
 }, {}));
+const roleOptionsForFilter = computed(() => props.roleOptions.filter((role) => role.value !== 'viewer'));
+const roleCounts = computed(() => props.users.reduce((counts, user) => {
+    const role = ['viewer', null, ''].includes(user.role) ? 'none' : user.role;
+    counts[role] = (counts[role] || 0) + 1;
+    return counts;
+}, {}));
 const accessLabel = (user) => ({
     admin: 'ADMIN',
     it: 'IT & DIGITAL',
@@ -113,8 +120,10 @@ const visibleUsers = computed(() => {
     const query = userSearch.value.trim().toLowerCase();
     return props.users.filter((user) => {
         const matchesDepartment = !departmentFilter.value || (user.department || 'N/A') === departmentFilter.value;
+        const normalizedRole = ['viewer', null, ''].includes(user.role) ? 'none' : user.role;
+        const matchesRole = !roleFilter.value || normalizedRole === roleFilter.value;
         const matchesSearch = !query || [user.name, user.username, user.email, user.department, user.job_title].filter(Boolean).some((value) => value.toLowerCase().includes(query));
-        return matchesDepartment && matchesSearch;
+        return matchesDepartment && matchesRole && matchesSearch;
     });
 });
 const initials = (name) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
@@ -335,7 +344,7 @@ const importLdapUsers = () => {
                     <div><p class="text-xl font-bold text-[#172033]">Employee Directory</p><p class="mt-1 text-sm text-[#65748b]">{{ visibleUsers.length }} of {{ users.length }} active employee(s)</p></div>
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center"><div class="flex rounded-xl border border-[#dce3ed] bg-[#f8fafc] p-1"><button type="button" class="rounded-lg px-3 py-2 text-xs font-bold" :class="directoryView === 'cards' ? 'bg-white text-[#9b0000] shadow-sm' : 'text-[#718096]'" @click="directoryView = 'cards'">▦ CARDS</button><button type="button" class="rounded-lg px-3 py-2 text-xs font-bold" :class="directoryView === 'list' ? 'bg-white text-[#9b0000] shadow-sm' : 'text-[#718096]'" @click="directoryView = 'list'">☷ LIST</button></div><button type="button" class="rounded-xl bg-[#9b0000] px-4 py-3 text-xs font-bold text-white" :disabled="importingLdapUsers" @click="importLdapUsers">↻ {{ importingLdapUsers ? 'REFRESHING...' : 'REFRESH FROM AD' }}</button><input v-model.trim="userSearch" type="search" placeholder="Search employees..." class="input input-bordered w-full sm:w-56" /></div>
                 </div>
-                <div class="rounded-[1.25rem] border border-[#dce3ed] bg-[#fbfcfd] p-3"><p class="mb-3 text-xs font-bold uppercase tracking-wider text-[#9b0000]">▥ &nbsp; FILTER BY DEPARTMENT</p><div class="flex flex-wrap gap-2"><button type="button" class="rounded-xl border px-4 py-2 text-xs font-bold" :class="!departmentFilter ? 'border-[#9b0000] bg-[#9b0000] text-white shadow-sm' : 'border-[#dce3ed] bg-white text-[#31415b]'" @click="departmentFilter = ''">All Departments <span class="ml-1 rounded-full bg-white/20 px-2 py-0.5">{{ users.length }}</span></button><button v-for="department in departments" :key="department" type="button" class="rounded-xl border border-[#dce3ed] bg-white px-4 py-2 text-xs font-bold text-[#31415b]" :class="departmentFilter === department ? 'border-[#9b0000] bg-[#fff4f4] text-[#9b0000]' : ''" @click="departmentFilter = department">{{ department }} <span class="ml-1 rounded-full bg-[#f1f3f5] px-2 py-0.5">{{ departmentCounts[department] }}</span></button></div></div>
+                <div class="rounded-[1.25rem] border border-[#dce3ed] bg-[#fbfcfd] p-3 space-y-3"><div><p class="mb-3 text-xs font-bold uppercase tracking-wider text-[#9b0000]">▥ &nbsp; FILTER BY DEPARTMENT</p><div class="flex flex-wrap gap-2"><button type="button" class="rounded-xl border px-4 py-2 text-xs font-bold" :class="!departmentFilter ? 'border-[#9b0000] bg-[#9b0000] text-white shadow-sm' : 'border-[#dce3ed] bg-white text-[#31415b]'" @click="departmentFilter = ''">All Departments <span class="ml-1 rounded-full bg-white/20 px-2 py-0.5">{{ users.length }}</span></button><button v-for="department in departments" :key="department" type="button" class="rounded-xl border border-[#dce3ed] bg-white px-4 py-2 text-xs font-bold text-[#31415b]" :class="departmentFilter === department ? 'border-[#9b0000] bg-[#fff4f4] text-[#9b0000]' : ''" @click="departmentFilter = department">{{ department }} <span class="ml-1 rounded-full bg-[#f1f3f5] px-2 py-0.5">{{ departmentCounts[department] }}</span></button></div></div><div><p class="mb-3 text-xs font-bold uppercase tracking-wider text-[#9b0000]">▥ &nbsp; FILTER BY ROLE</p><div class="flex flex-wrap gap-2"><button type="button" class="rounded-xl border px-4 py-2 text-xs font-bold" :class="!roleFilter ? 'border-[#9b0000] bg-[#9b0000] text-white shadow-sm' : 'border-[#dce3ed] bg-white text-[#31415b]'" @click="roleFilter = ''">All Roles <span class="ml-1 rounded-full bg-white/20 px-2 py-0.5">{{ users.length }}</span></button><button v-for="role in roleOptionsForFilter" :key="role.value" type="button" class="rounded-xl border border-[#dce3ed] bg-white px-4 py-2 text-xs font-bold text-[#31415b]" :class="roleFilter === role.value ? 'border-[#9b0000] bg-[#fff4f4] text-[#9b0000]' : ''" @click="roleFilter = role.value">{{ role.label }} <span class="ml-1 rounded-full bg-[#f1f3f5] px-2 py-0.5">{{ roleCounts[role.value] || 0 }}</span></button></div></div></div>
             </div>
 
             <div class="space-y-5">
@@ -360,7 +369,7 @@ const importLdapUsers = () => {
                             </div>
                             <p class="mt-3 text-right text-xs font-bold text-[#9b0000]">Edit role →</p>
                         </button>
-                        <div v-if="visibleUsers.length === 0" class="rounded-[1.15rem] border border-dashed border-[#d8e7d4] px-5 py-10 text-center text-sm text-[#6f8a6b] md:col-span-2 xl:col-span-3">No users match this search or department.</div>
+                        <div v-if="visibleUsers.length === 0" class="rounded-[1.15rem] border border-dashed border-[#d8e7d4] px-5 py-10 text-center text-sm text-[#6f8a6b] md:col-span-2 xl:col-span-3">No users match the selected filters or search.</div>
                     </div>
                 </aside>
 

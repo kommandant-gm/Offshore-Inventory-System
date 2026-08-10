@@ -23,6 +23,7 @@ class InventoryItemController extends Controller
 
         $categories = Category::query()
             ->whereIn('type', ['asset', 'both'])
+            ->where('active', true)
             ->orderBy('name')
             ->get();
 

@@ -14,6 +14,8 @@ use App\Models\InventoryTransaction;
 use App\Models\Location;
 use App\Models\Stocktake;
 use App\Models\User;
+use App\Models\Branch;
+use App\Support\AccessMatrix;
 use App\Services\InventoryLocationBalanceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -153,7 +155,11 @@ class InventoryFlowTest extends TestCase
      */
     private function seedInventoryFixture(float $openingStock): array
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'role' => 'supervisor',
+            'permissions' => AccessMatrix::permissionsForRole('supervisor'),
+        ]);
+        $user->branches()->attach(Branch::where('code', 'MIRI')->firstOrFail(), ['access_level' => 'edit', 'is_default' => true]);
 
         $category = Category::query()->create([
             'code' => 'CAT-001',

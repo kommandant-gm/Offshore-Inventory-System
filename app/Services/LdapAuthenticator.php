@@ -49,7 +49,13 @@ class LdapAuthenticator
                 return null;
             }
 
-            return $this->syncUser($entry, $username);
+            return $this->syncUser(
+                $entry,
+                $username,
+                null,
+                Branch::query()->where('code', 'KL-IT')->value('id'),
+                Branch::query()->where('code', 'MIRI')->value('id'),
+            );
         } finally {
             @ldap_unbind($connection);
         }
@@ -139,6 +145,7 @@ class LdapAuthenticator
             $existingUsers = User::query()->get(['id', 'username', 'email'])->keyBy(fn (User $user) => Str::lower((string) $user->username));
             $existingByEmail = User::query()->get(['id', 'username', 'email'])->filter(fn (User $user) => filled($user->email))->keyBy(fn (User $user) => Str::lower((string) $user->email));
             $klBranchId = Branch::query()->where('code', 'KL-IT')->value('id');
+            $miriBranchId = Branch::query()->where('code', 'MIRI')->value('id');
 
             for ($index = 0; $index < $result['total']; $index++) {
                 $entry = $entries[$index] ?? null;
@@ -152,7 +159,7 @@ class LdapAuthenticator
                     $existing?->update(['directory_active' => false]);
                     continue;
                 }
-                $this->syncUser($entry, $directoryUsername ?: $email, $existing, $klBranchId);
+                $this->syncUser($entry, $directoryUsername ?: $email, $existing, $klBranchId, $miriBranchId);
                 $result['synced']++;
                 $existing ? $result['updated']++ : $result['created']++;
             }
@@ -256,7 +263,7 @@ class LdapAuthenticator
         return $entries[0];
     }
 
-    protected function syncUser(array $entry, string $submittedUsername, ?User $existingUser = null, ?int $klBranchId = null): User
+    protected function syncUser(array $entry, string $submittedUsername, ?User $existingUser = null, ?int $klBranchId = null, ?int $miriBranchId = null): User
     {
         $directoryUsername = Str::lower($this->attribute($entry, 'samaccountname')
             ?: $this->attribute($entry, 'userprincipalname')
@@ -294,10 +301,12 @@ class LdapAuthenticator
         $user->email_verified_at ??= now();
         $user->save();
 
-        if (($isNew ?? false) && $user->branches()->count() === 0) {
-            if ($klBranchId) {
-                $user->branches()->attach($klBranchId, ['access_level' => 'edit', 'is_default' => true]);
-            }
+        if ($user->role === 'miri' && $miriBranchId) {
+            $user->branches()->sync([
+                $miriBranchId => ['access_level' => 'edit', 'is_default' => true],
+            ]);
+        } elseif (($isNew ?? false) && $user->branches()->count() === 0 && $klBranchId) {
+            $user->branches()->attach($klBranchId, ['access_level' => 'edit', 'is_default' => true]);
         }
 
         return $user;

@@ -43,7 +43,7 @@ class BranchIsolationTest extends TestCase
     public function test_miri_user_cannot_list_or_open_kl_inventory(): void
     {
         [$miri, $kl] = [Branch::where('code', 'MIRI')->firstOrFail(), Branch::where('code', 'KL-IT')->firstOrFail()];
-        $user = User::factory()->create(['username' => 'mariesim', 'department' => 'PROJECT', 'role' => 'viewer', 'permissions' => AccessMatrix::permissionsForRole('viewer')]);
+        $user = User::factory()->create(['username' => 'mariesim', 'department' => 'PROJECT', 'role' => 'miri', 'permissions' => AccessMatrix::permissionsForRole('miri')]);
         $user->branches()->attach($miri, ['access_level' => 'read', 'is_default' => true]);
         $category = Category::create(['code' => 'TEST', 'name' => 'Test', 'type' => CategoryType::Asset, 'active' => true]);
         $miriLocation = Location::withoutGlobalScopes()->create(['branch_id' => $miri->id, 'code' => 'MRI-T', 'name' => 'Miri Test', 'type' => LocationType::Yard, 'active' => true]);
@@ -66,6 +66,19 @@ class BranchIsolationTest extends TestCase
         $this->actingAs($user)->patch(route('branches.activate'), ['branch_id' => $miri->id])->assertRedirect();
         $this->assertFalse($user->canEdit('assets'));
         $this->actingAs($user)->get(route('assets.create'))->assertForbidden();
+    }
+
+    public function test_miri_inventory_role_can_open_stock_item_and_cog_creation_in_miri(): void
+    {
+        $miri = Branch::where('code', 'MIRI')->firstOrFail();
+        $user = User::factory()->create([
+            'role' => 'miri',
+            'permissions' => AccessMatrix::permissionsForRole('miri'),
+        ]);
+        $user->branches()->attach($miri, ['access_level' => 'edit', 'is_default' => true]);
+
+        $this->actingAs($user)->get(route('assets.create'))->assertOk();
+        $this->actingAs($user)->get(route('cogs.create'))->assertOk();
     }
 
     private function item(int $branchId, int $locationId, string $code): array

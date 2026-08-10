@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Branch;
 use App\Models\User;
+use App\Support\AccessMatrix;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,7 +21,8 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => 'miri', 'permissions' => AccessMatrix::permissionsForRole('miri')]);
+        $user->branches()->attach(Branch::where('code', 'MIRI')->firstOrFail(), ['access_level' => 'edit', 'is_default' => true]);
 
         $response = $this->post('/login', [
             'username' => $user->username,
@@ -54,7 +56,7 @@ class AuthenticationTest extends TestCase
     }
     public function test_kl_user_is_sent_to_it_dashboard_after_login(): void
     {
-        $user = User::factory()->create(['username' => 'kl.user']);
+        $user = User::factory()->create(['username' => 'kl.user', 'role' => 'it', 'permissions' => AccessMatrix::permissionsForRole('it')]);
         $kl = Branch::query()->where('code', 'KL-IT')->firstOrFail();
         $user->branches()->attach($kl, ['access_level' => 'edit', 'is_default' => true]);
 
@@ -78,7 +80,8 @@ class AuthenticationTest extends TestCase
 
     public function test_miri_allowlisted_user_can_login_regardless_of_department(): void
     {
-        $user = User::factory()->create(['username' => 'mariesim', 'department' => 'PROJECT']);
+        $user = User::factory()->create(['username' => 'mariesim', 'department' => 'PROJECT', 'role' => 'miri', 'permissions' => AccessMatrix::permissionsForRole('miri')]);
+        $user->branches()->attach(Branch::where('code', 'MIRI')->firstOrFail(), ['access_level' => 'read', 'is_default' => true]);
 
         $this->post('/login', ['username' => 'mariesim', 'password' => 'password'])
             ->assertRedirect(route('dashboard', absolute: false));

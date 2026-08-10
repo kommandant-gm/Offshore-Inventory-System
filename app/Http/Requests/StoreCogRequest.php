@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCogRequest extends FormRequest
 {
@@ -31,7 +32,7 @@ class StoreCogRequest extends FormRequest
             'checked_by_designation' => ['nullable', 'string', 'max:255'],
             'remarks' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.inventory_item_id' => ['nullable', 'exists:inventory_items,id'],
+            'items.*.inventory_item_id' => ['nullable', Rule::exists('inventory_items', 'id')->where(fn ($query) => $query->where('branch_id', app(\App\Services\BranchContext::class)->id($this->user())))],
             'items.*.qty' => ['required', 'numeric', 'gt:0'],
             'items.*.unit' => ['nullable', 'string', 'max:50'],
             'items.*.part_no' => ['nullable', 'string', 'max:255'],

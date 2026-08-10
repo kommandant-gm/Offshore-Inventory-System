@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\LocationType;
 use App\Models\Location;
+use App\Models\Branch;
 use App\Models\User;
+use App\Support\AccessMatrix;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,7 +16,8 @@ class LocationManagementTest extends TestCase
 
     public function test_location_code_and_internal_type_are_generated_automatically(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => 'miri', 'permissions' => AccessMatrix::permissionsForRole('miri')]);
+        $user->branches()->attach(Branch::where('code', 'MIRI')->firstOrFail(), ['access_level' => 'edit', 'is_default' => true]);
 
         $response = $this->actingAs($user)->post(route('locations.store'), [
             'name' => 'Main Store',
@@ -35,7 +38,8 @@ class LocationManagementTest extends TestCase
 
     public function test_updating_a_location_keeps_its_generated_code_and_internal_type(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => 'miri', 'permissions' => AccessMatrix::permissionsForRole('miri')]);
+        $user->branches()->attach(Branch::where('code', 'MIRI')->firstOrFail(), ['access_level' => 'edit', 'is_default' => true]);
         $location = Location::query()->create([
             'code' => 'LOC-007',
             'name' => 'Old Name',

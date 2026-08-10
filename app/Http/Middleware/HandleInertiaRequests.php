@@ -58,7 +58,9 @@ class HandleInertiaRequests extends Middleware
                             'it_assets_edit' => $request->user()->canEdit('it_assets'),
                         ],
                         'active_branch' => $branchContext->branch($request->user())?->only(['id', 'code', 'name']),
-                        'branches' => $request->user()->branches()->orderBy('name')->get()->map(fn ($branch) => [
+                        'branches' => $request->user()->branches()
+                            ->whereIn('branches.id', $branchContext->accessibleIds($request->user()))
+                            ->orderBy('name')->get()->map(fn ($branch) => [
                             'id' => $branch->id,
                             'code' => $branch->code,
                             'name' => $branch->name,

@@ -10,6 +10,8 @@ use App\Models\InventoryItem;
 use App\Models\InventoryTransaction;
 use App\Models\Location;
 use App\Models\User;
+use App\Models\Branch;
+use App\Support\AccessMatrix;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
@@ -20,7 +22,8 @@ class InventoryImportTest extends TestCase
 
     public function test_csv_import_creates_items_and_supported_movements(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => 'miri', 'permissions' => AccessMatrix::permissionsForRole('miri')]);
+        $user->branches()->attach(Branch::where('code', 'MIRI')->firstOrFail(), ['access_level' => 'edit', 'is_default' => true]);
 
         $csv = implode("\n", [
             'report_row_no,proposed_item_code,category_name,location_name,description,uom,rack_no,opening_stock,total_received,total_issued,interloc_transfer,material_return,physical_adjustment,price_adjustment,other_misc,closing_stock,unit_price,purchase_order_no,delivery_order_no,remarks,active',
@@ -79,7 +82,8 @@ class InventoryImportTest extends TestCase
 
     public function test_csv_import_skips_existing_item_codes_on_rerun(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => 'miri', 'permissions' => AccessMatrix::permissionsForRole('miri')]);
+        $user->branches()->attach(Branch::where('code', 'MIRI')->firstOrFail(), ['access_level' => 'edit', 'is_default' => true]);
 
         $csv = implode("\n", [
             'report_row_no,proposed_item_code,category_name,location_name,description,uom,rack_no,opening_stock,total_received,total_issued,interloc_transfer,material_return,physical_adjustment,price_adjustment,other_misc,closing_stock,unit_price,purchase_order_no,delivery_order_no,remarks,active',

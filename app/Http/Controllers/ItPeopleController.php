@@ -180,12 +180,14 @@ class ItPeopleController extends Controller
         $usersByName = $directoryUsers->filter(fn (User $user) => filled($user->name))->keyBy(fn (User $user) => $this->normalise($user->name));
         $usersByUsername = $directoryUsers->filter(fn (User $user) => filled($user->username))->keyBy(fn (User $user) => $this->normalise($user->username));
         $usersByEmail = $directoryUsers->filter(fn (User $user) => filled($user->email))->keyBy(fn (User $user) => $this->normalise($user->email));
+        $usersByPersonName = $directoryUsers->filter(fn (User $user) => filled($user->name))->keyBy(fn (User $user) => $this->personNameKey($user->name));
 
-        $directoryUserFor = function (?string $name, ?string $employeeId = null, ?string $email = null) use ($links, $usersByName, $usersByUsername, $usersByEmail): ?User {
+        $directoryUserFor = function (?string $name, ?string $employeeId = null, ?string $email = null) use ($links, $usersByName, $usersByUsername, $usersByEmail, $usersByPersonName): ?User {
             return $links->get($this->normalise($name))?->user
                 ?: $usersByUsername->get($this->normalise($employeeId))
                 ?: $usersByEmail->get($this->normalise($email))
-                ?: $usersByName->get($this->normalise($name));
+                ?: $usersByName->get($this->normalise($name))
+                ?: $usersByPersonName->get($this->personNameKey($name));
         };
 
         $assignments = AssetAssignment::query()
@@ -266,6 +268,16 @@ class ItPeopleController extends Controller
                 ->filter()
                 ->unique()
                 ->values();
+            $aliases = $aliases
+                ->merge(AssetAssignment::query()->whereNotNull('assigned_to_name')->pluck('assigned_to_name')
+                    ->filter(fn ($name) => $this->personNameKey($name) === $this->personNameKey($user->name))
+                    ->map(fn ($name) => $this->normalise($name)))
+                ->merge(ItLicense::query()->whereNotNull('assigned_to')->pluck('assigned_to')
+                    ->filter(fn ($name) => $this->personNameKey($name) === $this->personNameKey($user->name))
+                    ->map(fn ($name) => $this->normalise($name)))
+                ->filter()
+                ->unique()
+                ->values();
             $assignmentQuery->where(function ($query) use ($user, $aliases) {
                 $query->whereRaw('LOWER(employee_id) = ?', [$this->normalise($user->username)])
                     ->orWhereRaw('LOWER(assigned_email) = ?', [$this->normalise($user->email)]);
@@ -319,6 +331,15 @@ class ItPeopleController extends Controller
     private function normalise(?string $value): string
     {
         return mb_strtolower(trim((string) $value));
+    }
+
+    private function personNameKey(?string $value): string
+    {
+        $value = $this->normalise($value);
+        $value = preg_replace('/\b(bin|binti|bt|b)\b/u', ' ', $value) ?: $value;
+        $value = preg_replace('/[^a-z0-9]+/u', ' ', $value) ?: $value;
+
+        return trim(preg_replace('/\s+/', ' ', $value) ?: $value);
     }
 
     private function encodeIdentity(string $identity): string

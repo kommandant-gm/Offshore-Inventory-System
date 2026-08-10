@@ -234,6 +234,16 @@ class SettingsController extends Controller
                 }
             }
 
+            if ($newRole === 'miri') {
+                $miriBranchId = DB::table('branches')->where('code', 'MIRI')->value('id');
+
+                if ($miriBranchId) {
+                    $target->branches()->sync([
+                        $miriBranchId => ['access_level' => 'edit'],
+                    ]);
+                }
+            }
+
             $user->setRawAttributes($target->getAttributes(), true);
         });
 
