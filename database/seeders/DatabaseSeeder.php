@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Support\AccessMatrix;
+use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -19,13 +20,7 @@ class DatabaseSeeder extends Seeder
     {
         $adminPermissions = AccessMatrix::permissionsForRole('admin');
 
-        User::query()
-            ->where('email', 'admin@admin.com')
-            ->delete();
-
-        User::query()
-            ->where('username', '!=', 'codex')
-            ->delete();
+        User::query()->where('email', 'admin@admin.com')->delete();
 
         User::updateOrCreate(
             ['username' => 'codex'],
@@ -38,5 +33,28 @@ class DatabaseSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        $miri = Branch::query()->where('code', 'MIRI')->firstOrFail();
+        $miriPermissions = AccessMatrix::permissionsForRole('miri');
+
+        foreach ([
+            'mariesim', 'duyan', 'patrickleong', 'leekp', 'christopher', 'alexleong',
+            'terrencelim', 'gevrina', 'dywan', 'frankypilai', 'suhaileysuhailim',
+        ] as $username) {
+            $user = User::query()->firstOrNew(['username' => $username]);
+            $user->fill([
+                'name' => str($username)->headline()->value(),
+                'email' => $user->email ?: "{$username}@local.test",
+                'role' => 'miri',
+                'permissions' => $miriPermissions,
+                'directory_active' => true,
+                'email_verified_at' => $user->email_verified_at ?: now(),
+                'password' => Hash::make('Dayang@123'),
+            ]);
+            $user->save();
+            $user->branches()->sync([
+                $miri->id => ['access_level' => 'edit', 'is_default' => true],
+            ]);
+        }
     }
 }
