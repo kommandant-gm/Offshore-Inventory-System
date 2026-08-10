@@ -73,7 +73,7 @@ const directoryDepartment = 'IT & DIGITAL';
 const selectedUserId = ref(props.users.find((user) => (user.department || '').trim().toUpperCase() === directoryDepartment)?.id ?? null);
 const permissionSearch = ref('');
 const userSearch = ref('');
-const departmentFilter = ref('IT & DIGITAL');
+const departmentFilter = ref('');
 const roleFilter = ref('');
 const directoryView = ref('cards');
 const sendingTestEmail = ref(false);

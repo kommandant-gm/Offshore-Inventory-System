@@ -20,6 +20,10 @@
     let quickSearchTimer = null;
 
     const currentUser = page.props.auth.user;
+    const isMuhdIsa = currentUser?.username?.toLowerCase() === 'muhd.isa';
+    const audioPlaying = ref(false);
+    const arsenalMode = ref(isMuhdIsa && typeof window !== 'undefined' && localStorage.getItem('arsenal.mode') === 'true');
+    const arsenalWelcomeVisible = ref(false);
     const storedSection = (key, fallback) => typeof window === 'undefined' || localStorage.getItem(key) === null
         ? fallback
         : localStorage.getItem(key) === 'true';
@@ -145,6 +149,13 @@
         notificationsOpen.value = !notificationsOpen.value;
     };
 
+    const toggleArsenalMode = () => {
+        arsenalMode.value = !arsenalMode.value;
+        localStorage.setItem('arsenal.mode', String(arsenalMode.value));
+        arsenalWelcomeVisible.value = arsenalMode.value;
+        window.dispatchEvent(new CustomEvent('arsenal-mode-change', { detail: arsenalMode.value }));
+    };
+
     const closeOverlays = (event) => {
         if (!event.target.closest('[data-topbar-search]')) {
             quickSearchOpen.value = false;
@@ -171,7 +182,7 @@
     </script>
     
     <template>
-        <div class="drawer lg:drawer-open min-h-screen font-sans antialiased bg-[linear-gradient(180deg,#ffffff_0%,#f7fcf5_100%)] text-[#234222]">
+        <div :class="['drawer lg:drawer-open min-h-screen font-sans antialiased bg-[linear-gradient(180deg,#ffffff_0%,#f7fcf5_100%)] text-[#234222]', { 'arsenal-mode': arsenalMode }]">
             <input id="my-drawer-2" type="checkbox" class="drawer-toggle" v-model="isSidebarOpen" />
             
             <div class="drawer-content relative flex min-h-screen flex-col overflow-hidden">
@@ -266,6 +277,48 @@
                 </main>
 
                 <AssistantWidget v-if="currentUser?.can?.assistant_read && currentUser?.active_branch?.code !== 'KEMAMAN'" />
+
+                <div v-if="isMuhdIsa" class="fixed bottom-5 right-5 z-50 w-72 rounded-2xl border border-[#d8e7d4] bg-white p-3 shadow-[0_18px_45px_rgba(35,66,34,0.20)]">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <p class="text-sm font-bold text-[#234222]">Personal audio</p>
+                            <p class="text-[11px] text-[#6f8a6b]">Only visible to muhd.isa</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button
+                                type="button"
+                                class="rounded-lg bg-[#4f9f4a] px-3 py-2 text-xs font-bold text-white hover:bg-[#3c8a39]"
+                                @click="audioPlaying = !audioPlaying"
+                            >
+                                {{ audioPlaying ? 'Stop' : 'Play' }}
+                            </button>
+                            <button
+                                type="button"
+                                class="rounded-lg border px-3 py-2 text-xs font-bold transition"
+                                :class="arsenalMode ? 'border-[#db0007] bg-[#db0007] text-white' : 'border-[#d8e7d4] bg-white text-[#234222] hover:border-[#db0007] hover:text-[#db0007]'"
+                                @click="toggleArsenalMode"
+                            >
+                                Arsenal {{ arsenalMode ? 'ON' : 'OFF' }}
+                            </button>
+                        </div>
+                    </div>
+                    <iframe
+                        v-if="audioPlaying"
+                        class="mt-3 h-36 w-full rounded-lg"
+                        src="https://www.youtube.com/embed/_DivH1dWGbw?list=RD_DivH1dWGbw&start=1&autoplay=1"
+                        title="Personal audio"
+                        allow="autoplay; encrypted-media"
+                        allowfullscreen
+                    />
+                </div>
+
+                <div v-if="isMuhdIsa && arsenalWelcomeVisible" class="fixed inset-0 z-[60] flex items-center justify-center bg-[#071d49]/45 p-5" @click.self="arsenalWelcomeVisible = false">
+                    <div class="w-full max-w-md rounded-3xl border-4 border-[#db0007] bg-white p-8 text-center shadow-2xl">
+                        <p class="text-xs font-black uppercase tracking-[0.3em] text-[#db0007]">Arsenal Mode</p>
+                        <h2 class="mt-4 text-3xl font-black text-[#071d49]">Welcome Isa, Manager of Arsenal FC</h2>
+                        <button type="button" class="mt-6 rounded-xl bg-[#db0007] px-5 py-3 text-sm font-bold text-white hover:bg-[#b80006]" @click="arsenalWelcomeVisible = false">Continue</button>
+                    </div>
+                </div>
             </div> 
             
             <div class="drawer-side z-40">

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ArrowRightIcon, PlusIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -20,6 +20,11 @@ const props = defineProps({
 });
 
 const page = usePage();
+const isMuhdIsa = page.props.auth?.user?.username?.toLowerCase() === 'muhd.isa';
+const arsenalMode = ref(isMuhdIsa && typeof window !== 'undefined' && localStorage.getItem('arsenal.mode') === 'true');
+const updateArsenalMode = (event) => { arsenalMode.value = Boolean(event.detail); };
+onMounted(() => window.addEventListener('arsenal-mode-change', updateArsenalMode));
+onBeforeUnmount(() => window.removeEventListener('arsenal-mode-change', updateArsenalMode));
 const canReadMovements = computed(() => page.props.auth?.user?.can?.movements_read);
 const canEditMovements = computed(() => page.props.auth?.user?.can?.movements_edit);
 const palette = ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#06b6d4', '#f97316'];
@@ -61,8 +66,8 @@ const cards = computed(() => [
 <template>
     <Head title="Miri Inventory Dashboard" />
     <AuthenticatedLayout>
-        <section class="dashboard-shell space-y-6">
-            <header class="relative isolate overflow-hidden rounded-[1.8rem] bg-[linear-gradient(110deg,#064e3b_0%,#0f766e_58%,#155e75_100%)] px-6 py-7 text-white shadow-[0_24px_70px_rgba(6,78,59,.22)] sm:px-9 sm:py-9">
+        <section :class="['dashboard-shell space-y-6', { 'arsenal-dashboard': arsenalMode }]">
+            <header :class="arsenalMode ? 'bg-[linear-gradient(110deg,#071d49_0%,#123b78_58%,#db0007_100%)] shadow-[0_24px_70px_rgba(219,0,7,.28)]' : 'bg-[linear-gradient(110deg,#064e3b_0%,#0f766e_58%,#155e75_100%)] shadow-[0_24px_70px_rgba(6,78,59,.22)]'" class="relative isolate overflow-hidden rounded-[1.8rem] px-6 py-7 text-white sm:px-9 sm:py-9">
                 <div class="pointer-events-none absolute -right-20 -top-28 h-80 w-80 rounded-full bg-cyan-300/20 blur-3xl"></div>
                 <div class="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-emerald-300/15 blur-3xl"></div>
                 <div class="relative grid items-end gap-8 lg:grid-cols-[minmax(0,1fr),22rem]">
@@ -144,5 +149,13 @@ const cards = computed(() => [
 .panel-title { margin-top: .25rem; font-size: 1.25rem; line-height: 1.75rem; font-weight: 800; color: #1e293b; }
 .panel-note { margin-top: .25rem; font-size: .75rem; line-height: 1.25rem; color: #64748b; }
 .empty-state { border: 1px dashed #cbd5e1; border-radius: .75rem; padding: 2rem; text-align: center; font-size: .875rem; color: #64748b; }
+.arsenal-dashboard :deep(.panel) { border-color: #efb4b7; box-shadow: 0 12px 35px rgba(219,0,7,.09); }
+.arsenal-dashboard :deep(.panel-title) { color: #071d49; }
+.arsenal-dashboard :deep(.panel-note), .arsenal-dashboard :deep(.text-slate-400), .arsenal-dashboard :deep(.text-slate-500), .arsenal-dashboard :deep(.text-slate-600) { color: #52617a; }
+.arsenal-dashboard :deep(.text-slate-700), .arsenal-dashboard :deep(.text-slate-800), .arsenal-dashboard :deep(.text-slate-900) { color: #071d49; }
+.arsenal-dashboard :deep(.border-slate-100), .arsenal-dashboard :deep(.border-slate-200) { border-color: #f0c9cb; }
+.arsenal-dashboard :deep(.bg-slate-100), .arsenal-dashboard :deep(.bg-slate-50) { background-color: #fff1f2; }
+.arsenal-dashboard :deep(.bg-emerald-50), .arsenal-dashboard :deep(.bg-violet-50), .arsenal-dashboard :deep(.bg-blue-50), .arsenal-dashboard :deep(.bg-teal-50) { background-color: #fff1f2; }
+.arsenal-dashboard :deep(.text-emerald-600), .arsenal-dashboard :deep(.text-emerald-700), .arsenal-dashboard :deep(.text-violet-600), .arsenal-dashboard :deep(.text-violet-700), .arsenal-dashboard :deep(.text-blue-600), .arsenal-dashboard :deep(.text-blue-700) { color: #db0007; }
 @media (min-width: 640px) { .panel { padding: 1.5rem; } }
 </style>

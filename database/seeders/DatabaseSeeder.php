@@ -45,6 +45,7 @@ class DatabaseSeeder extends Seeder
             $user->fill([
                 'name' => str($username)->headline()->value(),
                 'email' => $user->email ?: "{$username}@local.test",
+                'department' => 'HQ-Inventory',
                 'role' => 'miri',
                 'permissions' => $miriPermissions,
                 'directory_active' => true,
