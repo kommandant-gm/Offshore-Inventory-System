@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import AssetRepairModal from '@/Components/AssetRepairModal.vue';
 import ItLicenseDashboard from '@/Components/ItLicenseDashboard.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 const props = defineProps({
   title: String,
@@ -19,6 +19,11 @@ const props = defineProps({
 
 const page = usePage();
 const canEdit = computed(() => page.props.auth?.user?.can?.it_assets_edit);
+const isMuhdIsa = page.props.auth?.user?.username?.toLowerCase() === 'muhd.isa';
+const arsenalMode = ref(isMuhdIsa && page.props.auth?.user?.active_branch?.code === 'KL-IT' && typeof window !== 'undefined' && localStorage.getItem('arsenal.mode') === 'true');
+const updateArsenalMode = (event) => { arsenalMode.value = isMuhdIsa && page.props.auth?.user?.active_branch?.code === 'KL-IT' && Boolean(event.detail); };
+onMounted(() => window.addEventListener('arsenal-mode-change', updateArsenalMode));
+onBeforeUnmount(() => window.removeEventListener('arsenal-mode-change', updateArsenalMode));
 const rowItems = computed(() => Array.isArray(props.rows) ? props.rows : (props.rows?.data ?? []));
 const repairModalOpen = ref(false);
 const activeDashboard = ref('assets');
@@ -102,12 +107,12 @@ const pie = computed(() => {
   }).join(',')})`;
 });
 </script>
-<template><Head :title="title"/><AuthenticatedLayout><section class="space-y-6" :class="{'dashboard-shell':charts}">
+<template><Head :title="title"/><AuthenticatedLayout><section class="space-y-6" :class="{'dashboard-shell':charts, 'arsenal-dashboard': arsenalMode}">
   <nav v-if="charts" class="inline-flex rounded-2xl border border-[#d8e7d4] bg-white p-1.5 shadow-[0_8px_28px_rgba(39,89,45,.06)]" aria-label="IT dashboard view">
     <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'assets' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'assets'" @click="activeDashboard='assets'">Assets</button>
     <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'licenses' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'licenses'" @click="activeDashboard='licenses'">Licences</button>
   </nav>
-  <header v-if="charts" class="relative isolate overflow-hidden rounded-[1.75rem] bg-[linear-gradient(120deg,#064e3b_0%,#0f766e_58%,#115e59_100%)] px-5 py-6 text-white shadow-[0_24px_70px_rgba(6,78,59,.22)] sm:px-8 sm:py-8 lg:px-10">
+  <header v-if="charts" :class="arsenalMode ? 'bg-[linear-gradient(120deg,#071d49_0%,#123b78_58%,#db0007_100%)] shadow-[0_24px_70px_rgba(219,0,7,.28)]' : 'bg-[linear-gradient(120deg,#064e3b_0%,#0f766e_58%,#115e59_100%)] shadow-[0_24px_70px_rgba(6,78,59,.22)]'" class="relative isolate overflow-hidden rounded-[1.75rem] px-5 py-6 text-white sm:px-8 sm:py-8 lg:px-10">
     <div class="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-cyan-300/20 blur-2xl"></div>
     <div class="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-emerald-300/15 blur-3xl"></div>
     <div class="relative grid items-end gap-8 lg:grid-cols-[minmax(0,1fr),22rem]">
@@ -257,4 +262,9 @@ const pie = computed(() => {
 .dashboard-shell .font-extrabold {
   font-weight: 700;
 }
+.arsenal-dashboard :deep(.border-\[\#d8e7d4\]), .arsenal-dashboard :deep(.border-\[\#d9e8d5\]) { border-color: #efb4b7; }
+.arsenal-dashboard :deep(.text-\[\#234222\]), .arsenal-dashboard :deep(.text-\[\#173a21\]), .arsenal-dashboard :deep(.text-slate-800), .arsenal-dashboard :deep(.text-slate-700) { color: #071d49; }
+.arsenal-dashboard :deep(.text-\[\#4f9f4a\]), .arsenal-dashboard :deep(.text-blue-500), .arsenal-dashboard :deep(.text-indigo-500), .arsenal-dashboard :deep(.text-emerald-600) { color: #db0007; }
+.arsenal-dashboard :deep(.bg-white) { background-color: #fff; }
+.arsenal-dashboard :deep(.bg-emerald-50), .arsenal-dashboard :deep(.bg-blue-50), .arsenal-dashboard :deep(.bg-indigo-50) { background-color: #fff1f2; }
 </style>

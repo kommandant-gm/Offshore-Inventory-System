@@ -21,8 +21,9 @@
 
     const currentUser = page.props.auth.user;
     const isMuhdIsa = currentUser?.username?.toLowerCase() === 'muhd.isa';
+    const isArsenalContext = computed(() => isMuhdIsa && currentUser?.active_branch?.code === 'KL-IT');
     const audioPlaying = ref(false);
-    const arsenalMode = ref(isMuhdIsa && typeof window !== 'undefined' && localStorage.getItem('arsenal.mode') === 'true');
+    const arsenalMode = ref(isArsenalContext.value && typeof window !== 'undefined' && localStorage.getItem('arsenal.mode') === 'true');
     const arsenalWelcomeVisible = ref(false);
     const storedSection = (key, fallback) => typeof window === 'undefined' || localStorage.getItem(key) === null
         ? fallback
@@ -150,6 +151,7 @@
     };
 
     const toggleArsenalMode = () => {
+        if (!isArsenalContext.value) return;
         arsenalMode.value = !arsenalMode.value;
         localStorage.setItem('arsenal.mode', String(arsenalMode.value));
         arsenalWelcomeVisible.value = arsenalMode.value;
@@ -187,7 +189,7 @@
             
             <div class="drawer-content relative flex min-h-screen flex-col overflow-hidden">
                 
-                <div class="navbar sticky top-0 z-30 h-auto min-h-20 w-full border-b border-[#d8e7d4] bg-white px-4 py-3 sm:px-6 lg:px-8">
+                <div :class="['navbar sticky top-0 z-30 h-auto min-h-20 w-full border-b bg-white px-4 py-3 sm:px-6 lg:px-8', arsenalMode ? 'border-[#db0007]' : 'border-[#d8e7d4]']">
                     <div class="flex-none lg:hidden mr-4">
                         <label for="my-drawer-2" class="btn btn-square border border-[#d8e7d4] bg-white text-[#2f6f2d] shadow-sm hover:bg-[#eef8ea]">
                             <Bars3Icon class="w-6 h-6" />
@@ -256,6 +258,16 @@
                                 </Link>
                             </div>
                         </div>
+
+                        <button
+                            v-if="isArsenalContext"
+                            type="button"
+                            class="rounded-xl border px-3 py-2 text-xs font-black transition"
+                            :class="arsenalMode ? 'border-[#db0007] bg-[#db0007] text-white shadow-md' : 'border-[#d8e7d4] bg-white text-[#071d49] hover:border-[#db0007] hover:text-[#db0007]'"
+                            @click="toggleArsenalMode"
+                        >
+                            Arsenal {{ arsenalMode ? 'ON' : 'OFF' }}
+                        </button>
     
                     </div>
                 </div>
@@ -284,23 +296,13 @@
                             <p class="text-sm font-bold text-[#234222]">Personal audio</p>
                             <p class="text-[11px] text-[#6f8a6b]">Only visible to muhd.isa</p>
                         </div>
-                        <div class="flex gap-2">
-                            <button
-                                type="button"
-                                class="rounded-lg bg-[#4f9f4a] px-3 py-2 text-xs font-bold text-white hover:bg-[#3c8a39]"
-                                @click="audioPlaying = !audioPlaying"
-                            >
-                                {{ audioPlaying ? 'Stop' : 'Play' }}
-                            </button>
-                            <button
-                                type="button"
-                                class="rounded-lg border px-3 py-2 text-xs font-bold transition"
-                                :class="arsenalMode ? 'border-[#db0007] bg-[#db0007] text-white' : 'border-[#d8e7d4] bg-white text-[#234222] hover:border-[#db0007] hover:text-[#db0007]'"
-                                @click="toggleArsenalMode"
-                            >
-                                Arsenal {{ arsenalMode ? 'ON' : 'OFF' }}
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            class="rounded-lg bg-[#4f9f4a] px-3 py-2 text-xs font-bold text-white hover:bg-[#3c8a39]"
+                            @click="audioPlaying = !audioPlaying"
+                        >
+                            {{ audioPlaying ? 'Stop' : 'Play' }}
+                        </button>
                     </div>
                     <iframe
                         v-if="audioPlaying"
@@ -312,11 +314,34 @@
                     />
                 </div>
 
-                <div v-if="isMuhdIsa && arsenalWelcomeVisible" class="fixed inset-0 z-[60] flex items-center justify-center bg-[#071d49]/45 p-5" @click.self="arsenalWelcomeVisible = false">
-                    <div class="w-full max-w-md rounded-3xl border-4 border-[#db0007] bg-white p-8 text-center shadow-2xl">
-                        <p class="text-xs font-black uppercase tracking-[0.3em] text-[#db0007]">Arsenal Mode</p>
-                        <h2 class="mt-4 text-3xl font-black text-[#071d49]">Welcome Isa, Manager of Arsenal FC</h2>
-                        <button type="button" class="mt-6 rounded-xl bg-[#db0007] px-5 py-3 text-sm font-bold text-white hover:bg-[#b80006]" @click="arsenalWelcomeVisible = false">Continue</button>
+                <div v-if="isArsenalContext && arsenalWelcomeVisible" class="fixed inset-0 z-[60] flex items-center justify-center bg-[#020b1c]/75 p-5 backdrop-blur-sm" @click.self="arsenalWelcomeVisible = false">
+                    <div class="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-[#f3c969]/70 bg-[#071d49] text-white shadow-[0_30px_100px_rgba(0,0,0,.45)]">
+                        <div class="absolute inset-x-0 top-0 h-2 bg-[linear-gradient(90deg,#db0007_0%,#f3c969_50%,#db0007_100%)]" />
+                        <div class="relative h-56 overflow-hidden sm:h-64">
+                            <img src="/images/isa.png" alt="Isa in Arsenal-themed stadium artwork" class="h-full w-full object-cover object-[center_35%]" />
+                            <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,29,73,.08)_0%,rgba(7,29,73,.12)_35%,#071d49_100%)]" />
+                            <div class="absolute bottom-4 left-6 rounded-full border border-[#f3c969]/70 bg-[#071d49]/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-[#f3c969] backdrop-blur-sm">Isa's Arsenal HQ</div>
+                        </div>
+                        <div class="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full border-[28px] border-white/5" />
+                        <div class="pointer-events-none absolute -bottom-28 -left-20 h-64 w-64 rounded-full border-[28px] border-[#db0007]/20" />
+
+                        <div class="relative p-8 text-center sm:p-10">
+                            <button type="button" aria-label="Close welcome message" class="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/10 text-lg text-white/70 transition hover:bg-white/20 hover:text-white" @click="arsenalWelcomeVisible = false">×</button>
+
+                            <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#f3c969] bg-[radial-gradient(circle_at_35%_25%,#ff5055_0%,#db0007_42%,#9f0005_100%)] shadow-[0_12px_30px_rgba(219,0,7,.35)]">
+                                <span class="text-3xl font-black tracking-tight text-white">AFC</span>
+                            </div>
+                            <p class="mt-7 text-[11px] font-black uppercase tracking-[0.38em] text-[#f3c969]">Arsenal Mode Activated</p>
+                            <h2 class="mt-4 text-3xl font-black leading-tight tracking-tight sm:text-4xl">Welcome Isa,<br /><span class="text-[#ff4b50]">Manager of Arsenal FC</span></h2>
+                            <p class="mx-auto mt-4 max-w-sm text-sm leading-6 text-white/65">Your KL IT workspace is ready in Arsenal colours. Lead the day, protect the data, and keep the inventory moving.</p>
+
+                            <div class="mt-7 flex items-center justify-center gap-2">
+                                <span class="h-1.5 w-10 rounded-full bg-[#db0007]" />
+                                <span class="h-1.5 w-3 rounded-full bg-[#f3c969]" />
+                                <span class="h-1.5 w-10 rounded-full bg-[#db0007]" />
+                            </div>
+                            <button type="button" class="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#db0007] px-6 py-3 text-sm font-black uppercase tracking-[0.16em] text-white shadow-[0_12px_25px_rgba(219,0,7,.30)] transition hover:-translate-y-0.5 hover:bg-[#f01820]" @click="arsenalWelcomeVisible = false">Enter the Dashboard <span aria-hidden="true">→</span></button>
+                        </div>
                     </div>
                 </div>
             </div> 

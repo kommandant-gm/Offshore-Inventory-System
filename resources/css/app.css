@@ -36,4 +36,13 @@
     ::placeholder {
         color: #7f9a7a;
     }
+
+    .arsenal-mode .drawer-side aside {
+        border-color: #db0007;
+        box-shadow: 0 18px 45px rgba(219, 0, 7, .14);
+    }
+
+    .arsenal-mode .drawer-side {
+        background: linear-gradient(180deg, #ffffff 0%, #fff1f2 100%);
+    }
 }

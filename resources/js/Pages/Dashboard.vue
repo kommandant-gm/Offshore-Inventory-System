@@ -21,8 +21,9 @@ const props = defineProps({
 
 const page = usePage();
 const isMuhdIsa = page.props.auth?.user?.username?.toLowerCase() === 'muhd.isa';
-const arsenalMode = ref(isMuhdIsa && typeof window !== 'undefined' && localStorage.getItem('arsenal.mode') === 'true');
-const updateArsenalMode = (event) => { arsenalMode.value = Boolean(event.detail); };
+const isKlItContext = page.props.auth?.user?.active_branch?.code === 'KL-IT';
+const arsenalMode = ref(isMuhdIsa && isKlItContext && typeof window !== 'undefined' && localStorage.getItem('arsenal.mode') === 'true');
+const updateArsenalMode = (event) => { arsenalMode.value = isMuhdIsa && isKlItContext && Boolean(event.detail); };
 onMounted(() => window.addEventListener('arsenal-mode-change', updateArsenalMode));
 onBeforeUnmount(() => window.removeEventListener('arsenal-mode-change', updateArsenalMode));
 const canReadMovements = computed(() => page.props.auth?.user?.can?.movements_read);
