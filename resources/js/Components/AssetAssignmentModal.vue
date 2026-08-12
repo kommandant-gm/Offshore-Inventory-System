@@ -28,6 +28,7 @@ watch(() => form.user_id, (id) => {
   form.assigned_to_name = user.name;
   form.employee_id = user.employee_id || '';
   form.assigned_email = user.email || '';
+  form.department = user.department || '';
 });
 
 const submit = () => form.post(route('it-assets.checkout', props.asset.id), {

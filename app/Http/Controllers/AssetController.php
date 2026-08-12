@@ -341,12 +341,13 @@ class AssetController extends Controller
         return User::query()
             ->when($branchId, fn ($query) => $query->whereHas('branches', fn ($branch) => $branch->where('branches.id', $branchId)))
             ->orderBy('name')
-            ->get(['id', 'name', 'username', 'email'])
+            ->get(['id', 'name', 'username', 'email', 'department'])
             ->map(fn (User $user) => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'employee_id' => $user->username,
                 'email' => $user->email,
+                'department' => $user->department,
             ])->all();
     }
 

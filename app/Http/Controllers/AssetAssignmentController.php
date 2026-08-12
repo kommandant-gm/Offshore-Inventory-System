@@ -78,7 +78,7 @@ class AssetAssignmentController extends Controller
                 'assigned_to_name' => $selectedUser?->name ?? $data['assigned_to_name'],
                 'assigned_email' => $data['assigned_email'],
                 'employee_id' => $selectedUser?->username ?? ($data['employee_id'] ?? null),
-                'department' => $data['department'] ?? null,
+                'department' => $data['department'] ?: $selectedUser?->department,
                 'assigned_at' => $data['assigned_at'],
                 'assigned_by' => $request->user()->id,
                 'remarks' => $data['remarks'] ?? null,
