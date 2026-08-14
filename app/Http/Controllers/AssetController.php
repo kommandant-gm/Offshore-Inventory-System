@@ -284,6 +284,7 @@ class AssetController extends Controller
                 'purchase_year' => $asset->purchase_year,
                 'current_location_id' => $asset->current_location_id,
                 'storage_position' => $asset->storage_position,
+                'bag' => $asset->bag,
                 'current_status' => $asset->current_status->value,
                 'current_condition' => $asset->current_condition?->value,
                 'acquisition_date' => $asset->acquisition_date?->format('Y-m-d'),

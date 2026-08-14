@@ -27,6 +27,7 @@ class ItLicense extends Model
         'renewal_cost',
         'supplier',
         'purchase_reference',
+        'lifecycle_status',
         'active',
         'remarks',
     ];
@@ -47,6 +48,10 @@ class ItLicense extends Model
 
     public function status(): string
     {
+        if ($this->lifecycle_status === 'end_of_life') {
+            return 'end_of_life';
+        }
+
         if (! $this->active) {
             return 'inactive';
         }

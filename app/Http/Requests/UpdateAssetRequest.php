@@ -26,6 +26,7 @@ class UpdateAssetRequest extends FormRequest
             'operating_system' => ['nullable', 'string', 'max:255'],
             'purchase_year' => ['nullable', 'integer', 'min:1900', 'max:'.(now()->year + 1)],
             'storage_position' => ['nullable', 'string', 'max:255'],
+            'bag' => ['nullable', Rule::in(['asus_bag', 'dell_bag', 'others'])],
             'serial_no' => ['nullable', 'string', 'max:255'],
             'year' => ['nullable', 'string', 'max:50'],
             'ownership' => ['nullable', 'string', 'max:255'],

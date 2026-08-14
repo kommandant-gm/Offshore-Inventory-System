@@ -7,7 +7,7 @@ const props = defineProps({ license: Object });
 const page = usePage();
 const canEdit = computed(() => page.props.auth?.user?.can?.it_assets_edit);
 const label = (value) => value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
-const statusStyles = { active:'border-emerald-200 bg-emerald-50 text-emerald-700', expiring_soon:'border-amber-200 bg-amber-50 text-amber-700', expired:'border-red-200 bg-red-50 text-red-700', inactive:'border-slate-200 bg-slate-100 text-slate-600' };
+const statusStyles = { active:'border-emerald-200 bg-emerald-50 text-emerald-700', expiring_soon:'border-amber-200 bg-amber-50 text-amber-700', expired:'border-red-200 bg-red-50 text-red-700', inactive:'border-slate-200 bg-slate-100 text-slate-600', end_of_life:'border-violet-200 bg-violet-50 text-violet-700' };
 const formatDate = (date) => date ? new Intl.DateTimeFormat('en-MY', { day:'2-digit', month:'short', year:'numeric' }).format(new Date(`${date}T00:00:00`)) : '—';
 const money = (value) => value === null || value === '' ? '—' : new Intl.NumberFormat('en-MY', { style:'currency', currency:'MYR' }).format(Number(value));
 const details = computed(() => [

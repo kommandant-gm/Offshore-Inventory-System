@@ -7,7 +7,7 @@ const props = defineProps({ types: Array });
 const form = useForm({
   license_code: '', software_name: '', vendor: '', license_type: props.types[0]?.value ?? 'subscription',
   license_key: '', seats_total: 1, seats_assigned: 0, assigned_to: '', department: '', purchase_date: '',
-  expiry_date: '', auto_renew: false, renewal_cost: '', supplier: '', purchase_reference: '', active: true, remarks: '',
+  expiry_date: '', auto_renew: false, renewal_cost: '', supplier: '', purchase_reference: '', lifecycle_status: 'active', active: true, remarks: '',
 });
 const submit = () => form.post(route('it-licenses.store'));
 </script>

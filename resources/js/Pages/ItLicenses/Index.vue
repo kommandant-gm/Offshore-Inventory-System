@@ -25,6 +25,7 @@ const statusStyles = {
   expiring_soon: 'border-amber-200 bg-amber-50 text-amber-700',
   expired: 'border-red-200 bg-red-50 text-red-700',
   inactive: 'border-slate-200 bg-slate-100 text-slate-600',
+  end_of_life: 'border-violet-200 bg-violet-50 text-violet-700',
 };
 const formatDate = (date) => date ? new Intl.DateTimeFormat('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${date}T00:00:00`)) : 'No expiry';
 </script>
@@ -102,7 +103,7 @@ const formatDate = (date) => date ? new Intl.DateTimeFormat('en-MY', { day: '2-d
         <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Search</span><input v-model.trim="form.search" type="search" class="w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]" placeholder="Licence ID, product, vendor or owner" /></label>
           <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Type</span><CustomSelect v-model="form.type" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">All types</option><option v-for="type in types" :key="type.value" :value="type.value">{{ type.label }}</option></CustomSelect></label>
-          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Status</span><CustomSelect v-model="form.status" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">All statuses</option><option value="active">Active</option><option value="expiring_soon">Expiring soon</option><option value="expired">Expired</option><option value="inactive">Inactive</option></CustomSelect></label>
+          <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Status</span><CustomSelect v-model="form.status" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">All statuses</option><option value="active">Active</option><option value="expiring_soon">Expiring soon</option><option value="expired">Expired</option><option value="inactive">Inactive</option><option value="end_of_life">End of Life</option></CustomSelect></label>
           <label><span class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]">Department</span><CustomSelect v-model="form.department" class="w-full rounded-xl border-[#d8e7d4] text-sm"><option value="">All departments</option><option v-for="department in departments" :key="department" :value="department">{{ department }}</option></CustomSelect></label>
         </div>
       </form>

@@ -4,10 +4,12 @@ import AssetRepairModal from '@/Components/AssetRepairModal.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({ asset: Object, categories: Array, locations: Array, statuses: Array, conditions: Array });
 const form = useForm({ ...props.asset });
+const isLaptop = computed(() => props.categories.find((category) => String(category.id) === String(form.category_id))?.name?.trim().toLowerCase() === 'laptop');
+watch(isLaptop, (value) => { if (!value) form.bag = ''; });
 const repairOpen = ref(false);
 const submit = () => form.patch(route('it-assets.update', props.asset.id));
 const returnFromRepair = () => {
@@ -29,8 +31,9 @@ const returnFromRepair = () => {
           <span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">{{ field.l }}</span><input v-model="form[field.k]" :type="field.t || 'text'" class="input input-bordered" /><InputError :message="form.errors[field.k]" />
         </label>
         <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Category *</span><CustomSelect v-model="form.category_id" class="select select-bordered"><option v-for="x in categories" :key="x.id" :value="x.id">{{ x.name }}</option></CustomSelect><InputError :message="form.errors.category_id" /></label>
+        <label v-if="isLaptop" class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Laptop Bag</span><CustomSelect v-model="form.bag" class="select select-bordered"><option value="">None</option><option value="asus_bag">Asus Bag (Set)</option><option value="dell_bag">Dell Bag (Set)</option><option value="others">Others</option></CustomSelect><InputError :message="form.errors.bag" /></label>
         <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Location</span><CustomSelect v-model="form.current_location_id" class="select select-bordered"><option value="">None</option><option v-for="x in locations" :key="x.id" :value="x.id">{{ x.code }} - {{ x.name }}</option></CustomSelect><InputError :message="form.errors.current_location_id" /></label>
-        <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Status</span><CustomSelect v-model="form.current_status" disabled class="select select-bordered"><option v-for="x in statuses" :key="x.value" :value="x.value">{{ x.label }}</option></CustomSelect><span class="mt-1 text-xs text-[#7f9a7a]">Use Checkout, Check in, or the Repairs page to change lifecycle status.</span><InputError :message="form.errors.current_status" /></label>
+        <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Status</span><CustomSelect v-model="form.current_status" class="select select-bordered"><option v-for="x in statuses" :key="x.value" :value="x.value">{{ x.label }}</option></CustomSelect><span class="mt-1 text-xs text-[#7f9a7a]">Use the workflow actions for checkout, check-in, and repairs. Other lifecycle statuses can be set here.</span><InputError :message="form.errors.current_status" /></label>
         <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Condition</span><CustomSelect v-model="form.current_condition" class="select select-bordered"><option value="">None</option><option v-for="x in conditions" :key="x.value" :value="x.value">{{ x.label }}</option></CustomSelect><InputError :message="form.errors.current_condition" /></label>
         <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Active</span><CustomSelect v-model="form.active" class="select select-bordered"><option :value="true">Active</option><option :value="false">Inactive</option></CustomSelect><InputError :message="form.errors.active" /></label>
         <label class="form-control md:col-span-2 lg:col-span-3"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Remarks</span><textarea v-model="form.remarks" class="textarea textarea-bordered"></textarea><InputError :message="form.errors.remarks" /></label>

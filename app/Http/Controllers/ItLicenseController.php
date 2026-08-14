@@ -25,7 +25,7 @@ class ItLicenseController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'type' => ['nullable', 'string', 'max:50'],
-            'status' => ['nullable', 'in:active,expiring_soon,expired,inactive'],
+            'status' => ['nullable', 'in:active,expiring_soon,expired,inactive,end_of_life'],
             'department' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -57,6 +57,7 @@ class ItLicenseController extends Controller
             'active' => $this->statusQuery(clone $all, 'active')->count(),
             'expiring_soon' => $this->statusQuery(clone $all, 'expiring_soon')->count(),
             'expired' => $this->statusQuery(clone $all, 'expired')->count(),
+            'end_of_life' => $this->statusQuery(clone $all, 'end_of_life')->count(),
             'users_assigned' => (int) (clone $all)->where('active', true)->sum('seats_assigned'),
         ];
         $assignmentChart = ItLicense::query()
@@ -146,6 +147,7 @@ class ItLicenseController extends Controller
                 'renewal_cost' => $itLicense->renewal_cost,
                 'supplier' => $itLicense->supplier,
                 'purchase_reference' => $itLicense->purchase_reference,
+                'lifecycle_status' => $itLicense->lifecycle_status,
                 'active' => $itLicense->active,
                 'remarks' => $itLicense->remarks,
             ],
@@ -232,10 +234,11 @@ class ItLicenseController extends Controller
     private function statusQuery(Builder $query, string $status): Builder
     {
         return match ($status) {
+            'end_of_life' => $query->where('lifecycle_status', 'end_of_life'),
             'inactive' => $query->where('active', false),
-            'expired' => $query->where('active', true)->whereDate('expiry_date', '<', today()),
-            'expiring_soon' => $query->where('active', true)->whereBetween('expiry_date', [today(), today()->addDays(30)]),
-            default => $query->where('active', true)->where(function (Builder $query) {
+            'expired' => $query->where('active', true)->where('lifecycle_status', 'active')->whereDate('expiry_date', '<', today()),
+            'expiring_soon' => $query->where('active', true)->where('lifecycle_status', 'active')->whereBetween('expiry_date', [today(), today()->addDays(30)]),
+            default => $query->where('active', true)->where('lifecycle_status', 'active')->where(function (Builder $query) {
                 $query->whereNull('expiry_date')->orWhereDate('expiry_date', '>', today()->addDays(30));
             }),
         };

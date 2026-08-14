@@ -35,6 +35,7 @@ class Asset extends Model
         'operating_system',
         'purchase_year',
         'storage_position',
+        'bag',
         'public_token',
     ];
 

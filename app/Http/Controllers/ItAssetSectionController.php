@@ -28,7 +28,7 @@ class ItAssetSectionController extends Controller
         $status = $assets
             ->countBy(fn (Asset $asset) => $asset->current_status->value)
             ->map(fn (int $total, string $value) => [
-                'label' => str($value)->replace('_', ' ')->title()->toString(),
+                'label' => AssetStatus::from($value)->label(),
                 'value' => $total,
             ])->values();
 
@@ -99,7 +99,7 @@ class ItAssetSectionController extends Controller
                 'id' => $asset->id,
                 'assetTag' => $asset->asset_tag_no,
                 'detail' => $asset->model ?: $asset->description,
-                'status' => str($asset->current_status->value)->replace('_', ' ')->title()->toString(),
+                'status' => $asset->current_status->label(),
                 'category' => $asset->category?->name ?: 'Not specified',
                 'location' => $asset->currentLocation?->name ?: 'Not specified',
                 'holder' => $asset->currentAssignment?->assigned_to_name,
@@ -123,6 +123,7 @@ class ItAssetSectionController extends Controller
             'expiring_soon' => 'Expiring soon',
             'expired' => 'Expired',
             'inactive' => 'Inactive',
+            'end_of_life' => 'End of Life',
         ];
         $statusTotals = $licenses->countBy(fn (ItLicense $license) => $license->status());
         $totalSeats = (int) $licenses->where('active', true)->sum('seats_total');

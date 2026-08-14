@@ -3,8 +3,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import InputError from '@/Components/InputError.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, watch } from 'vue';
 const props = defineProps({ categories: Array, locations: Array, statuses: Array, conditions: Array });
-const form = useForm({ asset_tag_no:'', serial_no:'', description:'', category_id:props.categories[0]?.id ?? '', brand:'', model:'', operating_system:'', purchase_year:'', current_location_id:'', storage_position:'', current_status:'available', current_condition:'good', acquisition_date:'', acquisition_cost:'', ownership:'Company', assigned_to_name:'', department:'', assigned_at:'', active:true, remarks:'' });
+const form = useForm({ asset_tag_no:'', serial_no:'', description:'', category_id:props.categories[0]?.id ?? '', brand:'', model:'', operating_system:'', purchase_year:'', current_location_id:'', storage_position:'', bag:'', current_status:'available', current_condition:'good', acquisition_date:'', acquisition_cost:'', ownership:'Company', assigned_to_name:'', department:'', assigned_at:'', active:true, remarks:'' });
+const isLaptop = computed(() => props.categories.find((category) => String(category.id) === String(form.category_id))?.name?.trim().toLowerCase() === 'laptop');
+watch(isLaptop, (value) => { if (!value) form.bag = ''; });
 const submit = () => form.post(route('it-assets.store'));
 </script>
 <template>
@@ -15,6 +18,7 @@ const submit = () => form.post(route('it-assets.store'));
         <span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">{{ field.l }}</span><input v-model="form[field.k]" :type="field.t || 'text'" class="input input-bordered" /><InputError :message="form.errors[field.k]" />
       </label>
       <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Category *</span><CustomSelect v-model="form.category_id" class="select select-bordered"><option v-for="x in categories" :key="x.id" :value="x.id">{{ x.name }}</option></CustomSelect></label>
+      <label v-if="isLaptop" class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Laptop Bag</span><CustomSelect v-model="form.bag" class="select select-bordered"><option value="">None</option><option value="asus_bag">Asus Bag (Set)</option><option value="dell_bag">Dell Bag (Set)</option><option value="others">Others</option></CustomSelect></label>
       <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Location</span><CustomSelect v-model="form.current_location_id" class="select select-bordered"><option value="">None</option><option v-for="x in locations" :key="x.id" :value="x.id">{{ x.code }} - {{ x.name }}</option></CustomSelect></label>
       <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Status *</span><CustomSelect v-model="form.current_status" class="select select-bordered"><option v-for="x in statuses" :key="x.value" :value="x.value">{{ x.label }}</option></CustomSelect></label>
       <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider">Condition</span><CustomSelect v-model="form.current_condition" class="select select-bordered"><option v-for="x in conditions" :key="x.value" :value="x.value">{{ x.label }}</option></CustomSelect></label>

@@ -38,6 +38,7 @@ defineProps({ form: Object, types: Array });
         <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">Supplier</span><input v-model="form.supplier" class="input input-bordered" /><InputError :message="form.errors.supplier" /></label>
         <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">PO / purchase reference</span><input v-model="form.purchase_reference" class="input input-bordered" /><InputError :message="form.errors.purchase_reference" /></label>
         <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">Record state</span><CustomSelect v-model="form.active" class="select select-bordered"><option :value="true">Active</option><option :value="false">Inactive</option></CustomSelect><InputError :message="form.errors.active" /></label>
+        <label class="form-control"><span class="mb-2 text-xs font-bold uppercase tracking-wider text-[#60745d]">Licence status</span><CustomSelect v-model="form.lifecycle_status" class="select select-bordered"><option value="active">Active</option><option value="end_of_life">End of Life</option></CustomSelect><InputError :message="form.errors.lifecycle_status" /></label>
       </div>
     </div>
 

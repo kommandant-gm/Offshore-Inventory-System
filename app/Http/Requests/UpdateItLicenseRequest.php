@@ -33,6 +33,7 @@ class UpdateItLicenseRequest extends FormRequest
             'renewal_cost' => ['nullable', 'numeric', 'min:0'],
             'supplier' => ['nullable', 'string', 'max:255'],
             'purchase_reference' => ['nullable', 'string', 'max:255'],
+            'lifecycle_status' => ['sometimes', Rule::in(['active', 'end_of_life'])],
             'active' => ['required', 'boolean'],
             'remarks' => ['nullable', 'string', 'max:5000'],
         ];

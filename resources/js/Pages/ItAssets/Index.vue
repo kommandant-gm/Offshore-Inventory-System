@@ -95,6 +95,10 @@ const statusStyles = {
     badge: 'border-slate-200 bg-slate-100 text-slate-600',
     dot: 'bg-slate-400 ring-slate-200',
   },
+  end_of_life: {
+    badge: 'border-violet-200 bg-violet-50 text-violet-700',
+    dot: 'bg-violet-500 ring-violet-100',
+  },
 };
 
 const defaultStatusStyle = {
@@ -102,9 +106,9 @@ const defaultStatusStyle = {
   dot: 'bg-slate-400 ring-slate-100',
 };
 const statusStyle = (status) => statusStyles[status] ?? defaultStatusStyle;
-const statusLabel = (status) => status.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+const statusLabel = (status) => status === 'end_of_life' ? 'End of Life' : status.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 const chartStatuses = computed(() => {
-  const preferredOrder = ['deployed', 'in_transit', 'under_repair', 'inspection_hold', 'damaged', 'available', 'disposed'];
+  const preferredOrder = ['deployed', 'in_transit', 'under_repair', 'inspection_hold', 'damaged', 'available', 'end_of_life', 'disposed'];
   const present = new Set(props.assignedAssetsByDepartment.flatMap((row) => Object.keys(row.statuses)));
   return preferredOrder.filter((status) => present.has(status)).concat([...present].filter((status) => !preferredOrder.includes(status)));
 });
@@ -119,6 +123,7 @@ const statusBarClass = {
   inspection_hold: 'bg-orange-500',
   damaged: 'bg-red-500',
   disposed: 'bg-slate-400',
+  end_of_life: 'bg-violet-500',
 };
 const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
 </script>
