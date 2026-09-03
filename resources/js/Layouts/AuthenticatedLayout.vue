@@ -45,16 +45,18 @@
             preserveScroll: false,
         });
     };
+    const isAdministrator = currentUser?.role === 'admin' || !currentUser?.role || currentUser?.can?.superadmin;
     const miriItems = [
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'dashboard' },
-        { name: 'Inventory Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read' },
-        { name: 'Stock Items', icon: ArchiveBoxIcon, route: 'assets.index' },
-        { name: 'Stock Movements', icon: TruckIcon, route: 'asset-movements.index', can: 'movements_read' },
-        { name: 'Receive / Issue', icon: BuildingStorefrontIcon, route: 'asset-movements.create', can: 'movements_edit' },
-        { name: 'Stocktakes', icon: ClipboardDocumentListIcon, route: 'stocktakes.index', can: 'movements_read' },
-        { name: 'Stock Ledger', icon: ChartBarIcon, route: 'asset-ledger.index' },
-        { name: 'COG Control', icon: ClipboardDocumentCheckIcon, route: 'cogs.index' },
-        { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read' },
+        { name: 'Inventory Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read', adminOnly: true },
+        { name: 'Major Equipment', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
+        { name: 'Old Miri Inventory', icon: ArchiveBoxIcon, route: 'assets.index', adminOnly: true },
+        { name: 'Stock Movements', icon: TruckIcon, route: 'asset-movements.index', can: 'movements_read', adminOnly: true },
+        { name: 'Receive / Issue', icon: BuildingStorefrontIcon, route: 'asset-movements.create', can: 'movements_edit', adminOnly: true },
+        { name: 'Stocktakes', icon: ClipboardDocumentListIcon, route: 'stocktakes.index', can: 'movements_read', adminOnly: true },
+        { name: 'Stock Ledger', icon: ChartBarIcon, route: 'asset-ledger.index', adminOnly: true },
+        { name: 'COG Control', icon: ClipboardDocumentCheckIcon, route: 'cogs.index', adminOnly: true },
+        { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read', adminOnly: true },
     ];
     const klItems = [
         { name: 'IT Dashboard', icon: Squares2X2Icon, route: 'it-assets.dashboard', can: 'it_assets_read' },
@@ -267,7 +269,7 @@
                     <slot />
                 </main>
 
-                <AssistantWidget v-if="currentUser?.can?.assistant_read && currentUser?.active_branch?.code !== 'KEMAMAN'" />
+                <AssistantWidget v-if="currentUser?.can?.assistant_read && (currentUser?.active_branch?.code !== 'MIRI' || isAdministrator) && currentUser?.active_branch?.code !== 'KEMAMAN'" />
 
             </div> 
             
@@ -291,7 +293,7 @@
                                 <span>Miri Inventory</span><ChevronDownIcon class="h-4 w-4 transition-transform" :class="miriExpanded ? 'rotate-180' : ''" />
                             </button>
                             <div v-show="miriExpanded" class="space-y-0.5">
-                                <button v-for="item in miriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && isItemActive(item) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                <button v-for="item in miriItems.filter((entry) => (!entry.can || currentUser?.can?.[entry.can]) && (!entry.adminOnly || isAdministrator))" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && isItemActive(item) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
                                     <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
                                 </button>
                             </div>

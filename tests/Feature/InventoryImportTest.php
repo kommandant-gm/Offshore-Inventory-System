@@ -22,7 +22,7 @@ class InventoryImportTest extends TestCase
 
     public function test_csv_import_creates_items_and_supported_movements(): void
     {
-        $user = User::factory()->create(['role' => 'miri', 'permissions' => AccessMatrix::permissionsForRole('miri')]);
+        $user = User::factory()->create(['role' => 'admin', 'permissions' => AccessMatrix::permissionsForRole('admin')]);
         $user->branches()->attach(Branch::where('code', 'MIRI')->firstOrFail(), ['access_level' => 'edit', 'is_default' => true]);
 
         $csv = implode("\n", [
@@ -82,7 +82,7 @@ class InventoryImportTest extends TestCase
 
     public function test_csv_import_skips_existing_item_codes_on_rerun(): void
     {
-        $user = User::factory()->create(['role' => 'miri', 'permissions' => AccessMatrix::permissionsForRole('miri')]);
+        $user = User::factory()->create(['role' => 'admin', 'permissions' => AccessMatrix::permissionsForRole('admin')]);
         $user->branches()->attach(Branch::where('code', 'MIRI')->firstOrFail(), ['access_level' => 'edit', 'is_default' => true]);
 
         $csv = implode("\n", [

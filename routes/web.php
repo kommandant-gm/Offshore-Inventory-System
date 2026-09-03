@@ -26,6 +26,7 @@ use App\Http\Controllers\ItPeopleController;
 use App\Http\Controllers\ItMovementRecordController;
 use App\Http\Controllers\KemamanInventoryController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\MajorEquipmentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicAssetController;
 use App\Http\Controllers\PublicAssetCheckoutController;
@@ -113,27 +114,34 @@ Route::middleware(['auth', 'system.access'])->group(function () {
 
     Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update']);
     Route::resource('locations', LocationController::class)->only(['index', 'store', 'update']);
-    Route::get('/cogs', [CogController::class, 'index'])->name('cogs.index');
-    Route::get('/cogs/create', [CogController::class, 'create'])->name('cogs.create');
-    Route::post('/cogs', [CogController::class, 'store'])->name('cogs.store');
-    Route::get('/cogs/{cog}', [CogController::class, 'show'])->name('cogs.show');
+    Route::middleware('legacy.miri')->group(function () {
+        Route::get('/cogs', [CogController::class, 'index'])->name('cogs.index');
+        Route::get('/cogs/create', [CogController::class, 'create'])->name('cogs.create');
+        Route::post('/cogs', [CogController::class, 'store'])->name('cogs.store');
+        Route::get('/cogs/{cog}', [CogController::class, 'show'])->name('cogs.show');
+    });
 
-    Route::get('/assets', [InventoryItemController::class, 'index'])->name('assets.index');
-    Route::get('/assets/create', [InventoryItemController::class, 'create'])->name('assets.create');
-    Route::get('/assets/import', [InventoryImportController::class, 'create'])->name('assets.import.create');
-    Route::post('/assets/import', [InventoryImportController::class, 'store'])->name('assets.import.store');
-    Route::post('/assets', [InventoryItemController::class, 'store'])->name('assets.store');
-    Route::get('/assets/{item}', [InventoryItemController::class, 'show'])->name('assets.show');
-    Route::patch('/assets/{item}', [InventoryItemController::class, 'update'])->name('assets.update');
-
-    Route::get('/asset-movements', [InventoryTransactionController::class, 'index'])->name('asset-movements.index');
-    Route::get('/asset-movements/create', [InventoryTransactionController::class, 'create'])->name('asset-movements.create');
-    Route::post('/asset-movements', [InventoryTransactionController::class, 'store'])->name('asset-movements.store');
-    Route::get('/stocktakes', [StocktakeController::class, 'index'])->name('stocktakes.index');
-    Route::get('/stocktakes/create', [StocktakeController::class, 'create'])->name('stocktakes.create');
-    Route::post('/stocktakes', [StocktakeController::class, 'store'])->name('stocktakes.store');
-    Route::get('/stocktakes/{stocktake}', [StocktakeController::class, 'show'])->name('stocktakes.show');
-    Route::get('/asset-ledger', [AssetLedgerController::class, 'index'])->name('asset-ledger.index');
+    Route::middleware('legacy.miri')->group(function () {
+        Route::get('/assets', [InventoryItemController::class, 'index'])->name('assets.index');
+        Route::get('/assets/create', [InventoryItemController::class, 'create'])->name('assets.create');
+        Route::get('/assets/import', [InventoryImportController::class, 'create'])->name('assets.import.create');
+        Route::post('/assets/import', [InventoryImportController::class, 'store'])->name('assets.import.store');
+        Route::post('/assets', [InventoryItemController::class, 'store'])->name('assets.store');
+        Route::get('/assets/{item}', [InventoryItemController::class, 'show'])->name('assets.show');
+        Route::patch('/assets/{item}', [InventoryItemController::class, 'update'])->name('assets.update');
+        Route::get('/asset-movements', [InventoryTransactionController::class, 'index'])->name('asset-movements.index');
+        Route::get('/asset-movements/create', [InventoryTransactionController::class, 'create'])->name('asset-movements.create');
+        Route::post('/asset-movements', [InventoryTransactionController::class, 'store'])->name('asset-movements.store');
+        Route::get('/stocktakes', [StocktakeController::class, 'index'])->name('stocktakes.index');
+        Route::get('/stocktakes/create', [StocktakeController::class, 'create'])->name('stocktakes.create');
+        Route::post('/stocktakes', [StocktakeController::class, 'store'])->name('stocktakes.store');
+        Route::get('/stocktakes/{stocktake}', [StocktakeController::class, 'show'])->name('stocktakes.show');
+        Route::get('/asset-ledger', [AssetLedgerController::class, 'index'])->name('asset-ledger.index');
+    });
+    Route::get('/miri-inventory', [MajorEquipmentController::class, 'index'])->name('major-equipment.index');
+    Route::get('/miri-inventory/import', [MajorEquipmentController::class, 'import'])->name('major-equipment.import');
+    Route::post('/miri-inventory/import', [MajorEquipmentController::class, 'storeImport'])->name('major-equipment.import.store');
+    Route::get('/miri-inventory/{equipment}', [MajorEquipmentController::class, 'show'])->name('major-equipment.show');
 });
 
 require __DIR__.'/auth.php';
