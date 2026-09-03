@@ -52,9 +52,36 @@ class MajorEquipmentController extends Controller
     {
         $this->ensureMiri($request);
         abort_unless($request->user()?->canRead('assets'), 403);
-        $query = MajorEquipment::query()->withCount('certificates')->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('tag_no');
-        if ($request->filled('search')) $query->where(fn ($q) => $q->where('tag_no', 'like', '%'.$request->string('search').'%')->orWhere('serial_no', 'like', '%'.$request->string('search').'%')->orWhere('description', 'like', '%'.$request->string('search').'%')->orWhere('current_location', 'like', '%'.$request->string('search').'%'));
-        return Inertia::render('MajorEquipment/Index', ['equipment' => $query->paginate(25)->withQueryString(), 'search' => $request->string('search')->toString(), 'statuses' => ['In Use', 'Standby', 'Under Repair', 'Damaged'], 'canEdit' => $request->user()->canEdit('assets')]);
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'], 'category' => ['nullable', 'string', 'max:255'],
+            'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'], 'status' => ['nullable', 'string', 'max:50'],
+            'issue_out_location' => ['nullable', 'string', 'max:255'], 'missing_details' => ['nullable', 'in:missing'],
+        ]);
+        $query = MajorEquipment::query()->withCount('certificates')
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($query) use ($search) {
+                    foreach (['tag_no', 'serial_no', 'description', 'model_brand', 'current_location', 'issue_out_location', 'issue_out_cog_no', 'received_backload_cog_no'] as $column) $query->orWhere($column, 'like', "%{$search}%");
+                });
+            })
+            ->when($filters['category'] ?? null, fn ($query, $value) => $query->where('category', $value))
+            ->when($filters['section_1'] ?? null, fn ($query, $value) => $query->where('section_1', $value))
+            ->when($filters['section_2'] ?? null, fn ($query, $value) => $query->where('section_2', $value))
+            ->when($filters['location'] ?? null, fn ($query, $value) => $query->where('current_location', $value))
+            ->when($filters['status'] ?? null, fn ($query, $value) => $query->where('status', $value))
+            ->when($filters['issue_out_location'] ?? null, fn ($query, $value) => $query->where('issue_out_location', $value))
+            ->when(($filters['missing_details'] ?? null) === 'missing', fn ($query) => $query->where(fn ($query) => $query->whereNull('tag_no')->orWhere('tag_no', '')->orWhereNull('current_location')->orWhere('current_location', '')))
+            ->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('tag_no');
+        $optionValues = fn (string $column) => MajorEquipment::query()->whereNotNull($column)->where($column, '<>', '')->distinct()->orderBy($column)->pluck($column)->values();
+        $allEquipment = MajorEquipment::query();
+        return Inertia::render('MajorEquipment/Index', [
+            'equipment' => $query->paginate(25)->withQueryString(),
+            'summary' => ['total' => (clone $allEquipment)->count(), 'in_use' => (clone $allEquipment)->where('status', 'In Use')->count(), 'standby' => (clone $allEquipment)->where('status', 'Standby')->count(), 'under_repair' => (clone $allEquipment)->where('status', 'Under Repair')->count(), 'missing_details' => (clone $allEquipment)->where(fn ($query) => $query->whereNull('tag_no')->orWhere('tag_no', '')->orWhereNull('current_location')->orWhere('current_location', ''))->count()],
+            'filters' => ['search' => $filters['search'] ?? '', 'category' => $filters['category'] ?? '', 'section_1' => $filters['section_1'] ?? '', 'section_2' => $filters['section_2'] ?? '', 'location' => $filters['location'] ?? '', 'status' => $filters['status'] ?? '', 'issue_out_location' => $filters['issue_out_location'] ?? '', 'missing_details' => $filters['missing_details'] ?? ''],
+            'categoryOptions' => MiriInventoryCategory::query()->where('active', true)->orderBy('name')->pluck('name')->values(),
+            'section1Options' => $optionValues('section_1'), 'section2Options' => $optionValues('section_2'), 'locationOptions' => $optionValues('current_location'), 'issueOutLocationOptions' => $optionValues('issue_out_location'),
+            'statusOptions' => ['In Use', 'Standby', 'Under Repair', 'Damaged'], 'canEdit' => $request->user()->canEdit('assets'),
+        ]);
     }
 
     public function create(Request $request): Response
