@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
                             'superadmin' => $request->user()->isSuperAdmin(),
                             'it_assets_read' => $request->user()->canRead('it_assets'),
                             'it_assets_edit' => $request->user()->canEdit('it_assets'),
+                            'assets_edit' => $request->user()->canEdit('assets'),
                         ],
                         'active_branch' => $branchContext->branch($request->user())?->only(['id', 'code', 'name']),
                         'branches' => $request->user()->branches()

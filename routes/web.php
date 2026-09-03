@@ -101,12 +101,19 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update']);
+    Route::post('/miri-inventory/categories', [CategoryController::class, 'storeMiri'])->name('miri-categories.store');
+    Route::patch('/miri-inventory/categories/{category}', [CategoryController::class, 'updateMiri'])->name('miri-categories.update');
+    Route::delete('/miri-inventory/categories/{category}', [CategoryController::class, 'destroyMiri'])->name('miri-categories.destroy');
     Route::resource('locations', LocationController::class)->only(['index', 'store', 'update']);
     Route::get('/miri-inventory', [MajorEquipmentController::class, 'index'])->name('major-equipment.index');
     Route::get('/miri-inventory/dashboard', [MajorEquipmentController::class, 'dashboard'])->name('major-equipment.dashboard');
+    Route::get('/miri-inventory/create', [MajorEquipmentController::class, 'create'])->name('major-equipment.create');
+    Route::post('/miri-inventory', [MajorEquipmentController::class, 'store'])->name('major-equipment.store');
     Route::get('/miri-inventory/import', [MajorEquipmentController::class, 'import'])->name('major-equipment.import');
     Route::post('/miri-inventory/import', [MajorEquipmentController::class, 'storeImport'])->name('major-equipment.import.store');
     Route::get('/miri-inventory/{equipment}', [MajorEquipmentController::class, 'show'])->name('major-equipment.show');
+    Route::get('/miri-inventory/{equipment}/edit', [MajorEquipmentController::class, 'edit'])->name('major-equipment.edit');
+    Route::patch('/miri-inventory/{equipment}', [MajorEquipmentController::class, 'update'])->name('major-equipment.update');
 });
 
 require __DIR__.'/auth.php';

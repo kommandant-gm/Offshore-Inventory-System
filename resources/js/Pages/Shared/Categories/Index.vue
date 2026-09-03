@@ -11,6 +11,7 @@ import { computed, ref, watch } from 'vue';
 const props = defineProps({
     categories: Array,
     readOnly: Boolean,
+    miriMode: Boolean,
     branchCode: String,
 });
 
@@ -56,17 +57,23 @@ const closePanel = () => {
 
 const submit = () => {
     if (editingId.value) {
-        form.put(route('categories.update', editingId.value), {
+        form.patch(props.miriMode ? route('miri-categories.update', editingId.value) : route('categories.update', editingId.value), {
             preserveScroll: true,
             onSuccess: () => closePanel(),
         });
         return;
     }
 
-    form.post(route('categories.store'), {
+    form.post(props.miriMode ? route('miri-categories.store') : route('categories.store'), {
         preserveScroll: true,
         onSuccess: () => closePanel(),
     });
+};
+
+const deleteCategory = (category) => {
+    if (!props.miriMode || ! window.confirm(`Delete ${category.name}?`)) return;
+
+    form.delete(route('miri-categories.destroy', category.code), { preserveScroll: true });
 };
 </script>
 
@@ -74,7 +81,7 @@ const submit = () => {
     <Head title="Categories" />
 
     <AuthenticatedLayout>
-        <PageHeader :title="readOnly ? 'Miri Inventory Categories' : 'Categories'" :description="readOnly ? 'Categories currently present in the new Miri Inventory register.' : 'Shared categorisation for stock items, ledger grouping, and future module expansion.'" />
+        <PageHeader :title="miriMode ? 'Miri Inventory Categories' : 'Categories'" :description="readOnly ? 'Categories currently present in the new Miri Inventory register.' : 'Shared categorisation for stock items, ledger grouping, and future module expansion.'" />
 
         <div class="grid gap-6 xl:grid-cols-[1.8fr,1fr]">
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
@@ -245,6 +252,9 @@ const submit = () => {
                             @click="editCategory(category)"
                         >
                             Edit
+                        </button>
+                        <button v-if="miriMode" class="btn border-red-200 bg-white text-red-700 hover:bg-red-50" @click="deleteCategory(category)">
+                            Delete
                         </button>
                     </div>
                 </article>

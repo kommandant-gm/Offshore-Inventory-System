@@ -6,6 +6,7 @@ use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
 use App\Models\MajorEquipment;
+use App\Models\MiriInventoryCategory;
 use App\Services\AuditLogger;
 use App\Services\BranchContext;
 use Illuminate\Http\RedirectResponse;
@@ -21,14 +22,13 @@ class CategoryController extends Controller
         $branch = app(BranchContext::class)->branch(request()->user());
         if ($branch?->code === 'MIRI') {
             return Inertia::render('Shared/Categories/Index', [
-                'categories' => MajorEquipment::query()
-                    ->whereNotNull('category')->select('category')->distinct()->orderBy('category')->pluck('category')
-                    ->values()->map(fn (string $name, int $index) => [
-                        'id' => 'miri-'.$index,
-                        'code' => 'MIRI-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
-                        'name' => $name, 'type' => 'major_equipment', 'active' => true, 'read_only' => true,
+                'categories' => MiriInventoryCategory::query()->orderBy('name')->get()
+                    ->map(fn (MiriInventoryCategory $category) => [
+                        'id' => $category->code, 'code' => $category->code, 'name' => $category->name,
+                        'type' => 'major_equipment', 'active' => $category->active,
                     ]),
-                'readOnly' => true,
+                'readOnly' => false,
+                'miriMode' => true,
                 'branchCode' => $branch->code,
             ]);
         }
@@ -45,8 +45,57 @@ class CategoryController extends Controller
                     'active' => $category->active,
                 ]),
             'readOnly' => false,
+            'miriMode' => false,
             'branchCode' => $branch?->code,
         ]);
+    }
+
+    public function storeMiri(Request $request, AuditLogger $auditLogger): RedirectResponse
+    {
+        $this->ensureMiri($request);
+        $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
+        $branchId = app(BranchContext::class)->id($request->user());
+        $next = ((int) MiriInventoryCategory::withoutGlobalScopes()->where('branch_id', $branchId)->max('id')) + 1;
+        $category = MiriInventoryCategory::create([
+            'branch_id' => $branchId,
+            'code' => 'MIRI-'.str_pad((string) $next, 3, '0', STR_PAD_LEFT),
+            'name' => trim($data['name']),
+            'active' => true,
+        ]);
+        $auditLogger->record(module: 'miri_categories', event: 'created', summary: "Created Miri category {$category->name}.", auditable: $category, after: $category->toArray(), user: $request->user(), request: $request);
+        return back()->with('success', 'Miri category created.');
+    }
+
+    public function updateMiri(Request $request, string $category, AuditLogger $auditLogger): RedirectResponse
+    {
+        $this->ensureMiri($request);
+        $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
+        $record = MiriInventoryCategory::query()->where('code', $category)->firstOrFail();
+        $before = $record->toArray();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($record, $data): void {
+            MajorEquipment::query()->where('category', $record->name)->update(['category' => trim($data['name'])]);
+            $record->update(['name' => trim($data['name'])]);
+        });
+        $auditLogger->record(module: 'miri_categories', event: 'updated', summary: "Renamed Miri category {$before['name']} to {$record->name}.", auditable: $record, before: $before, after: $record->fresh()->toArray(), user: $request->user(), request: $request);
+        return back()->with('success', 'Miri category updated.');
+    }
+
+    public function destroyMiri(Request $request, string $category, AuditLogger $auditLogger): RedirectResponse
+    {
+        $this->ensureMiri($request);
+        $record = MiriInventoryCategory::query()->where('code', $category)->firstOrFail();
+        if (MajorEquipment::query()->where('category', $record->name)->exists()) {
+            return back()->with('error', 'This category cannot be deleted while equipment is assigned to it. Rename it or move the equipment first.');
+        }
+        $before = $record->toArray();
+        $record->delete();
+        $auditLogger->record(module: 'miri_categories', event: 'deleted', summary: "Deleted Miri category {$before['name']}.", auditable: $record, before: $before, after: [], user: $request->user(), request: $request);
+        return back()->with('success', 'Miri category deleted.');
+    }
+
+    private function ensureMiri(Request $request): void
+    {
+        abort_unless(app(BranchContext::class)->branch($request->user())?->code === 'MIRI', 404);
     }
 
     public function store(StoreCategoryRequest $request, AuditLogger $auditLogger): RedirectResponse

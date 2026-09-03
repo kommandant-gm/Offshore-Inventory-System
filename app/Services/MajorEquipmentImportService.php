@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Branch;
 use App\Models\MajorEquipment;
 use App\Models\MajorEquipmentCertificate;
+use App\Models\MiriInventoryCategory;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -36,9 +37,12 @@ class MajorEquipmentImportService
                     continue;
                 }
 
+                $category = $this->category($this->value($row, 0) ?: 'MAJOR EQUIPMENT');
+                $this->ensureCategory($branch->id, $category);
+
                 $equipment = MajorEquipment::create([
                     'branch_id' => $branch->id,
-                    'category' => $this->value($row, 0) ?: 'MAJOR EQUIPMENT',
+                    'category' => $category,
                     'section_1' => $this->value($row, 1), 'section_2' => $this->value($row, 2),
                     'description' => $this->value($row, 3), 'unit' => $this->value($row, 4),
                     'model_brand' => $this->value($row, 5), 'serial_no' => $this->value($row, 6),
@@ -88,6 +92,24 @@ class MajorEquipmentImportService
     {
         $value = trim((string) ($row[$index] ?? ''));
         return $value === '' ? null : $value;
+    }
+
+    private function category(?string $value): string
+    {
+        $category = strtoupper(trim((string) $value));
+        return $category === 'MACHINARY' ? 'MACHINERY' : ($category ?: 'MAJOR EQUIPMENT');
+    }
+
+    private function ensureCategory(int $branchId, string $name): void
+    {
+        if (MiriInventoryCategory::withoutGlobalScopes()->where('branch_id', $branchId)->where('name', $name)->exists()) return;
+        $next = ((int) MiriInventoryCategory::withoutGlobalScopes()->where('branch_id', $branchId)->max('id')) + 1;
+        MiriInventoryCategory::withoutGlobalScopes()->create([
+            'branch_id' => $branchId,
+            'code' => 'MIRI-'.str_pad((string) $next, 3, '0', STR_PAD_LEFT),
+            'name' => $name,
+            'active' => true,
+        ]);
     }
 
     private function blank(array $row): bool
