@@ -2,10 +2,10 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Cog;
-use App\Models\InventoryTransaction;
+use App\Models\Asset;
+use App\Models\KemamanInventoryItem;
+use App\Models\MajorEquipmentCertificate;
 use App\Support\AssistantPrompts;
-use App\Support\StockAnomalyAgent;
 use Illuminate\Http\Request;
 use App\Services\BranchContext;
 use Inertia\Middleware;
@@ -89,51 +89,24 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         $items = collect();
+        $branchCode = app(BranchContext::class)->branch($user)?->code;
 
-        if ($user?->canRead('movements')) {
-            $movementCountToday = InventoryTransaction::query()
-                ->whereDate('transaction_date', today())
-                ->count();
-
-            if ($movementCountToday > 0) {
-                $items->push([
-                    'id' => 'movements-today',
-                    'title' => "{$movementCountToday} movement(s) logged today",
-                    'description' => 'Review today\'s stock movements.',
-                    'href' => route('asset-movements.index'),
-                    'tone' => 'success',
-                ]);
+        if ($branchCode === 'MIRI' && $user?->canRead('assets')) {
+            $expiring = MajorEquipmentCertificate::query()->whereNotNull('expiry_date')
+                ->whereBetween('expiry_date', [today(), today()->addDays(30)])->count();
+            if ($expiring > 0) {
+                $items->push(['id' => 'miri-certificates-expiring', 'title' => "{$expiring} certificate(s) expiring soon", 'description' => 'Review Miri equipment certificates within 30 days.', 'href' => route('major-equipment.index'), 'tone' => 'warning']);
             }
-        }
-
-        if ($user?->canRead('cogs')) {
-            $pendingApprovals = Cog::query()
-                ->where('status', 'pending_approval')
-                ->count();
-
-            if ($pendingApprovals > 0) {
-                $items->push([
-                    'id' => 'pending-cogs',
-                    'title' => "{$pendingApprovals} COG approval(s) pending",
-                    'description' => 'Open COG control to review pending approvals.',
-                    'href' => route('cogs.index'),
-                    'tone' => 'warning',
-                ]);
+        } elseif ($branchCode === 'KL-IT' && $user?->canRead('it_assets')) {
+            $repairCount = Asset::query()->where('current_status', 'under_repair')->count();
+            if ($repairCount > 0) {
+                $items->push(['id' => 'it-repairs', 'title' => "{$repairCount} IT asset(s) under repair", 'description' => 'Review the current IT repair queue.', 'href' => route('it-assets.repairs'), 'tone' => 'warning']);
             }
-        }
-
-        if ($user?->canRead('anomalies')) {
-            $anomalySummary = app(StockAnomalyAgent::class)->report()['summary'];
-            $anomalyCount = (int) ($anomalySummary['total'] ?? 0);
-
-            if ($anomalyCount > 0) {
-            $items->push([
-                'id' => 'anomalies-review',
-                'title' => "{$anomalyCount} stock anomaly alert(s)",
-                'description' => 'Review flagged inventory exceptions that need action.',
-                'href' => route('anomalies.index'),
-                'tone' => 'neutral',
-            ]);
+        } elseif ($branchCode === 'KEMAMAN' && $user?->canRead('assets')) {
+            $expiring = KemamanInventoryItem::query()->whereNotNull('test_expiry_date')
+                ->whereBetween('test_expiry_date', [today(), today()->addDays(30)])->count();
+            if ($expiring > 0) {
+                $items->push(['id' => 'kemaman-certificates-expiring', 'title' => "{$expiring} certificate(s) expiring soon", 'description' => 'Review Kemaman equipment certification dates.', 'href' => route('kemaman-inventory.dashboard'), 'tone' => 'warning']);
             }
         }
 

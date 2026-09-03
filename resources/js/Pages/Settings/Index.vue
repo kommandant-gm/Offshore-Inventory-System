@@ -7,7 +7,6 @@ import { computed, reactive, ref } from 'vue';
 
 const props = defineProps({
     stats: Object,
-    latestMovementDate: String,
     canEditSettings: Boolean,
     roleOptions: Array,
     permissionLevels: Array,
@@ -28,18 +27,16 @@ const adminGroups = [
         items: [
             { name: 'Categories', href: route('categories.index'), key: 'categories', summary: 'Item grouping and ledger segmentation.' },
             { name: 'Locations', href: route('locations.index'), key: 'locations', summary: 'Inventory locations, racks, zones, and destinations.' },
-            { name: 'Stock Items', href: route('assets.index'), key: 'items', summary: 'Inventory catalogue and opening values.' },
+            { name: 'Miri Inventory', href: route('major-equipment.index'), key: 'items', summary: 'Miri equipment register and imported records.' },
         ],
     },
     {
         title: 'Operations',
-        description: 'Administrative entry points for transaction control and monthly reporting.',
+        description: 'Administrative entry points for branch inventory and operational reporting.',
         items: [
-            { name: 'Movements', href: route('asset-movements.index'), key: 'movements', summary: 'Record and review stock movement activity.' },
-            { name: 'Stocktakes', href: route('stocktakes.index'), key: 'stocktakes', summary: 'Run physical counts and post variance adjustments by location.' },
-            { name: 'Monthly Ledger', href: route('asset-ledger.index'), key: 'movements', summary: 'Review period totals and valuation rollups.' },
-            { name: 'COG Control', href: route('cogs.index'), key: 'movements', summary: 'Track consignment note preparation and approvals.' },
-            { name: 'Stock Anomalies', href: route('anomalies.index'), key: 'movements', summary: 'Review rule-based stock exceptions that need operator attention.' },
+            { name: 'Miri Dashboard', href: route('major-equipment.dashboard'), key: 'items', summary: 'Review Miri equipment health and distribution.' },
+            { name: 'KL IT Dashboard', href: route('it-assets.dashboard'), key: 'items', summary: 'Review the KL IT asset overview.' },
+            { name: 'Kemaman Dashboard', href: route('kemaman-inventory.dashboard'), key: 'items', summary: 'Review Kemaman equipment and certification status.' },
         ],
     },
     {
@@ -48,7 +45,6 @@ const adminGroups = [
         items: [
             { name: 'Profile', href: route('profile.edit'), key: 'users', summary: 'Update your login profile and account details.' },
             { name: 'Dashboard', href: route('dashboard'), key: 'users', summary: 'Return to the operations summary and activity feed.' },
-            { name: 'Assistant', href: route('assistant.index'), key: 'users', summary: 'Ask live inventory questions from stock and movement records.' },
             { name: 'Audit Trail', href: route('audit-trail.index'), key: 'audits', summary: 'Review write history across stock, approvals, and permissions.' },
         ],
     },
@@ -293,16 +289,16 @@ const importLdapUsers = () => {
                         <p class="mt-2 text-3xl font-bold text-[#234222]">{{ stats.locations }}</p>
                     </article>
                     <article class="rounded-[1.5rem] border border-[#e1efdc] bg-[#fbfefa] p-5">
-                        <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Stock Items</p>
-                        <p class="mt-2 text-3xl font-bold text-[#234222]">{{ stats.items }}</p>
+                        <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">IT Assets</p>
+                        <p class="mt-2 text-3xl font-bold text-[#234222]">{{ stats.it_assets }}</p>
                     </article>
                     <article class="rounded-[1.5rem] border border-[#e1efdc] bg-[#fbfefa] p-5">
-                        <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Movements</p>
-                        <p class="mt-2 text-3xl font-bold text-[#4f9f4a]">{{ stats.movements }}</p>
+                        <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Miri Equipment</p>
+                        <p class="mt-2 text-3xl font-bold text-[#4f9f4a]">{{ stats.miri_equipment }}</p>
                     </article>
                     <article class="rounded-[1.5rem] border border-[#e1efdc] bg-[#fbfefa] p-5">
-                        <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Stocktakes</p>
-                        <p class="mt-2 text-3xl font-bold text-[#234222]">{{ stats.stocktakes }}</p>
+                        <p class="text-xs uppercase tracking-[0.2em] text-[#7f9a7a]">Kemaman Equipment</p>
+                        <p class="mt-2 text-3xl font-bold text-[#234222]">{{ stats.kemaman_equipment }}</p>
                     </article>
                 </div>
             </section>
@@ -322,9 +318,9 @@ const importLdapUsers = () => {
                         </p>
 
                         <div class="mt-5 rounded-[1.35rem] border border-[#d8e7d4] bg-white/85 p-4">
-                            <p class="text-[11px] uppercase tracking-[0.22em] text-[#7f9a7a]">Latest Movement</p>
-                            <p class="mt-2 text-lg font-semibold text-[#234222]">{{ latestMovementDate ?? 'No movement recorded yet' }}</p>
-                            <p class="mt-1 text-sm text-[#6f8a6b]">Quick signal for recent operational activity.</p>
+                            <p class="text-[11px] uppercase tracking-[0.22em] text-[#7f9a7a]">Inventory Structure</p>
+                            <p class="mt-2 text-lg font-semibold text-[#234222]">Branch-specific registers</p>
+                            <p class="mt-1 text-sm text-[#6f8a6b]">Miri, KL IT, and Kemaman use their own inventory data models.</p>
                         </div>
 
                         <div class="mt-4 rounded-[1.35rem] border border-[#d8e7d4] bg-white/85 p-4">

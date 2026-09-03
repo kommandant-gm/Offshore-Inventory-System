@@ -5,15 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateUserAccessRequest;
 use App\Models\Category;
 use App\Models\AuditLog;
-use App\Models\InventoryItem;
-use App\Models\InventoryTransaction;
 use App\Models\Location;
-use App\Models\Stocktake;
 use App\Models\User;
 use App\Models\Branch;
+use App\Models\Asset;
+use App\Models\KemamanInventoryItem;
+use App\Models\MajorEquipment;
 use App\Models\IssueLog;
 use App\Models\EmailActivityLog;
-use App\Models\Asset;
 use App\Models\AssetAssignment;
 use App\Mail\AssetCheckoutSignatureMail;
 use App\Mail\AssetCheckinSignatureMail;
@@ -37,22 +36,16 @@ class SettingsController extends Controller
     {
         abort_unless(request()->user()?->isSuperAdmin(), 403);
 
-        $latestMovement = InventoryTransaction::query()
-            ->latest('transaction_date')
-            ->latest('id')
-            ->first();
-
         return Inertia::render('Settings/Index', [
             'stats' => [
                 'users' => User::count(),
                 'categories' => Category::count(),
                 'locations' => Location::count(),
-                'items' => InventoryItem::count(),
-                'movements' => InventoryTransaction::count(),
-                'stocktakes' => Stocktake::count(),
+                'it_assets' => Asset::count(),
+                'miri_equipment' => MajorEquipment::count(),
+                'kemaman_equipment' => KemamanInventoryItem::count(),
                 'audits' => AuditLog::count(),
             ],
-            'latestMovementDate' => $latestMovement?->transaction_date?->format('Y-m-d'),
             'canEditSettings' => true,
             'supervisorEmails' => User::query()->where('role', 'supervisor')->where('directory_active', true)->whereNotNull('email')->pluck('email')->all() ?: config('mail.supervisor_addresses', []),
             'emailActivity' => [
