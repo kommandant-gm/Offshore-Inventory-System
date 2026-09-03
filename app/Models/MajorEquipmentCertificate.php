@@ -11,6 +11,8 @@ class MajorEquipmentCertificate extends Model
 {
     use BelongsToBranch, HasFactory;
 
+    protected $table = 'miri_inventory_certificates';
+
     protected $fillable = [
         'miri_inventory_item_id', 'branch_id', 'certificate_type', 'certificate_no',
         'issue_date', 'expiry_date', 'raw_value',
