@@ -181,6 +181,10 @@
                     </div>
     
                     <div class="ml-3 flex items-center gap-2 sm:gap-4">
+                        <div v-if="currentUser?.active_branch" class="hidden rounded-full border border-[#cfe6c8] bg-[#eef8ea] px-3 py-1.5 text-right sm:block">
+                            <p class="text-[9px] font-bold uppercase tracking-[0.18em] text-[#7f9a7a]">Active Branch</p>
+                            <p class="text-xs font-semibold text-[#2f6f2d]">{{ currentUser.active_branch.name }} <span class="font-mono text-[10px]">({{ currentUser.active_branch.code }})</span></p>
+                        </div>
                         <div class="relative hidden group md:flex" data-topbar-search>
                             <MagnifyingGlassIcon class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#7f9a7a] group-focus-within:text-[#4f9f4a] transition-colors" />
                             <input

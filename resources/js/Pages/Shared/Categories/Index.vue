@@ -10,6 +10,8 @@ import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     categories: Array,
+    readOnly: Boolean,
+    branchCode: String,
 });
 
 const editingId = ref(null);
@@ -72,7 +74,7 @@ const submit = () => {
     <Head title="Categories" />
 
     <AuthenticatedLayout>
-        <PageHeader title="Categories" description="Shared categorisation for stock items, ledger grouping, and future module expansion." />
+        <PageHeader :title="readOnly ? 'Miri Inventory Categories' : 'Categories'" :description="readOnly ? 'Categories currently present in the new Miri Inventory register.' : 'Shared categorisation for stock items, ledger grouping, and future module expansion.'" />
 
         <div class="grid gap-6 xl:grid-cols-[1.8fr,1fr]">
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
@@ -102,7 +104,7 @@ const submit = () => {
                 </div>
             </section>
 
-            <aside class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
+            <aside v-if="!readOnly" class="rounded-[2rem] border border-[#d8e7d4] bg-white p-5 shadow-[0_18px_45px_rgba(79,159,74,0.10)]">
                 <div class="relative overflow-hidden rounded-[1.75rem] border border-[#d8e7d4] bg-[radial-gradient(circle_at_top_left,_rgba(111,187,104,0.16),_transparent_30%),linear-gradient(180deg,_#ffffff_0%,_#f7fcf5_52%,_#eef8ea_100%)] p-5 shadow-[0_20px_60px_rgba(79,159,74,0.12)]">
                     <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.55),transparent_32%,transparent_70%,rgba(111,187,104,0.08))]" />
 
@@ -117,7 +119,7 @@ const submit = () => {
                         </p>
 
                         <div class="mt-5 flex flex-wrap items-center gap-3">
-                            <button
+                            <button v-if="!readOnly"
                                 type="button"
                                 class="btn border-none bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] px-5 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-[0_16px_36px_rgba(79,159,74,0.24)] transition hover:scale-[1.02] hover:opacity-95"
                                 @click="openPanel"
@@ -236,9 +238,9 @@ const submit = () => {
 
                     <div class="mt-5 flex items-center justify-between">
                         <span class="rounded-full border border-[#cfe6c8] bg-[#eef8ea] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#3c8a39]">
-                            Stock Item
+                            {{ category.type === 'major_equipment' ? 'Major Equipment' : 'Stock Item' }}
                         </span>
-                        <button
+                        <button v-if="!readOnly"
                             class="btn border-[#d8e7d4] bg-white text-[#2f6f2d] hover:bg-[#eef8ea]"
                             @click="editCategory(category)"
                         >
