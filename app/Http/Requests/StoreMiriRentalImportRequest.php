@@ -13,6 +13,6 @@ class StoreMiriRentalImportRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['file' => ['required', 'file', 'mimes:csv,txt', 'max:20480']];
+        return ['file' => ['required', 'file', 'mimes:csv,txt', 'max:51200']];
     }
 }
