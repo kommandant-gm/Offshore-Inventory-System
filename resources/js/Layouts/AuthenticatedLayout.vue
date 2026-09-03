@@ -34,7 +34,7 @@
     const openBranchRoute = (branchCode, routeName) => {
         const branch = currentUser?.branches?.find((entry) => entry.code === branchCode);
         if (!branch) return;
-        if (currentUser?.active_branch?.id === branch.id) {
+        if (currentUser?.active_branch?.code === branchCode) {
             router.visit(route(routeName));
             return;
         }
