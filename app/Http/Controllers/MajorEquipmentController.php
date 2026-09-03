@@ -33,6 +33,13 @@ class MajorEquipmentController extends Controller
                 ->groupBy('category')
                 ->orderByDesc('total')
                 ->get(),
+            'locations' => MajorEquipment::query()
+                ->selectRaw("COALESCE(current_location, 'Unassigned') as label")
+                ->selectRaw('COUNT(*) as total')
+                ->groupBy('current_location')
+                ->orderByDesc('total')
+                ->limit(8)
+                ->get(),
             'recent' => MajorEquipment::query()->latest('updated_at')->limit(8)->get([
                 'id', 'description', 'tag_no', 'section_1', 'section_2', 'status', 'current_location',
             ]),
