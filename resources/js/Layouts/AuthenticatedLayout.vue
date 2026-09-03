@@ -48,6 +48,7 @@
     const miriItems = [
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'major-equipment.dashboard' },
         { name: 'Miri Inventory Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
+        { name: 'Rental Register', icon: TruckIcon, route: 'miri-rental.index' },
     ];
     const klItems = [
         { name: 'IT Dashboard', icon: Squares2X2Icon, route: 'it-assets.dashboard', can: 'it_assets_read' },
