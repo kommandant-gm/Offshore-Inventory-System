@@ -11,6 +11,8 @@ class BranchContextController extends Controller
 {
     private const DESTINATION_ROUTES = [
         'dashboard',
+        'major-equipment.dashboard',
+        'major-equipment.index',
         'assistant.index',
         'assets.index',
         'asset-movements.index',
