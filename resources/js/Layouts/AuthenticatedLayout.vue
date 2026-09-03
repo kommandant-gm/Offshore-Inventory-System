@@ -24,9 +24,11 @@
         ? fallback
         : localStorage.getItem(key) === 'true';
     const miriExpanded = ref(storedSection('sidebar.miri.expanded', currentUser?.active_branch?.code === 'MIRI'));
+    const oldMiriExpanded = ref(storedSection('sidebar.old-miri.expanded', false));
     const klExpanded = ref(storedSection('sidebar.kl.expanded', currentUser?.active_branch?.code === 'KL-IT'));
     const kemamanExpanded = ref(storedSection('sidebar.kemaman.expanded', currentUser?.active_branch?.code === 'KEMAMAN'));
     watch(miriExpanded, (value) => localStorage.setItem('sidebar.miri.expanded', String(value)));
+    watch(oldMiriExpanded, (value) => localStorage.setItem('sidebar.old-miri.expanded', String(value)));
     watch(klExpanded, (value) => localStorage.setItem('sidebar.kl.expanded', String(value)));
     watch(kemamanExpanded, (value) => localStorage.setItem('sidebar.kemaman.expanded', String(value)));
     const hasBranch = (code) => currentUser?.branches?.some((branch) => branch.code === code);
@@ -47,16 +49,18 @@
     };
     const isAdministrator = currentUser?.role === 'admin' || !currentUser?.role || currentUser?.can?.superadmin;
     const miriItems = [
-        { name: 'Dashboard', icon: Squares2X2Icon, route: 'dashboard' },
-        { name: 'Inventory Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read', adminOnly: true },
-        { name: 'Major Equipment', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
-        { name: 'Old Miri Inventory', icon: ArchiveBoxIcon, route: 'assets.index', adminOnly: true },
+        { name: 'Dashboard', icon: Squares2X2Icon, route: 'major-equipment.dashboard' },
+        { name: 'Miri Inventory Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
+    ];
+    const oldMiriItems = [
+        { name: 'Inventory Assistant', icon: ChatBubbleLeftRightIcon, route: 'assistant.index', can: 'assistant_read' },
+        { name: 'Stock Items', icon: ArchiveBoxIcon, route: 'assets.index' },
         { name: 'Stock Movements', icon: TruckIcon, route: 'asset-movements.index', can: 'movements_read', adminOnly: true },
         { name: 'Receive / Issue', icon: BuildingStorefrontIcon, route: 'asset-movements.create', can: 'movements_edit', adminOnly: true },
         { name: 'Stocktakes', icon: ClipboardDocumentListIcon, route: 'stocktakes.index', can: 'movements_read', adminOnly: true },
         { name: 'Stock Ledger', icon: ChartBarIcon, route: 'asset-ledger.index', adminOnly: true },
         { name: 'COG Control', icon: ClipboardDocumentCheckIcon, route: 'cogs.index', adminOnly: true },
-        { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read', adminOnly: true },
+        { name: 'Stock Anomalies', icon: ExclamationTriangleIcon, route: 'anomalies.index', can: 'anomalies_read' },
     ];
     const klItems = [
         { name: 'IT Dashboard', icon: Squares2X2Icon, route: 'it-assets.dashboard', can: 'it_assets_read' },
@@ -293,7 +297,18 @@
                                 <span>Miri Inventory</span><ChevronDownIcon class="h-4 w-4 transition-transform" :class="miriExpanded ? 'rotate-180' : ''" />
                             </button>
                             <div v-show="miriExpanded" class="space-y-0.5">
-                                <button v-for="item in miriItems.filter((entry) => (!entry.can || currentUser?.can?.[entry.can]) && (!entry.adminOnly || isAdministrator))" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && isItemActive(item) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                <button v-for="item in miriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && isItemActive(item) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
+                                    <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
+                                </button>
+                            </div>
+                        </section>
+
+                        <section v-if="hasBranch('MIRI') && isAdministrator">
+                            <button type="button" class="mb-2 flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[10px] font-bold uppercase tracking-[0.24em] text-[#9aa99a] hover:bg-[#f7faf5]" :aria-expanded="oldMiriExpanded" @click="oldMiriExpanded = !oldMiriExpanded">
+                                <span>Old Miri Inventory</span><ChevronDownIcon class="h-4 w-4 transition-transform" :class="oldMiriExpanded ? 'rotate-180' : ''" />
+                            </button>
+                            <div v-show="oldMiriExpanded" class="space-y-0.5">
+                                <button v-for="item in oldMiriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`old-miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && isItemActive(item) ? 'bg-[#f1f5ef] text-[#234222]' : 'text-[#7a8d78] hover:bg-[#f7faf5] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
                                     <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
                                 </button>
                             </div>

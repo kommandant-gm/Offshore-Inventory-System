@@ -139,6 +139,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
         Route::get('/asset-ledger', [AssetLedgerController::class, 'index'])->name('asset-ledger.index');
     });
     Route::get('/miri-inventory', [MajorEquipmentController::class, 'index'])->name('major-equipment.index');
+    Route::get('/miri-inventory/dashboard', [MajorEquipmentController::class, 'dashboard'])->name('major-equipment.dashboard');
     Route::get('/miri-inventory/import', [MajorEquipmentController::class, 'import'])->name('major-equipment.import');
     Route::post('/miri-inventory/import', [MajorEquipmentController::class, 'storeImport'])->name('major-equipment.import.store');
     Route::get('/miri-inventory/{equipment}', [MajorEquipmentController::class, 'show'])->name('major-equipment.show');

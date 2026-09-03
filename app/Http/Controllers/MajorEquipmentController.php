@@ -13,6 +13,32 @@ use Inertia\Response;
 
 class MajorEquipmentController extends Controller
 {
+    public function dashboard(Request $request): Response
+    {
+        $this->ensureMiri($request);
+        abort_unless($request->user()?->canRead('assets'), 403);
+
+        $query = MajorEquipment::query();
+        return Inertia::render('MajorEquipment/Dashboard', [
+            'summary' => [
+                'total' => (clone $query)->count(),
+                'in_use' => (clone $query)->where('status', 'In Use')->count(),
+                'standby' => (clone $query)->where('status', 'Standby')->count(),
+                'under_repair' => (clone $query)->where('status', 'Under Repair')->count(),
+                'damaged' => (clone $query)->where('status', 'Damaged')->count(),
+            ],
+            'categories' => MajorEquipment::query()
+                ->select('category')
+                ->selectRaw('COUNT(*) as total')
+                ->groupBy('category')
+                ->orderByDesc('total')
+                ->get(),
+            'recent' => MajorEquipment::query()->latest('updated_at')->limit(8)->get([
+                'id', 'description', 'tag_no', 'section_1', 'section_2', 'status', 'current_location',
+            ]),
+        ]);
+    }
+
     public function index(Request $request): Response
     {
         $this->ensureMiri($request);
