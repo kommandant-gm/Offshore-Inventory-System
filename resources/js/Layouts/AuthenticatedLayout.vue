@@ -45,7 +45,6 @@
             preserveScroll: false,
         });
     };
-    const isAdministrator = currentUser?.role === 'admin' || !currentUser?.role || currentUser?.can?.superadmin;
     const miriItems = [
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'major-equipment.dashboard' },
         { name: 'Miri Inventory Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
@@ -126,7 +125,7 @@
         }
 
         if (quickSearch.value.trim()) {
-            router.get(route('assets.index'));
+            router.get(route('dashboard'));
         }
     };
 
@@ -261,7 +260,7 @@
                     <slot />
                 </main>
 
-                <AssistantWidget v-if="currentUser?.can?.assistant_read && (currentUser?.active_branch?.code !== 'MIRI' || isAdministrator) && currentUser?.active_branch?.code !== 'KEMAMAN'" />
+                <AssistantWidget v-if="currentUser?.can?.assistant_read && currentUser?.active_branch?.code === 'KL-IT'" />
 
             </div> 
             

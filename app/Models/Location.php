@@ -40,8 +40,4 @@ class Location extends Model
         return $this->hasMany(self::class, 'parent_id');
     }
 
-    public function inventoryBalances(): HasMany
-    {
-        return $this->hasMany(InventoryLocationBalance::class);
-    }
 }

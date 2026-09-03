@@ -13,7 +13,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'system.access' => \App\Http\Middleware\EnsureSystemAccess::class,
-            'legacy.miri' => \App\Http\Middleware\EnsureLegacyMiriInventoryAdmin::class,
         ]);
 
         $middleware->web(append: [

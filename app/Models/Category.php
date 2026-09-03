@@ -33,8 +33,4 @@ class Category extends Model
         return $this->hasMany(Asset::class);
     }
 
-    public function inventoryItems(): HasMany
-    {
-        return $this->hasMany(InventoryItem::class);
-    }
 }
