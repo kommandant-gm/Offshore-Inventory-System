@@ -17,15 +17,13 @@ class MiriRentalImportService
         $handle = fopen($file->getRealPath(), 'rb');
         if ($handle === false) throw ValidationException::withMessages(['file' => 'Unable to read the uploaded Rental CSV file.']);
         fgetcsv($handle); fgetcsv($handle);
-        $rows = [];
-        while (($row = fgetcsv($handle)) !== false) $rows[] = $row;
-        fclose($handle);
         $branch = Branch::query()->where('code', 'MIRI')->first();
-        if (! $branch) throw ValidationException::withMessages(['file' => 'MIRI branch is not configured.']);
+        if (! $branch) { fclose($handle); throw ValidationException::withMessages(['file' => 'MIRI branch is not configured.']); }
 
-        $summary = ['rows_seen' => count($rows), 'created' => 0, 'skipped_blank' => 0, 'skipped_duplicate' => 0];
-        DB::transaction(function () use ($rows, $branch, &$summary): void {
-            foreach ($rows as $row) {
+        $summary = ['rows_seen' => 0, 'created' => 0, 'skipped_blank' => 0, 'skipped_duplicate' => 0];
+        DB::transaction(function () use ($handle, $branch, &$summary): void {
+            while (($row = fgetcsv($handle)) !== false) {
+                $summary['rows_seen']++;
                 if ($this->blank($row)) { $summary['skipped_blank']++; continue; }
                 $serial = $this->value($row, 4);
                 if ($serial && MiriRentalItem::query()->where('branch_id', $branch->id)->where('serial_tag_equipment_no', $serial)->exists()) { $summary['skipped_duplicate']++; continue; }
@@ -50,6 +48,7 @@ class MiriRentalImportService
                 $summary['created']++;
             }
         });
+        fclose($handle);
         return $summary;
     }
 
