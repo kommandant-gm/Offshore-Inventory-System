@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class MajorEquipmentController extends Controller
 {
@@ -258,6 +259,18 @@ class MajorEquipmentController extends Controller
         abort_unless(request()->user()?->canRead('assets'), 403);
         $equipment->load('certificates');
         return Inertia::render('MajorEquipment/Show', ['equipment' => $equipment]);
+    }
+
+    public function pdf(Request $request, MajorEquipment $equipment)
+    {
+        $this->ensureMiri($request);
+        abort_unless($request->user()?->canRead('assets'), 403);
+        $equipment->load('certificates');
+
+        return Pdf::loadView('miri-inventory.registration-pdf', [
+            'equipment' => $equipment,
+            'logoPath' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('images/dayang-logo.png'))),
+        ])->download('miri-inventory-registration-'.($equipment->tag_no ?: $equipment->id).'.pdf');
     }
 
     public function import(Request $request): Response

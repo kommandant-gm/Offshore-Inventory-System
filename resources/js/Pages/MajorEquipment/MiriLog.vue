@@ -10,7 +10,7 @@ const filteredLogs = computed(() => (props.logs?.data ?? []).filter((log) => {
     const text = `${log.user} ${log.module} ${log.event} ${log.summary}`.toLowerCase();
     return (!search.value || text.includes(search.value.toLowerCase())) && (event.value === 'All' || log.event === event.value);
 }));
-const eventLabel = (value) => ({ created: 'Added', updated: 'Changed', deleted: 'Deleted', imported: 'Imported', login: 'Signed in', logout: 'Signed out' }[value] || value);
+const eventLabel = (value) => ({ created: 'Added', updated: 'Changed', deleted: 'Deleted', imported: 'Imported', signed: 'Signed', login: 'Signed in', logout: 'Signed out' }[value] || value);
 const eventTone = (value) => ({ created: 'bg-emerald-100 text-emerald-700', updated: 'bg-blue-100 text-blue-700', deleted: 'bg-rose-100 text-rose-700', imported: 'bg-violet-100 text-violet-700', login: 'bg-cyan-100 text-cyan-700', logout: 'bg-slate-100 text-slate-600' }[value] || 'bg-slate-100 text-slate-600');
 </script>
 

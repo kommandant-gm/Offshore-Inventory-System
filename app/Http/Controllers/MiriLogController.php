@@ -22,7 +22,7 @@ class MiriLogController extends Controller
                 'total' => (clone $query)->count(),
                 'today' => (clone $query)->whereDate('created_at', today())->count(),
                 'created' => (clone $query)->whereIn('event', ['created', 'imported', 'login'])->count(),
-                'changed' => (clone $query)->whereIn('event', ['updated', 'deleted', 'logout'])->count(),
+                'changed' => (clone $query)->whereIn('event', ['updated', 'deleted', 'signed', 'logout'])->count(),
             ],
             'logs' => $query->paginate(30)->withQueryString()->through(fn (AuditLog $log) => [
                 'id' => $log->id,
