@@ -78,7 +78,9 @@ class MajorEquipmentController extends Controller
         $query = MajorEquipment::query();
         $today = today();
         $certificateQuery = MajorEquipmentCertificate::query();
+        $rentalDashboard = $this->rentalDashboard($today);
         return Inertia::render('MajorEquipment/Dashboard', [
+            'activeDashboard' => $request->string('view')->toString() === 'rentals' ? 'rentals' : 'major',
             'summary' => [
                 'total' => (clone $query)->count(),
                 'in_use' => (clone $query)->where('status', 'In Use')->count(),
@@ -125,7 +127,46 @@ class MajorEquipmentController extends Controller
             'recent' => MajorEquipment::query()->latest('updated_at')->limit(8)->get([
                 'id', 'description', 'tag_no', 'section_1', 'section_2', 'status', 'current_location',
             ]),
+            'rentalDashboard' => $rentalDashboard,
         ]);
+    }
+
+    private function rentalDashboard($today): array
+    {
+        $rentals = MiriRentalItem::query()->latest('updated_at')->get([
+            'id', 'description', 'serial_tag_equipment_no', 'category', 'supplier', 'project_contract',
+            'current_location', 'rental_due_date', 'issue_out_cog_no', 'issue_out_cog_date',
+            'received_backload_from_location', 'received_backload_cog_date', 'status', 'remarks', 'updated_at',
+        ]);
+        $statusLabels = ['On Hire', 'Issued', 'Received Backload', 'Off Hire', 'Returned to Supplier', 'Overdue'];
+        $statusCounts = $rentals->countBy(fn (MiriRentalItem $item) => $item->status ?: 'Not stated');
+        $monthStart = $today->copy()->startOfMonth();
+
+        return [
+            'summary' => [
+                'total' => $rentals->count(), 'on_hire' => (int) ($statusCounts['On Hire'] ?? 0),
+                'issued' => (int) ($statusCounts['Issued'] ?? 0), 'backload' => (int) ($statusCounts['Received Backload'] ?? 0),
+                'overdue' => $rentals->filter(fn (MiriRentalItem $item) => ($item->status === 'Overdue' || $item->rental_due_date?->lt($today)) && $item->status !== 'Returned to Supplier')->count(),
+                'due_30_days' => $rentals->filter(fn (MiriRentalItem $item) => $item->rental_due_date?->betweenIncluded($today, $today->copy()->addDays(30)))->count(),
+            ],
+            'status' => collect($statusLabels)->map(fn (string $label) => ['label' => $label, 'value' => (int) ($statusCounts[$label] ?? 0)])->values(),
+            'locations' => $rentals->countBy(fn (MiriRentalItem $item) => trim((string) $item->current_location) ?: 'Not specified')->sortDesc()->take(8)->map(fn (int $total, string $label) => ['label' => $label, 'value' => $total])->values(),
+            'suppliers' => $rentals->countBy(fn (MiriRentalItem $item) => trim((string) $item->supplier) ?: 'Not specified')->sortDesc()->take(6)->map(fn (int $total, string $label) => ['label' => $label, 'value' => $total])->values(),
+            'dueTimeline' => collect(range(0, 5))->map(function (int $offset) use ($rentals, $monthStart) {
+                $start = $monthStart->copy()->addMonths($offset);
+                $end = $start->copy()->endOfMonth();
+                return ['label' => $start->format('M'), 'full_label' => $start->format('M Y'), 'value' => $rentals->filter(fn (MiriRentalItem $item) => $item->rental_due_date?->betweenIncluded($start, $end))->count()];
+            })->values(),
+            'upcoming' => $rentals->filter(fn (MiriRentalItem $item) => $item->rental_due_date?->gte($today))->sortBy('rental_due_date')->take(8)->map(fn (MiriRentalItem $item) => [
+                'id' => $item->id, 'description' => $item->description, 'identifier' => $item->serial_tag_equipment_no,
+                'location' => $item->current_location, 'supplier' => $item->supplier, 'status' => $item->status,
+                'due_date' => $item->rental_due_date?->format('Y-m-d'), 'days_remaining' => $today->diffInDays($item->rental_due_date, false),
+            ])->values(),
+            'recent' => $rentals->take(8)->map(fn (MiriRentalItem $item) => [
+                'id' => $item->id, 'description' => $item->description, 'identifier' => $item->serial_tag_equipment_no,
+                'location' => $item->current_location, 'status' => $item->status, 'updated_at' => $item->updated_at?->format('d M Y, H:i'),
+            ])->values(),
+        ];
     }
 
     public function index(Request $request): Response

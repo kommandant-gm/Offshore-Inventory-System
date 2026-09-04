@@ -1,9 +1,11 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import MiriRentalDashboard from '@/Components/MiriRentalDashboard.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
-const props = defineProps({ summary: Object, categories: Array, locations: Array, recent: Array, expiry: Object, expiring: Array });
+const props = defineProps({ summary: Object, categories: Array, locations: Array, recent: Array, expiry: Object, expiring: Array, rentalDashboard: Object, activeDashboard: String });
+const activeDashboard = ref(props.activeDashboard ?? 'major');
 const total = computed(() => Number(props.summary?.total ?? 0));
 const statuses = computed(() => [
     { label: 'In Use', value: Number(props.summary?.in_use ?? 0), color: '#2563eb' },
@@ -34,6 +36,12 @@ const pie = computed(() => {
     <Head title="Miri Inventory Dashboard" />
     <AuthenticatedLayout>
         <section class="dashboard-shell space-y-6">
+            <nav class="inline-flex rounded-2xl border border-[#d8e7d4] bg-white p-1.5 shadow-[0_8px_28px_rgba(39,89,45,.06)]" aria-label="Miri dashboard view">
+                <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'major' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'major'" @click="activeDashboard = 'major'">Major Equipment</button>
+                <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'rentals' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'rentals'" @click="activeDashboard = 'rentals'">Rentals</button>
+            </nav>
+            <MiriRentalDashboard v-if="activeDashboard === 'rentals'" :dashboard="rentalDashboard" />
+            <template v-else>
             <header class="relative isolate overflow-hidden rounded-[1.75rem] bg-[linear-gradient(120deg,#064e3b_0%,#0f766e_58%,#115e59_100%)] px-5 py-6 text-white shadow-[0_24px_70px_rgba(6,78,59,.22)] sm:px-8 sm:py-8 lg:px-10">
                 <div class="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-cyan-300/20 blur-2xl" />
                 <div class="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-emerald-300/15 blur-3xl" />
@@ -54,6 +62,7 @@ const pie = computed(() => {
                 <article class="rounded-[1.5rem] border border-[#f2dfd7] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-7"><div class="flex items-start justify-between gap-4"><div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-rose-500">Certificate health</p><h2 class="mt-1 text-xl font-black tracking-tight text-slate-800">Expiry status</h2><p class="mt-1 text-xs text-slate-500">How long until each certificate expires.</p></div><span class="text-right text-xs text-slate-400"><strong class="block text-lg text-slate-700">{{ expiryTotal }}</strong>certificates</span></div><div class="mt-6 h-3 overflow-hidden rounded-full bg-slate-100"><span v-for="item in expiryStatuses" :key="item.label" class="inline-block h-full" :style="{ width: `${expiryTotal ? (item.value / expiryTotal) * 100 : 0}%`, backgroundColor: item.color }"/></div><div class="mt-5 grid gap-2 sm:grid-cols-2"><div v-for="item in expiryStatuses" :key="item.label" class="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2"><span class="h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: item.color }"/><span class="min-w-0 flex-1 truncate text-xs font-semibold text-slate-600">{{ item.label }}</span><strong class="text-sm" :class="item.tone">{{ item.value }}</strong></div></div><div class="mt-6 border-t border-slate-100 pt-4"><p class="text-[10px] font-extrabold uppercase tracking-[.18em] text-slate-400">Nearest deadlines</p><div class="mt-3 space-y-2"><Link v-for="item in expiring" :key="item.id" :href="route('major-equipment.show', item.equipment?.id)" class="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-rose-50"><span class="min-w-0 flex-1"><strong class="block truncate text-xs text-slate-700">{{ item.equipment?.tag_no || 'Untagged' }} · {{ item.certificate_type }}</strong><small class="text-[11px] text-slate-400">{{ expiryDate(item.expiry_date) }}</small></span><strong class="shrink-0 text-xs" :class="item.days_remaining < 0 ? 'text-red-600' : item.days_remaining <= 30 ? 'text-amber-600' : 'text-emerald-600'">{{ expiryLabel(item.days_remaining) }}</strong></Link><p v-if="expiring.length === 0" class="text-sm text-slate-500">No certificate expiry dates recorded yet.</p></div></div></article>
                 <article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-5"><div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-emerald-600">Latest activity</p><h2 class="mt-1 text-xl font-black tracking-tight text-slate-800">Recently updated</h2></div><div class="mt-5 space-y-3"><Link v-for="item in recent" :key="item.id" :href="route('major-equipment.show', item.id)" class="block rounded-xl bg-[#f7fbf5] px-4 py-3 hover:bg-[#eef8ea]"><p class="font-semibold text-[#234222]">{{ item.tag_no || 'Untagged' }} · {{ item.description || '-' }}</p><p class="mt-1 truncate text-xs text-slate-500">{{ item.section_1 }} / {{ item.section_2 }} · {{ item.status || '-' }}</p></Link><p v-if="recent.length === 0" class="text-sm text-slate-500">No records imported yet.</p></div></article>
             </div>
+            </template>
         </section>
     </AuthenticatedLayout>
 </template>
