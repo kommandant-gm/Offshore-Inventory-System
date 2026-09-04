@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreMajorEquipmentImportRequest;
 use App\Http\Requests\SaveMajorEquipmentRequest;
 use App\Models\MajorEquipment;
+use App\Models\MajorEquipmentCertificate;
+use App\Models\MiriRentalItem;
 use App\Models\MiriInventoryCategory;
 use App\Services\MajorEquipmentImportService;
 use App\Services\BranchContext;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,12 +18,66 @@ use Inertia\Response;
 
 class MajorEquipmentController extends Controller
 {
+    public function movement(Request $request): Response
+    {
+        $this->ensureMiri($request);
+        abort_unless($request->user()?->canRead('assets'), 403);
+
+        $today = today();
+        $equipment = MajorEquipment::query()->get([
+            'id', 'description', 'tag_no', 'category', 'status', 'current_location',
+            'issue_out_location', 'issue_out_cog_no', 'issue_out_cog_date',
+            'received_backload_cog_no', 'received_backload_cog_date', 'remarks',
+        ]);
+        $rentals = MiriRentalItem::query()->get([
+            'id', 'description', 'serial_tag_equipment_no', 'category', 'status', 'current_location',
+            'rental_due_date', 'issue_out_cog_no', 'issue_out_cog_date',
+            'received_backload_from_location', 'received_backload_cog_no', 'received_backload_cog_date', 'remarks',
+        ]);
+
+        $records = $equipment->map(fn (MajorEquipment $item) => [
+            'id' => $item->id, 'source_id' => $item->id, 'type' => 'Major equipment',
+            'name' => $item->description ?: 'Unnamed equipment', 'identifier' => $item->tag_no,
+            'category' => $item->category, 'status' => $item->status ?: 'Not stated',
+            'current_location' => $item->current_location, 'from_location' => $item->issue_out_location ? 'Miri store / base' : null,
+            'to_location' => $item->issue_out_location, 'issue_date' => $item->issue_out_cog_date?->format('Y-m-d'),
+            'issue_reference' => $item->issue_out_cog_no, 'backload_from' => null,
+            'received_date' => $item->received_backload_cog_date?->format('Y-m-d'), 'received_reference' => $item->received_backload_cog_no,
+            'due_date' => null, 'remarks' => $item->remarks,
+        ])->concat($rentals->map(fn (MiriRentalItem $item) => [
+            'id' => 1000000 + $item->id, 'source_id' => $item->id, 'type' => 'Rental',
+            'name' => $item->description ?: 'Unnamed rental', 'identifier' => $item->serial_tag_equipment_no,
+            'category' => $item->category, 'status' => $item->status ?: 'Not stated',
+            'current_location' => $item->current_location, 'from_location' => $item->issue_out_cog_date ? 'Miri store / base' : null,
+            'to_location' => $item->current_location, 'issue_date' => $item->issue_out_cog_date?->format('Y-m-d'),
+            'issue_reference' => $item->issue_out_cog_no, 'backload_from' => $item->received_backload_from_location,
+            'received_date' => $item->received_backload_cog_date?->format('Y-m-d'), 'received_reference' => $item->received_backload_cog_no,
+            'due_date' => $item->rental_due_date?->format('Y-m-d'), 'remarks' => $item->remarks,
+        ]))->values();
+
+        $locations = $records->filter(fn (array $item) => filled($item['current_location']))
+            ->groupBy('current_location')->map(fn ($items, $location) => ['label' => $location, 'total' => $items->count()])
+            ->sortByDesc('total')->values()->take(10);
+
+        return Inertia::render('MajorEquipment/Movement', [
+            'summary' => [
+                'total' => $records->count(), 'located' => $records->whereNotNull('current_location')->filter(fn ($item) => filled($item['current_location']))->count(),
+                'issued' => $records->filter(fn ($item) => filled($item['issue_date']))->count(), 'backloaded' => $records->filter(fn ($item) => filled($item['received_date']))->count(),
+                'due_soon' => $records->filter(fn ($item) => filled($item['due_date']) && $item['due_date'] >= $today->format('Y-m-d') && $item['due_date'] <= $today->copy()->addDays(30)->format('Y-m-d'))->count(),
+                'overdue' => $records->filter(fn ($item) => filled($item['due_date']) && $item['due_date'] < $today->format('Y-m-d'))->count(),
+            ],
+            'locations' => $locations, 'records' => $records->sortByDesc(fn ($item) => $item['issue_date'] ?: $item['received_date'] ?: '')->values(),
+        ]);
+    }
+
     public function dashboard(Request $request): Response
     {
         $this->ensureMiri($request);
         abort_unless($request->user()?->canRead('assets'), 403);
 
         $query = MajorEquipment::query();
+        $today = today();
+        $certificateQuery = MajorEquipmentCertificate::query();
         return Inertia::render('MajorEquipment/Dashboard', [
             'summary' => [
                 'total' => (clone $query)->count(),
@@ -29,6 +86,29 @@ class MajorEquipmentController extends Controller
                 'under_repair' => (clone $query)->where('status', 'Under Repair')->count(),
                 'damaged' => (clone $query)->where('status', 'Damaged')->count(),
             ],
+            'expiry' => [
+                'expired' => (clone $certificateQuery)->whereNotNull('expiry_date')->whereDate('expiry_date', '<', $today)->count(),
+                'due_30_days' => (clone $certificateQuery)->whereBetween('expiry_date', [$today, $today->copy()->addDays(30)])->count(),
+                'due_90_days' => (clone $certificateQuery)->whereBetween('expiry_date', [$today->copy()->addDays(31), $today->copy()->addDays(90)])->count(),
+                'valid' => (clone $certificateQuery)->whereDate('expiry_date', '>', $today->copy()->addDays(90))->count(),
+                'not_recorded' => (clone $certificateQuery)->whereNull('expiry_date')->count(),
+            ],
+            'expiring' => (clone $certificateQuery)->with('equipment:id,description,tag_no,status')
+                ->whereNotNull('expiry_date')
+                ->orderBy('expiry_date')
+                ->limit(6)
+                ->get(['id', 'miri_inventory_item_id', 'certificate_type', 'expiry_date'])
+                ->map(fn (MajorEquipmentCertificate $certificate) => [
+                    'id' => $certificate->id,
+                    'certificate_type' => $certificate->certificate_type,
+                    'expiry_date' => $certificate->expiry_date?->format('Y-m-d'),
+                    'days_remaining' => $today->diffInDays($certificate->expiry_date, false),
+                    'equipment' => $certificate->equipment ? [
+                        'id' => $certificate->equipment->id,
+                        'tag_no' => $certificate->equipment->tag_no,
+                        'description' => $certificate->equipment->description,
+                    ] : null,
+                ]),
             'categories' => MajorEquipment::query()
                 ->select('category')
                 ->selectRaw('COUNT(*) as total')
@@ -91,7 +171,7 @@ class MajorEquipmentController extends Controller
         return Inertia::render('MajorEquipment/Form', ['equipment' => null, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
-    public function store(SaveMajorEquipmentRequest $request): RedirectResponse
+    public function store(SaveMajorEquipmentRequest $request, AuditLogger $auditLogger): RedirectResponse
     {
         $this->ensureMiri($request);
         $data = $request->validated();
@@ -103,6 +183,7 @@ class MajorEquipmentController extends Controller
             foreach ($certificates as $certificate) $equipment->certificates()->create(['branch_id' => $equipment->branch_id, ...$certificate]);
             return $equipment;
         });
+        $auditLogger->record('miri_inventory', 'created', "Added Miri equipment record {$equipment->description}.", $equipment, after: $equipment->toArray(), user: $request->user(), request: $request);
         return redirect()->route('major-equipment.show', $equipment)->with('success', 'Miri equipment registered.');
     }
 
@@ -114,9 +195,10 @@ class MajorEquipmentController extends Controller
         return Inertia::render('MajorEquipment/Form', ['equipment' => $equipment, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
-    public function update(SaveMajorEquipmentRequest $request, MajorEquipment $equipment): RedirectResponse
+    public function update(SaveMajorEquipmentRequest $request, MajorEquipment $equipment, AuditLogger $auditLogger): RedirectResponse
     {
         $this->ensureMiri($request);
+        $before = $equipment->toArray();
         $data = $request->validated();
         $certificates = $data['certificates'] ?? [];
         unset($data['certificates']);
@@ -125,6 +207,7 @@ class MajorEquipmentController extends Controller
             $equipment->certificates()->delete();
             foreach ($certificates as $certificate) $equipment->certificates()->create(['branch_id' => $equipment->branch_id, ...$certificate]);
         });
+        $auditLogger->record('miri_inventory', 'updated', "Updated Miri equipment record {$equipment->description}.", $equipment, before: $before, after: $equipment->fresh()->toArray(), user: $request->user(), request: $request);
         return redirect()->route('major-equipment.show', $equipment)->with('success', 'Miri equipment updated.');
     }
 
@@ -143,10 +226,11 @@ class MajorEquipmentController extends Controller
         return Inertia::render('MajorEquipment/Import');
     }
 
-    public function storeImport(StoreMajorEquipmentImportRequest $request, MajorEquipmentImportService $service): RedirectResponse
+    public function storeImport(StoreMajorEquipmentImportRequest $request, MajorEquipmentImportService $service, AuditLogger $auditLogger): RedirectResponse
     {
         $this->ensureMiri($request);
         $summary = $service->import($request->file('file'), $request->user()->id);
+        $auditLogger->record('miri_inventory', 'imported', "Imported Miri equipment file: {$summary['created']} records created and {$summary['certificates_created']} certificates captured.", user: $request->user(), request: $request);
         return redirect()->route('major-equipment.index')->with('success', "Major Equipment import complete. {$summary['created']} records created and {$summary['certificates_created']} certificates captured.");
     }
 

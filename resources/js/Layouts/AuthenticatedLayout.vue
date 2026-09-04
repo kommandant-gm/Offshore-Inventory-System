@@ -3,7 +3,7 @@
     import AssistantWidget from '@/Components/AssistantWidget.vue';
     import { Link, router, usePage } from '@inertiajs/vue3';
     import { 
-        Squares2X2Icon, ArchiveBoxIcon, MapIcon, TruckIcon,
+        Squares2X2Icon, ArchiveBoxIcon, MapIcon, TruckIcon, ArrowsRightLeftIcon,
         ClipboardDocumentCheckIcon, ChartBarIcon, ChatBubbleLeftRightIcon,
         Cog6ToothIcon, BellIcon, MagnifyingGlassIcon,
         ExclamationTriangleIcon,
@@ -48,6 +48,8 @@
     const miriItems = [
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'major-equipment.dashboard' },
         { name: 'Miri Inventory Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
+        { name: 'Inventory Movement', icon: ArrowsRightLeftIcon, route: 'major-equipment.movement' },
+        { name: 'Miri Log', icon: ClipboardDocumentListIcon, route: 'major-equipment.log' },
         { name: 'Rental Register', icon: TruckIcon, route: 'miri-rental.index' },
     ];
     const klItems = [

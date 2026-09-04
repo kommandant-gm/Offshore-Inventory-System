@@ -21,6 +21,7 @@ use App\Http\Controllers\ItMovementRecordController;
 use App\Http\Controllers\KemamanInventoryController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MajorEquipmentController;
+use App\Http\Controllers\MiriLogController;
 use App\Http\Controllers\MiriRentalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicAssetController;
@@ -116,6 +117,8 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::resource('locations', LocationController::class)->only(['index', 'store', 'update']);
     Route::get('/miri-inventory', [MajorEquipmentController::class, 'index'])->name('major-equipment.index');
     Route::get('/miri-inventory/dashboard', [MajorEquipmentController::class, 'dashboard'])->name('major-equipment.dashboard');
+    Route::get('/miri-inventory/movement', [MajorEquipmentController::class, 'movement'])->name('major-equipment.movement');
+    Route::get('/miri-inventory/log', [MiriLogController::class, 'index'])->name('major-equipment.log');
     Route::get('/miri-inventory/create', [MajorEquipmentController::class, 'create'])->name('major-equipment.create');
     Route::post('/miri-inventory', [MajorEquipmentController::class, 'store'])->name('major-equipment.store');
     Route::get('/miri-inventory/import', [MajorEquipmentController::class, 'import'])->name('major-equipment.import');

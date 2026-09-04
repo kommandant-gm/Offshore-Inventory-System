@@ -7,6 +7,7 @@ use App\Http\Requests\StoreMiriRentalImportRequest;
 use App\Models\MiriRentalItem;
 use App\Services\BranchContext;
 use App\Services\MiriRentalImportService;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -28,12 +29,12 @@ class MiriRentalController extends Controller
     }
 
     public function create(Request $request): Response { $this->ensureMiri($request); abort_unless($request->user()?->canEdit('assets'), 403); return Inertia::render('MiriRental/Form', ['rental' => null, 'categories' => $this->categories()]); }
-    public function store(SaveMiriRentalRequest $request): RedirectResponse { $this->ensureMiri($request); $rental = MiriRentalItem::create([...$request->validated(), 'branch_id' => app(BranchContext::class)->id($request->user())]); return redirect()->route('miri-rental.show', $rental)->with('success', 'Rental record registered.'); }
+    public function store(SaveMiriRentalRequest $request, AuditLogger $auditLogger): RedirectResponse { $this->ensureMiri($request); $rental = MiriRentalItem::create([...$request->validated(), 'branch_id' => app(BranchContext::class)->id($request->user())]); $auditLogger->record('miri_rentals', 'created', "Added Miri rental record {$rental->description}.", $rental, after: $rental->toArray(), user: $request->user(), request: $request); return redirect()->route('miri-rental.show', $rental)->with('success', 'Rental record registered.'); }
     public function show(Request $request, MiriRentalItem $rental): Response { $this->ensureMiri($request); abort_unless($request->user()?->canRead('assets'), 403); return Inertia::render('MiriRental/Show', ['rental' => $rental]); }
     public function edit(Request $request, MiriRentalItem $rental): Response { $this->ensureMiri($request); abort_unless($request->user()?->canEdit('assets'), 403); return Inertia::render('MiriRental/Form', ['rental' => $rental, 'categories' => $this->categories()]); }
-    public function update(SaveMiriRentalRequest $request, MiriRentalItem $rental): RedirectResponse { $this->ensureMiri($request); $rental->update($request->validated()); return redirect()->route('miri-rental.show', $rental)->with('success', 'Rental record updated.'); }
+    public function update(SaveMiriRentalRequest $request, MiriRentalItem $rental, AuditLogger $auditLogger): RedirectResponse { $this->ensureMiri($request); $before = $rental->toArray(); $rental->update($request->validated()); $auditLogger->record('miri_rentals', 'updated', "Updated Miri rental record {$rental->description}.", $rental, before: $before, after: $rental->fresh()->toArray(), user: $request->user(), request: $request); return redirect()->route('miri-rental.show', $rental)->with('success', 'Rental record updated.'); }
     public function import(Request $request): Response { $this->ensureMiri($request); abort_unless($request->user()?->canEdit('assets'), 403); return Inertia::render('MiriRental/Import'); }
-    public function storeImport(StoreMiriRentalImportRequest $request, MiriRentalImportService $service): RedirectResponse { $this->ensureMiri($request); $summary = $service->import($request->file('file')); return redirect()->route('miri-rental.index')->with('success', "Rental import complete. {$summary['created']} records created."); }
+    public function storeImport(StoreMiriRentalImportRequest $request, MiriRentalImportService $service, AuditLogger $auditLogger): RedirectResponse { $this->ensureMiri($request); $summary = $service->import($request->file('file')); $auditLogger->record('miri_rentals', 'imported', "Imported Miri rental file: {$summary['created']} records created.", user: $request->user(), request: $request); return redirect()->route('miri-rental.index')->with('success', "Rental import complete. {$summary['created']} records created."); }
     private function categories(): array { return \App\Models\MiriInventoryCategory::query()->where('active', true)->orderBy('name')->pluck('name')->values()->all(); }
     private function ensureMiri(Request $request): void { abort_unless(app(BranchContext::class)->branch($request->user())?->code === 'MIRI', 404); }
 }
