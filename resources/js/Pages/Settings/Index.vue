@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     stats: Object,
@@ -72,6 +72,8 @@ const userSearch = ref('');
 const departmentFilter = ref('');
 const roleFilter = ref('');
 const directoryView = ref('cards');
+const directoryPage = ref(1);
+const directoryPageSize = ref(12);
 const sendingTestEmail = ref(false);
 const checkoutTestEmail = ref('');
 const sendingCheckoutTest = ref(false);
@@ -122,6 +124,11 @@ const visibleUsers = computed(() => {
         return matchesDepartment && matchesRole && matchesSearch;
     });
 });
+const directoryTotalPages = computed(() => Math.max(1, Math.ceil(visibleUsers.value.length / directoryPageSize.value)));
+const directoryPageStart = computed(() => (directoryPage.value - 1) * directoryPageSize.value);
+const paginatedUsers = computed(() => visibleUsers.value.slice(directoryPageStart.value, directoryPageStart.value + directoryPageSize.value));
+watch([userSearch, departmentFilter, roleFilter, directoryPageSize], () => { directoryPage.value = 1; });
+watch(directoryTotalPages, (pages) => { directoryPage.value = Math.min(directoryPage.value, pages); });
 const initials = (name) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 
 const filteredPermissionModules = computed(() => {
@@ -349,7 +356,7 @@ const importLdapUsers = () => {
 
                     <div class="grid gap-3" :class="directoryView === 'cards' ? 'md:grid-cols-2 xl:grid-cols-3' : 'md:grid-cols-2'">
                         <button
-                            v-for="user in visibleUsers"
+                            v-for="user in paginatedUsers"
                             :key="`nav-${user.id}`"
                             type="button"
                             class="w-full rounded-[1.15rem] border bg-white p-4 text-left transition"
@@ -366,6 +373,17 @@ const importLdapUsers = () => {
                             <p class="mt-3 text-right text-xs font-bold text-[#9b0000]">Edit role →</p>
                         </button>
                         <div v-if="visibleUsers.length === 0" class="rounded-[1.15rem] border border-dashed border-[#d8e7d4] px-5 py-10 text-center text-sm text-[#6f8a6b] md:col-span-2 xl:col-span-3">No users match the selected filters or search.</div>
+                    </div>
+                    <div class="mt-5 space-y-3 border-t border-[#d8e7d4] pt-4 text-sm text-[#65748b]">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <p role="status">Showing {{ visibleUsers.length ? directoryPageStart + 1 : 0 }}?{{ directoryPageStart + paginatedUsers.length }} of {{ visibleUsers.length }} matching employees<span v-if="visibleUsers.length !== users.length"> ({{ users.length }} total)</span>.</p>
+                            <label class="flex items-center gap-2">Employees per page<select v-model.number="directoryPageSize" class="rounded-lg border-[#d8e7d4] py-1.5 text-sm focus:border-[#9b0000] focus:ring-[#9b0000]"><option :value="12">12</option><option :value="24">24</option><option :value="48">48</option></select></label>
+                        </div>
+                        <nav aria-label="Employee directory pagination" class="flex flex-wrap items-center justify-end gap-3">
+                            <button type="button" :disabled="directoryPage === 1" class="min-h-10 rounded-xl border border-[#dce3ed] bg-white px-4 py-2 text-sm font-semibold text-[#31415b] hover:bg-[#fff4f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b0000] disabled:cursor-not-allowed disabled:opacity-40" @click="directoryPage--">Previous</button>
+                            <span>Page {{ directoryPage }} of {{ directoryTotalPages }}</span>
+                            <button type="button" :disabled="directoryPage === directoryTotalPages" class="min-h-10 rounded-xl border border-[#dce3ed] bg-white px-4 py-2 text-sm font-semibold text-[#31415b] hover:bg-[#fff4f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b0000] disabled:cursor-not-allowed disabled:opacity-40" @click="directoryPage++">Next</button>
+                        </nav>
                     </div>
                 </aside>
 
