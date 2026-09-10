@@ -14,6 +14,9 @@ class SaveMajorEquipmentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'inventory_type' => ['required', 'in:machinery,cargo'],
+            'size_model' => ['nullable', 'string', 'max:255'], 'size_ton' => ['nullable', 'string', 'max:255'],
+            'size_length' => ['nullable', 'string', 'max:255'], 'quantity' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'category' => ['required', 'string', 'max:255'],
             'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'], 'unit' => ['nullable', 'string', 'max:255'],
@@ -30,5 +33,12 @@ class SaveMajorEquipmentRequest extends FormRequest
             'certificates.*.certificate_no' => ['nullable', 'string', 'max:255'], 'certificates.*.issue_date' => ['nullable', 'date'],
             'certificates.*.expiry_date' => ['nullable', 'date'], 'certificates.*.raw_value' => ['nullable', 'string'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $type = $this->input('inventory_type', $this->route('equipment')?->inventory_type ?? 'machinery');
+        $section = trim((string) $this->input('section_1'));
+        $this->merge(['inventory_type' => $type, 'section_1' => $type === 'cargo' ? 'CARGO SET' : (in_array(strtoupper($section), ['MACHINARY', 'MACHINERY'], true) ? 'Machinery' : $section)]);
     }
 }

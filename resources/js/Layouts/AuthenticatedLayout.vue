@@ -47,7 +47,7 @@
     };
     const miriItems = [
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'major-equipment.dashboard' },
-        { name: 'Miri Inventory Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
+        { name: 'Major Equipment Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
         { name: 'Rental Register', icon: TruckIcon, route: 'miri-rental.index' },
         { name: 'Miri COG', icon: ClipboardDocumentListIcon, route: 'miri-cogs.index' },
         { name: 'Inventory Movement', icon: ArrowsRightLeftIcon, route: 'major-equipment.movement' },

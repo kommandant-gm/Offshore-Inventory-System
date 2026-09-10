@@ -130,6 +130,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::get('/miri-inventory/create', [MajorEquipmentController::class, 'create'])->name('major-equipment.create');
     Route::post('/miri-inventory', [MajorEquipmentController::class, 'store'])->name('major-equipment.store');
     Route::get('/miri-inventory/import', [MajorEquipmentController::class, 'import'])->name('major-equipment.import');
+    Route::post('/miri-inventory/import/preview', [MajorEquipmentController::class, 'previewImport'])->name('major-equipment.import.preview');
     Route::post('/miri-inventory/import', [MajorEquipmentController::class, 'storeImport'])->name('major-equipment.import.store');
     Route::get('/miri-inventory/{equipment}', [MajorEquipmentController::class, 'show'])->name('major-equipment.show');
     Route::get('/miri-inventory/{equipment}/pdf', [MajorEquipmentController::class, 'pdf'])->name('major-equipment.pdf');

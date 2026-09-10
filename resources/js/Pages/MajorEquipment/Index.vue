@@ -2,97 +2,111 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, reactive } from 'vue';
+import { computed, reactive, watch } from 'vue';
 
-const props = defineProps({ equipment: Object, summary: Object, filters: Object, categoryOptions: Array, section1Options: Array, section2Options: Array, locationOptions: Array, issueOutLocationOptions: Array, statusOptions: Array, canEdit: Boolean });
+const props = defineProps({
+    equipment: Object, summary: Object, tabCounts: Object, filters: Object,
+    categoryOptions: Array, section1Options: Array, section2Options: Array,
+    locationOptions: Array, issueOutLocationOptions: Array, statusOptions: Array, canEdit: Boolean,
+});
 const form = reactive({ ...props.filters });
-const activeFilters = computed(() => Object.values(form).filter((value) => value !== '' && value !== null).length);
+watch(() => props.filters, value => Object.assign(form, value));
+const cargo = computed(() => props.filters.inventory_type === 'cargo');
+const typeLabel = computed(() => cargo.value ? 'Cargo' : 'Machinery');
 const applyFilters = () => router.get(route('major-equipment.index'), form, { preserveState: true, preserveScroll: true, replace: true });
-const clearFilters = () => { Object.keys(form).forEach((key) => { form[key] = ''; }); applyFilters(); };
-const toggleMissing = () => { form.missing_details = form.missing_details === 'missing' ? '' : 'missing'; applyFilters(); };
+const clearFilters = () => { Object.keys(form).filter(k => k !== 'inventory_type').forEach(k => form[k] = ''); applyFilters(); };
+const qualityFilter = (value) => { form.quality = form.quality === value ? '' : value; applyFilters(); };
+const missing = (item) => ['tag_no', 'description', 'current_location'].filter(key => !String(item[key] ?? '').trim());
+const selectors = computed(() => [
+    ['category', 'Category', props.categoryOptions], ['section_1', 'Section', props.section1Options],
+    ['section_2', 'Subcategory', props.section2Options], ['location', 'Current location', props.locationOptions],
+    ['issue_out_location', 'Issue-out location', props.issueOutLocationOptions], ['status', 'Status', props.statusOptions],
+]);
 </script>
+
 <template>
     <Head title="Miri Inventory Register" />
     <AuthenticatedLayout>
         <section class="space-y-6">
-            <header class="flex flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-[#d8e7d4] bg-white p-7 shadow-sm"><div><p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">Miri Inventory</p><h1 class="mt-2 text-3xl font-bold text-[#234222]">Miri Inventory Register</h1><p class="mt-2 text-sm text-[#60745d]">Major equipment, certificates, locations and COG tracking.</p></div><div v-if="canEdit" class="flex gap-2"><Link :href="route('major-equipment.import')" class="rounded-full border border-[#4f9f4a] px-5 py-3 text-sm font-bold text-[#2f7d32]">Import CSV</Link><Link :href="route('major-equipment.create')" class="rounded-full bg-[#4f9f4a] px-5 py-3 text-sm font-bold text-white">Register equipment</Link></div></header>
-            <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><div v-for="card in [{ label: 'Total equipment', value: summary.total, color: 'border-[#4f9f4a]' }, { label: 'In use', value: summary.in_use, color: 'border-blue-400' }, { label: 'Standby', value: summary.standby, color: 'border-emerald-400' }, { label: 'Under repair', value: summary.under_repair, color: 'border-amber-400' }, { label: 'Missing details', value: summary.missing_details, color: 'border-orange-400' }]" :key="card.label" class="rounded-2xl border border-[#d8e7d4] border-t-4 bg-white p-5 shadow-sm" :class="card.color"><p class="text-xs font-bold uppercase tracking-wider text-[#60745d]">{{ card.label }}</p><p class="mt-2 text-3xl font-black text-[#234222]">{{ card.value }}</p></div></section>
-            <form class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5 shadow-sm sm:p-6" @submit.prevent="applyFilters">
-                <div class="flex flex-wrap items-center gap-2">
-                    <h2 class="font-bold text-[#234222]">Filter equipment</h2>
-                    <span v-if="activeFilters" class="rounded-full bg-[#e8f5e4] px-2.5 py-1 text-xs font-bold text-[#2f7d32]">{{ activeFilters }} active</span>
+            <header class="flex flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-[#d8e7d4] bg-white p-7 shadow-sm">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">Miri Inventory · Major Equipment</p>
+                    <h1 class="mt-2 text-3xl font-bold text-[#234222]">Miri Inventory Register</h1>
+                    <p class="mt-2 text-sm text-[#60745d]">Equipment, certificates, locations and COG tracking.</p>
                 </div>
-                <p class="mt-1 text-sm text-[#60745d]">Search equipment or use the filters below to narrow the register.</p>
-
-                <div class="mt-5">
-                    <label for="equipment-search" class="filter-label">Search equipment</label>
-                    <input id="equipment-search" v-model.trim="form.search" type="search" class="filter-input" placeholder="Tag, serial, model, COG or description" />
+                <div v-if="canEdit" class="flex flex-wrap gap-2">
+                    <Link :href="route('major-equipment.import', { inventory_type: filters.inventory_type })" class="btn border-[#4f9f4a] text-[#2f7d32]">Import {{ typeLabel }} CSV</Link>
+                    <Link :href="route('major-equipment.create', { inventory_type: filters.inventory_type })" class="btn bg-[#4f9f4a] text-white">Register {{ typeLabel }}</Link>
                 </div>
-                <div class="mt-5 grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
-                    <div class="min-w-0">
-                        <label for="equipment-category" class="filter-label">Category</label>
-                        <CustomSelect id="equipment-category" v-model="form.category" class="filter-input">
-                            <option value="">All categories</option>
-                            <option v-for="option in categoryOptions" :key="option" :value="option">{{ option }}</option>
-                        </CustomSelect>
-                    </div>
-                    <div class="min-w-0">
-                        <label for="equipment-section_1" class="filter-label">Subcategory 1</label>
-                        <CustomSelect id="equipment-section_1" v-model="form.section_1" class="filter-input">
-                            <option value="">All subcategory 1</option>
-                            <option v-for="option in section1Options" :key="option" :value="option">{{ option }}</option>
-                        </CustomSelect>
-                    </div>
-                    <div class="min-w-0">
-                        <label for="equipment-section_2" class="filter-label">Subcategory 2</label>
-                        <CustomSelect id="equipment-section_2" v-model="form.section_2" class="filter-input">
-                            <option value="">All subcategory 2</option>
-                            <option v-for="option in section2Options" :key="option" :value="option">{{ option }}</option>
-                        </CustomSelect>
-                    </div>
-                    <div class="min-w-0">
-                        <label for="equipment-location" class="filter-label">Current location</label>
-                        <CustomSelect id="equipment-location" v-model="form.location" class="filter-input">
-                            <option value="">All locations</option>
-                            <option v-for="option in locationOptions" :key="option" :value="option">{{ option }}</option>
-                        </CustomSelect>
-                    </div>
-                    <div class="min-w-0">
-                        <label for="equipment-issue_out_location" class="filter-label">Issue-out location</label>
-                        <CustomSelect id="equipment-issue_out_location" v-model="form.issue_out_location" class="filter-input">
-                            <option value="">All issue-out locations</option>
-                            <option v-for="option in issueOutLocationOptions" :key="option" :value="option">{{ option }}</option>
-                        </CustomSelect>
-                    </div>
-                    <div class="min-w-0">
-                        <label for="equipment-status" class="filter-label">Status</label>
-                        <CustomSelect id="equipment-status" v-model="form.status" class="filter-input">
-                            <option value="">All statuses</option>
-                            <option v-for="option in statusOptions" :key="option" :value="option">{{ option }}</option>
-                        </CustomSelect>
-                    </div>
+            </header>
+            <nav aria-label="Equipment type" class="flex w-fit gap-2 rounded-2xl border border-[#d8e7d4] bg-white p-2">
+                <Link v-for="tab in ['machinery', 'cargo']" :key="tab" :href="route('major-equipment.index', { inventory_type: tab })"
+                    :aria-current="filters.inventory_type === tab ? 'page' : undefined"
+                    class="rounded-xl px-6 py-3 font-bold capitalize"
+                    :class="filters.inventory_type === tab ? 'bg-[#234222] text-white' : 'text-[#60745d] hover:bg-green-50'">
+                    {{ tab }} <span class="ml-2 rounded-full bg-black/5 px-2 py-0.5 text-xs">{{ tabCounts[tab] || 0 }}</span>
+                </Link>
+            </nav>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div v-for="card in [{label:'Records',value:summary.total},{label:'In use',value:summary.in_use},{label:'Standby',value:summary.standby},{label:'Under repair',value:summary.under_repair}]" :key="card.label" class="rounded-2xl border border-[#d8e7d4] bg-white p-5">
+                    <p class="text-xs font-bold uppercase text-[#60745d]">{{ card.label }}</p><p class="mt-2 text-3xl font-bold text-[#234222]">{{ card.value }}</p>
                 </div>
-
-                <div class="mt-6 flex flex-col gap-5 border-t border-[#edf3eb] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="min-w-0">
-                        <span class="filter-label">Data quality</span>
-                        <button type="button" :aria-pressed="form.missing_details === 'missing'" class="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4f9f4a] sm:w-auto" :class="form.missing_details === 'missing' ? 'border-amber-400 bg-amber-50 text-amber-800' : 'border-[#d8e7d4] bg-white text-[#60745d] hover:bg-[#f4f9f2]'" @click="toggleMissing">
-                            <span class="h-2 w-2 shrink-0 rounded-full" :class="form.missing_details === 'missing' ? 'bg-amber-500' : 'bg-slate-300'"></span>
-                            {{ form.missing_details === 'missing' ? 'Missing details only ?' : 'Show missing details' }}
-                        </button>
-                    </div>
-                    <div class="flex flex-col gap-3 sm:flex-row sm:self-end">
-                        <button v-if="activeFilters" type="button" class="min-h-11 rounded-xl border border-[#d8e7d4] px-5 py-2 text-sm font-semibold text-[#60745d] transition hover:bg-[#f4f9f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4f9f4a]" @click="clearFilters">Clear all</button>
-                        <button type="submit" class="min-h-11 rounded-xl bg-[#4f9f4a] px-6 py-2 text-sm font-bold text-white transition hover:bg-[#40863c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4f9f4a]">Apply filters</button>
+            </div>
+            <p v-if="cargo" class="text-sm text-slate-500">Counts represent records, not units. Quantity is recorded for {{ summary.quantity_known }} of {{ summary.total }} Cargo records. Source statuses are preserved.</p>
+            <form class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5" @submit.prevent="applyFilters">
+                <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="font-bold text-[#234222]">Filter {{ typeLabel }}</h2>
+                    <div class="flex gap-2"><button type="button" class="btn btn-sm" @click="clearFilters">Clear filters</button><button class="btn btn-sm bg-[#4f9f4a] text-white">Apply filters</button></div>
+                </div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <label class="sm:col-span-2 lg:col-span-3"><span class="filter-label">Search</span><input v-model.trim="form.search" class="filter-input" type="search" placeholder="Tag, description, model, dimensions, location or COG" /></label>
+                    <label v-for="[key,label,options] in selectors" :key="key"><span class="filter-label">{{ label }}</span><CustomSelect v-model="form[key]" class="filter-input"><option value="">All</option><option v-for="option in options" :key="option" :value="option">{{ option }}</option></CustomSelect></label>
+                </div>
+                <div class="mt-5 border-t border-[#edf3eb] pt-4">
+                    <h3 class="filter-label">Data quality</h3>
+                    <p class="mb-3 text-xs text-slate-500">Select an issue to filter this tab. Duplicate tags are checked across Machinery and Cargo in Miri.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button v-for="[key,label,count] in [['duplicates','Duplicate tags',summary.duplicates],['missing','Missing details',summary.missing_details],['warnings','Import warnings',summary.warnings]]"
+                            :key="key" type="button" class="rounded-xl border px-4 py-2 text-sm font-semibold"
+                            :aria-pressed="form.quality === key" :class="form.quality === key ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-[#d8e7d4] text-[#60745d]'"
+                            @click="qualityFilter(key)">{{ label }} <span class="ml-2">{{ count }}</span></button>
                     </div>
                 </div>
             </form>
-            <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white"><div class="border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><strong class="text-[#234222]">{{ equipment.total }}</strong> equipment found <span v-if="equipment.total">· Showing {{ equipment.from }}–{{ equipment.to }}</span></div><div class="overflow-x-auto"><table class="table"><thead><tr><th>Tag No.</th><th>Description</th><th>Category / Subcategory</th><th>Current location</th><th>Issue-out location</th><th>Status</th><th>Actions</th></tr></thead><tbody><tr v-for="item in equipment.data" :key="item.id"><td><Link class="font-bold text-[#2f7d32]" :href="route('major-equipment.show', item.id)">{{ item.tag_no || '-' }}</Link><div class="text-xs text-slate-500">{{ item.serial_no || '-' }}</div></td><td>{{ item.description || '-' }}<div class="text-xs text-slate-500">{{ item.model_brand || '-' }}</div></td><td>{{ item.category || '-' }}<div class="text-xs text-slate-500">{{ item.section_1 || '-' }} / {{ item.section_2 || '-' }}</div></td><td>{{ item.current_location || '-' }}</td><td>{{ item.issue_out_location || '-' }}</td><td>{{ item.status || '-' }}</td><td><div class="flex gap-2"><Link class="btn btn-xs" :href="route('major-equipment.show', item.id)">View</Link><Link v-if="canEdit" class="btn btn-xs border-[#cfe6c8] bg-white" :href="route('major-equipment.edit', item.id)">Edit</Link></div></td></tr><tr v-if="!equipment.data.length"><td colspan="7" class="py-12 text-center text-slate-500">No Miri equipment matches the selected filters.</td></tr></tbody></table></div></div>
-            <div class="flex flex-wrap gap-2"><Link v-for="link in equipment.links" :key="link.label" v-html="link.label" :href="link.url || '#'" class="btn btn-sm" :class="{ 'btn-disabled': !link.url, 'btn-success text-white': link.active }" /></div>
+            <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
+                <div class="border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><strong>{{ equipment.total }}</strong> {{ typeLabel }} records found <span v-if="equipment.total">· Showing {{ equipment.from }}–{{ equipment.to }}</span></div>
+                <div class="overflow-x-auto">
+                    <table class="table">
+                        <thead><tr><th>Tag No.</th><th>Description</th><th>Category / Subcategory</th>
+                            <template v-if="cargo"><th>Dimensions / Model</th><th>Tonnage</th><th>Length</th><th>Quantity</th></template>
+                            <th>Current location</th><th>Issue-out location</th><th>Status</th><th>Actions</th>
+                        </tr></thead>
+                        <tbody>
+                            <tr v-for="item in equipment.data" :key="item.id" :class="Number(item.duplicate_count) > 1 ? 'bg-amber-50/70' : ''">
+                                <td>
+                                    <Link class="font-bold text-[#2f7d32]" :href="route('major-equipment.show', item.id)">{{ item.tag_no || 'No tag' }}</Link>
+                                    <p class="text-xs text-slate-400">Record #{{ item.id }}</p>
+                                    <p v-if="!cargo" class="text-xs text-slate-500">{{ item.serial_no || '' }}</p>
+                                    <Link v-if="Number(item.duplicate_count) > 1" class="mt-2 block w-fit rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800"
+                                        :href="route('major-equipment.show', item.id)">Duplicate tag · {{ item.duplicate_count }} records</Link>
+                                    <span v-if="missing(item).length" class="mt-1 block text-xs text-orange-700" :title="missing(item).join(', ')">Missing details</span>
+                                    <Link v-if="item.import_warnings?.length" :href="route('major-equipment.show', item.id)" class="mt-1 block text-xs text-red-700">Import warnings</Link>
+                                </td>
+                                <td>{{ item.description || 'Not recorded' }}<p v-if="!cargo" class="text-xs text-slate-500">{{ item.model_brand || '' }}</p></td>
+                                <td>{{ item.category }}<p class="text-xs text-slate-500">{{ item.section_1 || '-' }} / {{ item.section_2 || '-' }}</p></td>
+                                <template v-if="cargo"><td>{{ item.size_model || '-' }}</td><td>{{ item.size_ton || '-' }}</td><td>{{ item.size_length || '-' }}</td><td>{{ item.quantity ?? 'Not recorded' }} <small v-if="item.quantity !== null">{{ item.unit }}</small></td></template>
+                                <td>{{ item.current_location || '-' }}</td><td>{{ item.issue_out_location || '-' }}</td><td>{{ item.status || 'Not recorded' }}</td>
+                                <td><div class="flex gap-2"><Link class="btn btn-xs" :href="route('major-equipment.show', item.id)">View</Link><Link v-if="canEdit" class="btn btn-xs" :href="route('major-equipment.edit', item.id)">Edit</Link></div></td>
+                            </tr>
+                            <tr v-if="!equipment.data.length"><td :colspan="cargo ? 11 : 7" class="py-12 text-center text-slate-500">No {{ typeLabel }} records match these filters.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2"><Link v-for="link in equipment.links" :key="link.label" :href="link.url || '#'" class="btn btn-sm" :class="{ 'btn-disabled': !link.url, 'bg-[#234222] text-white': link.active }" v-html="link.label" /></div>
         </section>
     </AuthenticatedLayout>
 </template>
 <style scoped>
 .filter-label { @apply mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#60745d]; }
-:deep(.filter-input) { @apply h-11 min-w-0 w-full rounded-xl border border-[#d8e7d4] bg-white px-3 py-2 text-sm text-[#234222] focus:border-[#4f9f4a] focus:ring-[#4f9f4a]; }
+.filter-input { @apply w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]; }
 </style>

@@ -8,7 +8,7 @@ use App\Models\MajorEquipment;
 use App\Models\MajorEquipmentCertificate;
 use App\Models\MiriRentalItem;
 use App\Models\MiriInventoryCategory;
-use App\Services\MajorEquipmentImportService;
+use App\Services\MiriEquipmentCsvService;
 use App\Services\BranchContext;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
@@ -175,34 +175,43 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri($request);
         abort_unless($request->user()?->canRead('assets'), 403);
         $filters = $request->validate([
-            'search' => ['nullable', 'string', 'max:100'], 'category' => ['nullable', 'string', 'max:255'],
+            'inventory_type' => ['nullable', 'in:machinery,cargo'],
+            'search' => ['nullable', 'string', 'max:255'], 'category' => ['nullable', 'string', 'max:255'],
             'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'],
-            'location' => ['nullable', 'string', 'max:255'], 'status' => ['nullable', 'string', 'max:50'],
-            'issue_out_location' => ['nullable', 'string', 'max:255'], 'missing_details' => ['nullable', 'in:missing'],
+            'location' => ['nullable', 'string', 'max:255'], 'status' => ['nullable', 'string', 'max:255'],
+            'issue_out_location' => ['nullable', 'string', 'max:255'], 'quality' => ['nullable', 'in:duplicates,missing,warnings'],
         ]);
-        $query = MajorEquipment::query()->withCount('certificates')
-            ->when($filters['search'] ?? null, function ($query, $search) {
-                $query->where(function ($query) use ($search) {
-                    foreach (['tag_no', 'serial_no', 'description', 'model_brand', 'current_location', 'issue_out_location', 'issue_out_cog_no', 'received_backload_cog_no'] as $column) $query->orWhere($column, 'like', "%{$search}%");
-                });
-            })
-            ->when($filters['category'] ?? null, fn ($query, $value) => $query->where('category', $value))
-            ->when($filters['section_1'] ?? null, fn ($query, $value) => $query->where('section_1', $value))
-            ->when($filters['section_2'] ?? null, fn ($query, $value) => $query->where('section_2', $value))
-            ->when($filters['location'] ?? null, fn ($query, $value) => $query->where('current_location', $value))
-            ->when($filters['status'] ?? null, fn ($query, $value) => $query->where('status', $value))
-            ->when($filters['issue_out_location'] ?? null, fn ($query, $value) => $query->where('issue_out_location', $value))
-            ->when(($filters['missing_details'] ?? null) === 'missing', fn ($query) => $query->where(fn ($query) => $query->whereNull('tag_no')->orWhere('tag_no', '')->orWhereNull('current_location')->orWhere('current_location', '')))
-            ->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('tag_no');
-        $optionValues = fn (string $column) => MajorEquipment::query()->whereNotNull($column)->where($column, '<>', '')->distinct()->orderBy($column)->pluck($column)->values();
-        $allEquipment = MajorEquipment::query();
+        $type = $filters['inventory_type'] ?? 'machinery';
+        $base = MajorEquipment::query()->where('inventory_type', $type);
+        $query = (clone $base)->select('miri_inventory_items.*')->withCount('certificates')->withDuplicateCount();
+        foreach (['category', 'section_1', 'section_2', 'status', 'issue_out_location'] as $column) {
+            if (filled($filters[$column] ?? null)) $query->where($column, $filters[$column]);
+        }
+        if (filled($filters['location'] ?? null)) $query->where('current_location', $filters['location']);
+        if (filled($filters['search'] ?? null)) $query->where(function ($q) use ($filters) {
+            foreach (['tag_no', 'serial_no', 'description', 'model_brand', 'size_model', 'current_location', 'issue_out_cog_no', 'received_backload_cog_no'] as $column) $q->orWhere($column, 'like', '%'.$filters['search'].'%');
+        });
+        match ($filters['quality'] ?? '') {
+            'duplicates' => $query->duplicateTag(),
+            'missing' => $query->missingDetails(),
+            'warnings' => $query->whereNotNull('import_warnings'),
+            default => null,
+        };
+        $options = fn ($column) => (clone $base)->whereNotNull($column)->where($column, '<>', '')->distinct()->orderBy($column)->pluck($column)->values();
         return Inertia::render('MajorEquipment/Index', [
-            'equipment' => $query->paginate(25)->withQueryString(),
-            'summary' => ['total' => (clone $allEquipment)->count(), 'in_use' => (clone $allEquipment)->where('status', 'In Use')->count(), 'standby' => (clone $allEquipment)->where('status', 'Standby')->count(), 'under_repair' => (clone $allEquipment)->where('status', 'Under Repair')->count(), 'missing_details' => (clone $allEquipment)->where(fn ($query) => $query->whereNull('tag_no')->orWhere('tag_no', '')->orWhereNull('current_location')->orWhere('current_location', ''))->count()],
-            'filters' => ['search' => $filters['search'] ?? '', 'category' => $filters['category'] ?? '', 'section_1' => $filters['section_1'] ?? '', 'section_2' => $filters['section_2'] ?? '', 'location' => $filters['location'] ?? '', 'status' => $filters['status'] ?? '', 'issue_out_location' => $filters['issue_out_location'] ?? '', 'missing_details' => $filters['missing_details'] ?? ''],
-            'categoryOptions' => MiriInventoryCategory::query()->where('active', true)->orderBy('name')->pluck('name')->values(),
-            'section1Options' => $optionValues('section_1'), 'section2Options' => $optionValues('section_2'), 'locationOptions' => $optionValues('current_location'), 'issueOutLocationOptions' => $optionValues('issue_out_location'),
-            'statusOptions' => ['In Use', 'Standby', 'Under Repair', 'Damaged'], 'canEdit' => $request->user()->canEdit('assets'),
+            'equipment' => $query->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('id')->paginate(25)->withQueryString(),
+            'tabCounts' => MajorEquipment::query()->select('inventory_type')->selectRaw('COUNT(*) AS total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
+            'summary' => [
+                'total' => (clone $base)->count(), 'in_use' => (clone $base)->where('status', 'In Use')->count(),
+                'standby' => (clone $base)->where('status', 'Standby')->count(), 'under_repair' => (clone $base)->whereIn('status', ['Under Repair', 'PENDING REPAIR'])->count(),
+                'missing_details' => (clone $base)->missingDetails()->count(), 'duplicates' => (clone $base)->duplicateTag()->count(),
+                'warnings' => (clone $base)->whereNotNull('import_warnings')->count(),
+                'quantity_known' => (clone $base)->whereNotNull('quantity')->count(),
+            ],
+            'filters' => array_merge(array_fill_keys(['search', 'category', 'section_1', 'section_2', 'location', 'status', 'issue_out_location', 'quality'], ''), $filters, ['inventory_type' => $type]),
+            'categoryOptions' => $options('category'), 'section1Options' => $options('section_1'), 'section2Options' => $options('section_2'),
+            'locationOptions' => $options('current_location'), 'issueOutLocationOptions' => $options('issue_out_location'), 'statusOptions' => $options('status'),
+            'canEdit' => $request->user()->canEdit('assets'),
         ]);
     }
 
@@ -210,7 +219,7 @@ class MajorEquipmentController extends Controller
     {
         $this->ensureMiri($request);
         abort_unless($request->user()?->canEdit('assets'), 403);
-        return Inertia::render('MajorEquipment/Form', ['equipment' => null, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
+        return Inertia::render('MajorEquipment/Form', ['inventoryType' => $request->query('inventory_type') === 'cargo' ? 'cargo' : 'machinery', 'equipment' => null, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
     public function store(SaveMajorEquipmentRequest $request, AuditLogger $auditLogger): RedirectResponse
@@ -258,7 +267,7 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri(request());
         abort_unless(request()->user()?->canRead('assets'), 403);
         $equipment->load('certificates');
-        return Inertia::render('MajorEquipment/Show', ['equipment' => $equipment]);
+        return Inertia::render('MajorEquipment/Show', ['equipment' => $equipment, 'duplicates' => filled($equipment->tag_no) ? MajorEquipment::query()->where('id', '<>', $equipment->id)->whereRaw('LOWER(TRIM(tag_no)) = ?', [mb_strtolower(trim($equipment->tag_no))])->get(['id', 'tag_no', 'description', 'inventory_type', 'current_location']) : []]);
     }
 
     public function pdf(Request $request, MajorEquipment $equipment)
@@ -270,22 +279,34 @@ class MajorEquipmentController extends Controller
         return Pdf::loadView('miri-inventory.registration-pdf', [
             'equipment' => $equipment,
             'logoPath' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('images/dayang-logo.png'))),
-        ])->download('miri-inventory-registration-'.($equipment->tag_no ?: $equipment->id).'.pdf');
+        ])->download('miri-inventory-registration-'.$equipment->id.'.pdf');
     }
 
     public function import(Request $request): Response
     {
         $this->ensureMiri($request);
         abort_unless(request()->user()?->canEdit('assets'), 403);
-        return Inertia::render('MajorEquipment/Import');
+        return Inertia::render('MajorEquipment/Import', ['inventoryType' => $request->query('inventory_type') === 'cargo' ? 'cargo' : 'machinery']);
     }
 
-    public function storeImport(StoreMajorEquipmentImportRequest $request, MajorEquipmentImportService $service, AuditLogger $auditLogger): RedirectResponse
+    public function storeImport(StoreMajorEquipmentImportRequest $request, MiriEquipmentCsvService $service, AuditLogger $auditLogger): RedirectResponse
     {
         $this->ensureMiri($request);
-        $summary = $service->import($request->file('file'), $request->user()->id);
+        $type = $request->validated('inventory_type');
+        $hash = hash_file('sha256', $request->file('file')->getRealPath());
+        abort_unless($request->session()->get('miri_import_preview') === $type.':'.$hash, 422, 'Preview this file before importing.');
+        $summary = $service->import($request->file('file'), $request->user()->id, $type);
+        $request->session()->forget('miri_import_preview');
         $auditLogger->record('miri_inventory', 'imported', "Imported Miri equipment file: {$summary['created']} records created and {$summary['certificates_created']} certificates captured.", user: $request->user(), request: $request);
-        return redirect()->route('major-equipment.index')->with('success', "Major Equipment import complete. {$summary['created']} records created and {$summary['certificates_created']} certificates captured.");
+        return redirect()->route('major-equipment.index', ['inventory_type' => $type])->with('success', "Import complete: {$summary['created']} records and {$summary['certificates_created']} certificates. {$summary['duplicate_records']} records have duplicate tags; {$summary['warning_records']} have import warnings. Review Data quality below.");
+    }
+
+    public function previewImport(StoreMajorEquipmentImportRequest $request, MiriEquipmentCsvService $service)
+    {
+        $this->ensureMiri($request);
+        $report = $service->preview($request->file('file'), $request->validated('inventory_type'));
+        $request->session()->put('miri_import_preview', $request->validated('inventory_type').':'.$report['file_hash']);
+        return response()->json($report);
     }
 
     private function ensureMiri(Request $request): void
@@ -300,6 +321,6 @@ class MajorEquipmentController extends Controller
 
     private function certificateTypes(): array
     {
-        return ['SERVICE RELIEF VALVE', 'PRESSURE GAUGE', 'SKID MPI', 'WATER MANIFOLD H.T.', 'RELAY', 'UT', 'HT', 'WINCH LOAD TEST', 'WIRE ROPE INSPECTION', 'HOOK', 'CIDB', 'LIFTING', 'LIFTED EQUIPMENT'];
+        return [...MiriEquipmentCsvService::MACHINERY_CERTIFICATES, ...MiriEquipmentCsvService::CARGO_CERTIFICATES];
     }
 }

@@ -10,6 +10,6 @@ class StoreMajorEquipmentImportRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['file' => ['required', 'file', 'mimes:csv,txt']];
+        return ['file' => ['required', 'file', 'mimes:csv,txt', 'max:20480'], 'inventory_type' => ['required', 'in:machinery,cargo']];
     }
 }
