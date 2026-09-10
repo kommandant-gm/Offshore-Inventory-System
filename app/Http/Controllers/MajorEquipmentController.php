@@ -278,7 +278,7 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri(request());
         abort_unless(request()->user()?->canRead('assets'), 403);
         $equipment->load('certificates');
-        return Inertia::render('MajorEquipment/Show', ['equipment' => $equipment, 'duplicates' => filled($equipment->tag_no) ? MajorEquipment::query()->where('id', '<>', $equipment->id)->whereRaw('LOWER(TRIM(tag_no)) = ?', [mb_strtolower(trim($equipment->tag_no))])->get(['id', 'tag_no', 'description', 'inventory_type', 'current_location']) : []]);
+        return Inertia::render('MajorEquipment/Show', ['equipment' => $equipment, 'duplicates' => filled($equipment->normalized_tag) ? MajorEquipment::query()->where('branch_id', $equipment->branch_id)->where('id', '<>', $equipment->id)->where('normalized_tag', $equipment->normalized_tag)->get(['id', 'tag_no', 'description', 'inventory_type', 'current_location']) : []]);
     }
 
     public function pdf(Request $request, MajorEquipment $equipment)

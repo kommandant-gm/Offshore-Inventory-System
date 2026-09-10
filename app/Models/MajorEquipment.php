@@ -13,6 +13,8 @@ class MajorEquipment extends Model
 
     protected $table = 'miri_inventory_items';
 
+    protected $hidden = ['normalized_tag'];
+
     protected $fillable = [
         'inventory_type', 'size_model', 'size_ton', 'size_length', 'quantity', 'import_warnings', 'source_values',
         'branch_id', 'category', 'section_1', 'section_2', 'description', 'unit',
@@ -49,15 +51,27 @@ class MajorEquipment extends Model
 
     public function scopeDuplicateTag($query)
     {
-        return $query->whereRaw("TRIM(COALESCE(miri_inventory_items.tag_no, '')) <> ''")
-            ->whereRaw('(SELECT COUNT(*) FROM miri_inventory_items AS peers WHERE peers.branch_id = miri_inventory_items.branch_id AND LOWER(TRIM(peers.tag_no)) = LOWER(TRIM(miri_inventory_items.tag_no))) > 1');
+        // Compute duplicate groups once, not a full-table comparison for each row.
+        $groups = self::withoutGlobalScopes()->select('branch_id', 'normalized_tag')
+            ->whereNotNull('normalized_tag')->groupBy('branch_id', 'normalized_tag')
+            ->havingRaw('COUNT(*) > 1');
+
+        return $query->whereIn(
+            \Illuminate\Support\Facades\DB::raw('(miri_inventory_items.branch_id, miri_inventory_items.normalized_tag)'),
+            $groups,
+        );
     }
 
     public function scopeWithDuplicateCount($query)
     {
-        return $query->addSelect(['duplicate_count' => self::withoutGlobalScopes()->from('miri_inventory_items as peers')
-            ->selectRaw('COUNT(*)')->whereColumn('peers.branch_id', 'miri_inventory_items.branch_id')
-            ->whereRaw("TRIM(COALESCE(miri_inventory_items.tag_no, '')) <> ''")
-            ->whereRaw('LOWER(TRIM(peers.tag_no)) = LOWER(TRIM(miri_inventory_items.tag_no))')]);
+        $groups = self::withoutGlobalScopes()->select('branch_id', 'normalized_tag')->selectRaw('COUNT(*) as tag_count')
+            ->whereNotNull('normalized_tag')->groupBy('branch_id', 'normalized_tag');
+
+        if ($query->getQuery()->columns === null) $query->select('miri_inventory_items.*');
+
+        return $query->leftJoinSub($groups, 'miri_tag_counts', fn ($join) => $join
+            ->on('miri_tag_counts.branch_id', '=', 'miri_inventory_items.branch_id')
+            ->on('miri_tag_counts.normalized_tag', '=', 'miri_inventory_items.normalized_tag'))
+            ->selectRaw('COALESCE(miri_tag_counts.tag_count, 0) as duplicate_count');
     }
 }

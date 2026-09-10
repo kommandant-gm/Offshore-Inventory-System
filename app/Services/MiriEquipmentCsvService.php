@@ -18,7 +18,7 @@ class MiriEquipmentCsvService
     {
         $branch = Branch::where('code', 'MIRI')->firstOrFail();
         $report = ['records' => 0, 'certificates' => 0, 'warning_records' => 0, 'missing_details' => 0, 'duplicate_records' => 0, 'samples' => [], 'file_hash' => hash_file('sha256', $file->getRealPath())];
-        $tags = MajorEquipment::withoutGlobalScopes()->where('branch_id', $branch->id)->whereNotNull('tag_no')->pluck('tag_no')->map(fn ($tag) => mb_strtolower(trim($tag)))->countBy()->all();
+        $tags = MajorEquipment::withoutGlobalScopes()->where('branch_id', $branch->id)->whereNotNull('normalized_tag')->select('normalized_tag')->selectRaw('COUNT(*) as tag_count')->groupBy('normalized_tag')->pluck('tag_count', 'normalized_tag')->all();
         $incoming = [];
         foreach ($this->rows($file, $type) as $record) {
             $report['records']++;
