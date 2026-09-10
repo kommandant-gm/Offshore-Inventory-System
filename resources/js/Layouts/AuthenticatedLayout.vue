@@ -49,6 +49,7 @@
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'major-equipment.dashboard' },
         { name: 'Major Equipment Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
         { name: 'Rental Register', icon: TruckIcon, route: 'miri-rental.index' },
+        { name: 'Construction TEC, Garnet & PPE Register', icon: BuildingStorefrontIcon, route: 'construction.index', active: 'construction.*', wrapLabel: true },
         { name: 'Miri COG', icon: ClipboardDocumentListIcon, route: 'miri-cogs.index' },
         { name: 'Inventory Movement', icon: ArrowsRightLeftIcon, route: 'major-equipment.movement' },
         { name: 'Miri Log', icon: ClipboardDocumentListIcon, route: 'major-equipment.log' },
@@ -293,7 +294,7 @@
                             </button>
                             <div v-show="miriExpanded" class="space-y-0.5">
                                 <button v-for="item in miriItems.filter((entry) => !entry.can || currentUser?.can?.[entry.can])" :key="`miri-${item.name}`" type="button" @click="openBranchRoute('MIRI', item.route)" :class="currentUser?.active_branch?.code === 'MIRI' && isItemActive(item) ? 'bg-[linear-gradient(135deg,#6fbb68_0%,#4f9f4a_100%)] text-white shadow-md' : 'text-[#5f7b5e] hover:bg-[#eef8ea] hover:text-[#234222]'" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition">
-                                    <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0 truncate">{{ item.name }}</span>
+                                    <component :is="item.icon" class="h-5 w-5 shrink-0 opacity-75" /><span class="min-w-0" :class="item.wrapLabel ? 'whitespace-normal leading-5' : 'truncate'">{{ item.name }}</span>
                                 </button>
                             </div>
                         </section>

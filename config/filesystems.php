@@ -29,6 +29,13 @@ return [
     */
 
     'disks' => [
+        'construction' => [
+            'driver' => 'local',
+            'root' => env('CONSTRUCTION_STORAGE_ROOT', storage_path('app/private/miri/construction')),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+        ],
 
         'certificates' => [
             'driver' => 'local',

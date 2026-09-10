@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['personnel_details']);
         $exceptions->report(function (\Throwable $exception): void {
             app(\App\Services\IssueLogger::class)->record($exception);
         });

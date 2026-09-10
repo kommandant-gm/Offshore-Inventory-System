@@ -47,6 +47,19 @@ Route::post('/asset-checkout-test-preview/sign', [PublicAssetCheckoutController:
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'system.access', 'verified'])->name('dashboard');
 
 Route::middleware(['auth', 'system.access'])->group(function () {
+    Route::prefix('miri-construction')->name('construction.')->controller(\App\Http\Controllers\MiriConstructionController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('/import', 'importPage')->name('import');
+        Route::post('/import/preview', 'preview')->name('import.preview');
+        Route::post('/import', 'queueImport')->name('import.store');
+        Route::get('/import/{task}', 'importStatus')->whereUuid('task')->name('import.status');
+        Route::get('/{construction}', 'show')->whereNumber('construction')->name('show');
+        Route::get('/{construction}/edit', 'edit')->whereNumber('construction')->name('edit');
+        Route::patch('/{construction}', 'update')->whereNumber('construction')->name('update');
+        Route::get('/{construction}/attachments/{slot}', 'attachment')->whereNumber('construction')->name('attachment');
+    });
     Route::patch('/active-branch', [BranchContextController::class, 'update'])->name('branches.activate');
     Route::patch('/it-assets/bulk-update', [AssetController::class, 'bulkUpdate'])->name('it-assets.bulk-update');
     Route::get('/it-assets/bulk-edit', [AssetController::class, 'bulkEdit'])->name('it-assets.bulk-edit');
