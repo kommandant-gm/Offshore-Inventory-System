@@ -77,17 +77,25 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri($request);
         abort_unless($request->user()?->canRead('assets'), 403);
 
-        $query = MajorEquipment::query();
+        $selection = $request->validate(['inventory_type' => ['nullable', 'in:all,machinery,cargo']]);
+        $type = $selection['inventory_type'] ?? 'all';
+        $query = MajorEquipment::query()->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type));
+        $statusRows = (clone $query)->selectRaw("COALESCE(NULLIF(TRIM(status), ''), 'Not recorded') as label, COUNT(*) as value")->groupByRaw("COALESCE(NULLIF(TRIM(status), ''), 'Not recorded')")->orderByDesc('value')->get();
         $today = today();
-        $certificateQuery = MajorEquipmentCertificate::query();
+        $certificateQuery = MajorEquipmentCertificate::query()->whereHas('equipment', fn ($q) => $q->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type)));
         $rentalDashboard = $this->rentalDashboard($today);
         return Inertia::render('MajorEquipment/Dashboard', [
+            'inventoryType' => $type,
+            'typeCounts' => MajorEquipment::query()->select('inventory_type')->selectRaw('COUNT(*) as total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
+            'statusBreakdown' => $statusRows,
+            'quality' => ['duplicates' => (clone $query)->duplicateTag()->count(), 'missing' => (clone $query)->missingDetails()->count(), 'warnings' => (clone $query)->whereNotNull('import_warnings')->count()],
+            'quantityRecorded' => (clone $query)->whereNotNull('quantity')->count(),
             'activeDashboard' => $request->string('view')->toString() === 'rentals' ? 'rentals' : 'major',
             'summary' => [
                 'total' => (clone $query)->count(),
                 'in_use' => (clone $query)->where('status', 'In Use')->count(),
                 'standby' => (clone $query)->where('status', 'Standby')->count(),
-                'under_repair' => (clone $query)->where('status', 'Under Repair')->count(),
+                'under_repair' => (clone $query)->whereIn('status', ['Under Repair', 'PENDING REPAIR'])->count(),
                 'damaged' => (clone $query)->where('status', 'Damaged')->count(),
             ],
             'expiry' => [
@@ -113,20 +121,20 @@ class MajorEquipmentController extends Controller
                         'description' => $certificate->equipment->description,
                     ] : null,
                 ]),
-            'categories' => MajorEquipment::query()
-                ->select('category')
+            'categories' => (clone $query)
+                ->selectRaw($type === 'all' ? "inventory_type as category" : "COALESCE(NULLIF(TRIM(section_2), ''), 'Not recorded') as category")
                 ->selectRaw('COUNT(*) as total')
-                ->groupBy('category')
+                ->groupByRaw($type === 'all' ? 'inventory_type' : "COALESCE(NULLIF(TRIM(section_2), ''), 'Not recorded')")
                 ->orderByDesc('total')
                 ->get(),
-            'locations' => MajorEquipment::query()
+            'locations' => (clone $query)
                 ->selectRaw("COALESCE(current_location, 'Unassigned') as label")
                 ->selectRaw('COUNT(*) as total')
                 ->groupBy('current_location')
                 ->orderByDesc('total')
                 ->limit(8)
                 ->get(),
-            'recent' => MajorEquipment::query()->latest('updated_at')->limit(8)->get([
+            'recent' => (clone $query)->latest('updated_at')->limit(8)->get([
                 'id', 'description', 'tag_no', 'section_1', 'section_2', 'status', 'current_location',
             ]),
             'rentalDashboard' => $rentalDashboard,
