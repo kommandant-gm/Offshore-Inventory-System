@@ -58,7 +58,7 @@ class MiriCertificateService
     {
         foreach (array_unique($paths) as $path) {
             try {
-                if (! Storage::disk('certificates')->delete($path)) Log::warning('Certificate image cleanup failed', ['path' => $path]);
+                if (! Storage::disk('certificates')->delete([$path, app(CertificatePreviewService::class)->path($path)])) Log::warning('Certificate image cleanup failed', ['path' => $path]);
             } catch (\Throwable $error) {
                 Log::warning('Certificate image cleanup failed', ['path' => $path, 'error' => $error->getMessage()]);
             }

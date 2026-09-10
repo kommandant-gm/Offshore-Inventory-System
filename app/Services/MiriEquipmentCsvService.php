@@ -45,14 +45,27 @@ class MiriEquipmentCsvService
                 throw ValidationException::withMessages(['file' => 'This exact file has already been imported. Review its existing records in the register.']);
             }
             $created = 0;
+            $categories = [];
+            $certificateBatch = [];
+            $timestamp = now();
             foreach ($this->rows($file, $type) as $record) {
                 $certificates = $record['certificates'];
                 unset($record['certificates']);
-                MiriInventoryCategory::withoutGlobalScopes()->firstOrCreate(['branch_id' => $branch->id, 'name' => $record['category']], ['code' => 'MIRI-'.substr(hash('sha256', $record['category']), 0, 16), 'active' => true]);
+                if (! isset($categories[$record['category']])) {
+                    MiriInventoryCategory::withoutGlobalScopes()->firstOrCreate(['branch_id' => $branch->id, 'name' => $record['category']], ['code' => 'MIRI-'.substr(hash('sha256', $record['category']), 0, 16), 'active' => true]);
+                    $categories[$record['category']] = true;
+                }
                 $item = MajorEquipment::create(['branch_id' => $branch->id, ...$record]);
-                foreach ($certificates as $certificate) $item->certificates()->create(['branch_id' => $branch->id, ...$certificate]);
+                foreach ($certificates as $certificate) {
+                    $certificateBatch[] = ['miri_inventory_item_id' => $item->id, 'branch_id' => $branch->id, ...$certificate, 'created_at' => $timestamp, 'updated_at' => $timestamp];
+                }
+                if (count($certificateBatch) >= 200) {
+                    DB::table('miri_inventory_certificates')->insert($certificateBatch);
+                    $certificateBatch = [];
+                }
                 $created++;
             }
+            if ($certificateBatch) DB::table('miri_inventory_certificates')->insert($certificateBatch);
             DB::table('miri_inventory_imports')->insert(['branch_id' => $branch->id, 'inventory_type' => $type, 'file_hash' => $report['file_hash'], 'filename' => mb_substr($file->getClientOriginalName(), 0, 255), 'records_count' => $created, 'created_by' => $userId, 'created_at' => now(), 'updated_at' => now()]);
             return ['created' => $created, 'certificates_created' => $report['certificates'], 'duplicate_records' => $report['duplicate_records'], 'warning_records' => $report['warning_records']];
         });

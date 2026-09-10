@@ -16,6 +16,16 @@ class MiriCertificateImageController extends Controller
         $record = $equipment->certificates()->whereKey($certificate)->firstOrFail();
         abort_unless($record->image_path && Storage::disk('certificates')->exists($record->image_path), 404);
         $extension = match ($record->image_mime) { 'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'application/pdf' => 'pdf', default => abort(404) };
+        if ($request->boolean('preview') && ! $request->boolean('download') && $record->image_mime !== 'application/pdf') {
+            // Authorization is checked above on every request, including cache revalidation.
+            $etag = '"'.hash('sha256', $record->image_path).'"';
+            $headers = ['Cache-Control' => 'private, no-cache', 'ETag' => $etag, 'X-Content-Type-Options' => 'nosniff'];
+            if ($request->header('If-None-Match') === $etag) return response('', 304, $headers);
+            $path = app(\App\Services\CertificatePreviewService::class)->generate($record->image_path);
+            if ($path) return Storage::disk('certificates')->response($path, 'certificate-preview.jpg', [
+                ...$headers, 'Content-Type' => 'image/jpeg', 'Content-Security-Policy' => "default-src 'none'; sandbox",
+            ], 'inline');
+        }
         return Storage::disk('certificates')->response($record->image_path, 'certificate-'.$record->id.'.'.$extension, [
             'Content-Type' => $record->image_mime,
             'Cache-Control' => 'private, no-store, max-age=0',

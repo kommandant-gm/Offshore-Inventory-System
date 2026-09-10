@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AssetStatus;
-use App\Mail\AssetCheckoutSignatureMail;
-use App\Mail\AssetCheckinSignatureMail;
 use App\Models\Asset;
 use App\Models\AssetAssignment;
 use App\Models\ItMovementDocument;
@@ -16,7 +14,6 @@ use App\Services\SupervisorNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -106,7 +103,7 @@ class AssetAssignmentController extends Controller
             actionLabel: 'View asset',
         ), 'Unable to send IT asset checkout supervisor notification.');
 
-        return back()->with('success', 'Checkout form sent to the staff member for digital signature.');
+        return back()->with('success', 'Checkout form queued for email delivery to the staff member.');
     }
 
     public function destroy(Request $request, Asset $asset, SupervisorNotificationService $supervisorNotifications): RedirectResponse
@@ -128,7 +125,7 @@ class AssetAssignmentController extends Controller
                 throw ValidationException::withMessages(['asset' => 'The checkout must be signed before the asset can be checked in.']);
             }
             if ($current->checkin_status === 'pending') {
-                throw ValidationException::withMessages(['asset' => 'A check-in form has already been sent to the IT Team.']);
+                throw ValidationException::withMessages(['asset' => 'A check-in form has already been requested for the IT Team.']);
             }
             $current->update(['checkin_status' => 'pending', 'checkin_token' => Str::random(64), 'checkin_sent_at' => now()]);
             $lockedAsset->update(['current_status' => AssetStatus::PendingCheckin]);
@@ -153,7 +150,7 @@ class AssetAssignmentController extends Controller
             actionLabel: 'View asset',
         ), 'Unable to send IT asset check-in supervisor notification.');
 
-        return back()->with('success', 'Check-in form sent to the IT Team for acknowledgment.');
+        return back()->with('success', 'Check-in form queued for email delivery to the IT Team.');
     }
 
     public function resend(Request $request, Asset $asset): RedirectResponse
@@ -173,7 +170,7 @@ class AssetAssignmentController extends Controller
 
         $this->sendCheckoutSignatureEmail($assignment);
 
-        return back()->with('success', 'A fresh checkout signing link was sent to '.$assignment->assigned_email.'.');
+        return back()->with('success', 'A fresh checkout signing link was queued for delivery to '.$assignment->assigned_email.'.');
     }
 
     public function reopen(Request $request, Asset $asset): RedirectResponse
@@ -212,7 +209,7 @@ class AssetAssignmentController extends Controller
 
         $this->sendCheckoutSignatureEmail($assignment);
 
-        return back()->with('success', 'The checkout was reopened and a new signing link was sent to '.$assignment->assigned_email.'.');
+        return back()->with('success', 'The checkout was reopened and a new signing link was queued for delivery to '.$assignment->assigned_email.'.');
     }
 
     public function reopenCheckin(Request $request, AssetAssignment $assignment): RedirectResponse
@@ -256,7 +253,7 @@ class AssetAssignmentController extends Controller
         $this->sendCheckinSignatureEmail($assignment, $technicianEmail);
 
         return redirect()->route('it-movement-records.index')
-            ->with('success', 'The check-in was reset and a fresh acknowledgment link was sent to '.$technicianEmail.'.');
+            ->with('success', 'The check-in was reset and a fresh acknowledgment link was queued for delivery to '.$technicianEmail.'.');
     }
 
     public function resetCheckinDocument(Request $request, ItMovementDocument $document): RedirectResponse
@@ -300,7 +297,7 @@ class AssetAssignmentController extends Controller
         $this->sendCheckinSignatureEmail($assignment, $technicianEmail);
 
         return redirect()->route('it-movement-records.index')
-            ->with('success', 'The selected check-in records were cleared and a fresh acknowledgment link was sent to '.$technicianEmail.'.');
+            ->with('success', 'The selected check-in records were cleared and a fresh acknowledgment link was queued for delivery to '.$technicianEmail.'.');
     }
 
     public function resendCheckin(Request $request, AssetAssignment $assignment): RedirectResponse
@@ -324,83 +321,33 @@ class AssetAssignmentController extends Controller
         $this->sendCheckinSignatureEmail($assignment, $technicianEmail);
 
         return redirect()->route('it-movement-records.index')
-            ->with('success', 'A fresh check-in acknowledgment link was sent to '.$technicianEmail.'.');
+            ->with('success', 'A fresh check-in acknowledgment link was queued for delivery to '.$technicianEmail.'.');
     }
 
     private function sendCheckoutSignatureEmail($assignment): void
     {
-        $url = route('public.asset-checkout.show', $assignment->checkout_token);
-        $mail = new AssetCheckoutSignatureMail($assignment, $url);
-
-        try {
-            $body = $mail->render();
-            Mail::to($assignment->assigned_email)->send($mail);
-            EmailActivityLog::create([
-                'recipient' => $assignment->assigned_email,
-                'subject' => "Asset checkout signature required: {$assignment->asset->asset_tag_no}",
-                'body' => $body,
-                'details' => [
-                    'Asset tag' => $assignment->asset->asset_tag_no,
-                    'Assigned to' => $assignment->assigned_to_name ?: '-',
-                    'Employee ID' => $assignment->employee_id ?: '-',
-                    'Department' => $assignment->department ?: '-',
-                    'Assigned date' => $assignment->assigned_at?->format('Y-m-d') ?: '-',
-                ],
-                'action_url' => $url,
-                'action_label' => 'Open checkout form',
-                'notification_type' => class_basename($mail),
-                'status' => 'sent',
-                'sent_at' => now(),
-            ]);
-        } catch (\Throwable $error) {
-            EmailActivityLog::create([
-                'recipient' => $assignment->assigned_email,
-                'subject' => "Asset checkout signature required: {$assignment->asset->asset_tag_no}",
-                'details' => ['Asset tag' => $assignment->asset->asset_tag_no],
-                'action_url' => $url,
-                'action_label' => 'Open checkout form',
-                'notification_type' => class_basename($mail),
-                'status' => 'failed',
-                'error' => $error->getMessage(),
-            ]);
-            throw $error;
-        }
+        $this->queueSignatureEmail($assignment, $assignment->assigned_email, false);
     }
 
     private function sendCheckinSignatureEmail($assignment, string $recipient): void
     {
-        $url = route('public.asset-checkin.show', $assignment->checkin_token);
-        $mail = new AssetCheckinSignatureMail($assignment, $url);
+        $this->queueSignatureEmail($assignment, $recipient, true);
+    }
 
+    private function queueSignatureEmail($assignment, string $recipient, bool $checkin): void
+    {
+        $url = route($checkin ? 'public.asset-checkin.show' : 'public.asset-checkout.show', $checkin ? $assignment->checkin_token : $assignment->checkout_token);
+        $log = EmailActivityLog::create([
+            'recipient' => $recipient,
+            'subject' => ($checkin ? 'Asset check-in acknowledgement required: ' : 'Asset checkout signature required: ').$assignment->asset->asset_tag_no,
+            'details' => ['Asset tag' => $assignment->asset->asset_tag_no, 'Assigned to' => $assignment->assigned_to_name ?: '-', 'Employee ID' => $assignment->employee_id ?: '-', 'Department' => $assignment->department ?: '-'],
+            'action_url' => $url, 'action_label' => $checkin ? 'Open check-in form' : 'Open checkout form',
+            'notification_type' => $checkin ? 'AssetCheckinSignatureMail' : 'AssetCheckoutSignatureMail', 'status' => 'pending',
+        ]);
         try {
-            $body = $mail->render();
-            Mail::to($recipient)->send($mail);
-            EmailActivityLog::create([
-                'recipient' => $recipient,
-                'subject' => "IT asset check-in acknowledgment required: {$assignment->asset->asset_tag_no}",
-                'body' => $body,
-                'details' => [
-                    'Asset tag' => $assignment->asset->asset_tag_no,
-                    'Previously assigned to' => $assignment->assigned_to_name ?: '-',
-                    'Technician' => $recipient,
-                ],
-                'action_url' => $url,
-                'action_label' => 'Open check-in form',
-                'notification_type' => class_basename($mail),
-                'status' => 'sent',
-                'sent_at' => now(),
-            ]);
+            \App\Jobs\SendAssetSignatureEmail::dispatch($assignment->id, $assignment->branch_id, $log->id, $checkin);
         } catch (\Throwable $error) {
-            EmailActivityLog::create([
-                'recipient' => $recipient,
-                'subject' => "IT asset check-in acknowledgment required: {$assignment->asset->asset_tag_no}",
-                'details' => ['Asset tag' => $assignment->asset->asset_tag_no],
-                'action_url' => $url,
-                'action_label' => 'Open check-in form',
-                'notification_type' => class_basename($mail),
-                'status' => 'failed',
-                'error' => $error->getMessage(),
-            ]);
+            $log->update(['status' => 'failed', 'error' => $error->getMessage()]);
             throw $error;
         }
     }

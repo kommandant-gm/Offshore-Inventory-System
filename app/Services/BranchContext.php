@@ -8,16 +8,39 @@ use Illuminate\Auth\Access\AuthorizationException;
 
 class BranchContext
 {
+    // Request attributes never survive into another HTTP request.
+    private function remember(string $key, callable $resolve): mixed
+    {
+        $cache = request()->attributes->get('_branch_context_cache', []);
+        if (! array_key_exists($key, $cache)) {
+            $cache[$key] = $resolve();
+            request()->attributes->set('_branch_context_cache', $cache);
+        }
+        return $cache[$key];
+    }
+
+    public function forget(): void
+    {
+        request()->attributes->remove('_branch_context_cache');
+    }
+
+    private function memberships(User $user)
+    {
+        return $this->remember('memberships:'.$user->id, fn () => $user->branches()->get());
+    }
+
     public function accessibleIds(?User $user = null): array
     {
         $user ??= auth()->user();
-        if ($user?->role === 'miri' || $user?->isMiriRestrictedUser()) {
-            return Branch::query()->where('code', 'MIRI')->where('active', true)->pluck('id')->map(fn ($id) => (int) $id)->all();
-        }
-        if ($user?->isSuperAdmin() || $user?->isItDigitalUser() || in_array($user?->role, ['admin', 'supervisor', 'technician'], true)) {
-            return Branch::query()->where('active', true)->pluck('id')->map(fn ($id) => (int) $id)->all();
-        }
-        return $user?->branches()->pluck('branches.id')->map(fn ($id) => (int) $id)->all() ?? [];
+        return $this->remember('accessible:'.$user?->id.':'.$user?->role.':'.$user?->username.':'.$user?->department, function () use ($user) {
+            if ($user?->role === 'miri' || $user?->isMiriRestrictedUser()) {
+                return Branch::query()->where('code', 'MIRI')->where('active', true)->pluck('id')->map(fn ($id) => (int) $id)->all();
+            }
+            if ($user?->isSuperAdmin() || $user?->isItDigitalUser() || in_array($user?->role, ['admin', 'supervisor', 'technician'], true)) {
+                return Branch::query()->where('active', true)->pluck('id')->map(fn ($id) => (int) $id)->all();
+            }
+            return $user ? $this->memberships($user)->pluck('id')->map(fn ($id) => (int) $id)->all() : [];
+        });
     }
 
     public function id(?User $user = null): ?int
@@ -29,10 +52,7 @@ class BranchContext
         $sessionId = (int) session('branch_id', 0);
         if ($sessionId && in_array($sessionId, $accessible, true)) return $sessionId;
 
-        $defaultBranchId = $user->branches()
-            ->wherePivot('is_default', true)
-            ->whereIn('branches.id', $accessible)
-            ->value('branches.id');
+        $defaultBranchId = $this->memberships($user)->first(fn ($branch) => $branch->pivot->is_default && in_array((int) $branch->id, $accessible, true))?->id;
 
         return $defaultBranchId ?? ($accessible[0] ?? null);
     }
@@ -40,7 +60,7 @@ class BranchContext
     public function branch(?User $user = null): ?Branch
     {
         $id = $this->id($user);
-        return $id ? Branch::find($id) : null;
+        return $id ? $this->remember('branch:'.$id, fn () => Branch::find($id)) : null;
     }
 
     public function set(User $user, int $branchId): void
@@ -54,7 +74,7 @@ class BranchContext
     public function canEdit(User $user, ?int $branchId): bool
     {
         if (! $branchId) return false;
-        $level = $user->branches()->whereKey($branchId)->first()?->pivot?->access_level;
+        $level = $this->memberships($user)->firstWhere('id', $branchId)?->pivot?->access_level;
         return in_array($level, ['edit', 'manage'], true);
     }
 }

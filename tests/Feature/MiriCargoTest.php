@@ -41,10 +41,17 @@ class MiriCargoTest extends TestCase
     public function test_preview_and_import_preserve_duplicates_and_cargo_fields_and_block_repeat_upload(): void
     {
         $this->staff();
+        \Illuminate\Support\Facades\Queue::fake();
         $file = $this->csv();
         $this->postJson(route('major-equipment.import.preview'), ['file' => $file, 'inventory_type' => 'cargo'])
             ->assertOk()->assertJsonPath('records', 2)->assertJsonPath('duplicate_records', 2)->assertJsonPath('samples.0.certificates.0.expiry_date', '2026-09-25');
         $this->post(route('major-equipment.import.store'), ['file' => $file, 'inventory_type' => 'cargo'])->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame(0, MajorEquipment::count());
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\ImportMiriEquipment::class);
+        $task = DB::table('miri_import_tasks')->first();
+        (new \App\Jobs\ImportMiriEquipment($task->id))->handle(app(MiriEquipmentCsvService::class));
+        $this->assertSame('completed', DB::table('miri_import_tasks')->value('status'));
+        $this->get(route('major-equipment.import.status', $task->id))->assertOk();
         $this->assertSame(2, MajorEquipment::where('tag_no', 'DE/SHUC/GR 160')->count());
         $item = MajorEquipment::firstOrFail();
         $this->assertSame('cargo', $item->inventory_type);

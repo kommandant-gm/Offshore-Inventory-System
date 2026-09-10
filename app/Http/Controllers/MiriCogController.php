@@ -26,9 +26,25 @@ class MiriCogController extends Controller
     public function create(Request $request): Response
     {
         $this->ensureMiri($request); abort_unless($request->user()?->canEdit('cogs'), 403);
-        $items = MajorEquipment::query()->get(['id', 'tag_no', 'description', 'unit', 'current_location'])->map(fn ($item) => ['key' => 'equipment:'.$item->id, 'type' => 'Major equipment', 'id' => $item->id, 'identifier' => $item->tag_no, 'description' => $item->description, 'unit' => $item->unit, 'location' => $item->current_location])
-            ->concat(MiriRentalItem::query()->get(['id', 'serial_tag_equipment_no', 'description', 'unit', 'current_location'])->map(fn ($item) => ['key' => 'rental:'.$item->id, 'type' => 'Rental', 'id' => $item->id, 'identifier' => $item->serial_tag_equipment_no, 'description' => $item->description, 'unit' => $item->unit, 'location' => $item->current_location]))->values();
-        return Inertia::render('MiriCog/Create', ['items' => $items, 'movementTypes' => self::TYPES]);
+        return Inertia::render('MiriCog/Create', ['movementTypes' => self::TYPES]);
+    }
+
+    public function items(Request $request)
+    {
+        $this->ensureMiri($request); abort_unless($request->user()?->canEdit('cogs'), 403);
+        $data = $request->validate(['search' => ['nullable', 'string', 'max:255'], 'type' => ['required', 'in:Major equipment,Rental']]);
+        $rental = $data['type'] === 'Rental';
+        $identifier = $rental ? 'serial_tag_equipment_no' : 'tag_no';
+        $query = $rental ? MiriRentalItem::query() : MajorEquipment::query();
+        $items = $query->when($data['search'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q
+            ->where($identifier, 'like', '%'.$term.'%')->orWhere('description', 'like', '%'.$term.'%')
+            ->orWhere('current_location', 'like', '%'.$term.'%')->when(ctype_digit($term), fn ($q) => $q->orWhere('id', $term))))
+            ->orderBy('id')->limit(26)->get(['id', $identifier, 'description', 'unit', 'current_location']);
+        return response()->json(['has_more' => $items->count() > 25, 'items' => $items->take(25)->map(fn ($item) => [
+            'key' => ($rental ? 'rental:' : 'equipment:').$item->id, 'type' => $data['type'],
+            'id' => $item->id, 'identifier' => $item->$identifier, 'description' => $item->description,
+            'unit' => $item->unit, 'location' => $item->current_location,
+        ])->values()]);
     }
 
     public function store(Request $request, AuditLogger $auditLogger): RedirectResponse

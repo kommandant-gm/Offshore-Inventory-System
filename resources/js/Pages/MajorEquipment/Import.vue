@@ -5,7 +5,7 @@ import InputError from '@/Components/InputError.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import axios from 'axios';
-const props = defineProps({ inventoryType: String });
+const props = defineProps({ inventoryType: String, recentImports: Array });
 const form = useForm({ file: null, inventory_type: props.inventoryType || 'machinery' });
 const report = ref(null);
 const previewing = ref(false);
@@ -29,9 +29,13 @@ const submit = () => form.post(route('major-equipment.import.store'));
     <Head title="Import Miri Inventory" />
     <AuthenticatedLayout>
         <PageHeader title="Import Major Equipment" description="Preview the selected CSV before importing Machinery or Cargo into Miri." />
+        <section v-if="recentImports?.length" class="mb-5 rounded-2xl border border-[#d8e7d4] bg-white p-5">
+            <h2 class="font-bold">Your recent imports</h2>
+            <Link v-for="task in recentImports" :key="task.id" :href="route('major-equipment.import.status', task.id)" class="mt-2 block text-sm text-green-800 underline">{{ task.filename }} — {{ task.status }}</Link>
+        </section>
         <form class="space-y-5 rounded-3xl border border-[#d8e7d4] bg-white p-6" @submit.prevent="preview">
             <label class="block max-w-sm"><span class="text-sm font-bold">CSV format</span><select v-model="form.inventory_type" class="select select-bordered mt-2 w-full" :disabled="previewing || form.processing" @change="resetPreview"><option value="machinery">Machinery — existing format</option><option value="cargo">Cargo — dimensions, quantity and inspections</option></select></label>
-            <p class="text-sm text-slate-600">Duplicate tags will be imported and highlighted for review. Blank quantities stay unspecified. Invalid dates are retained as import warnings. An identical file cannot be imported twice.</p>
+            <p class="text-sm text-slate-600">Confirmed imports run in the background; progress is shown on a separate page. Duplicate tags will be imported and highlighted for review. Blank quantities stay unspecified. Invalid dates are retained as import warnings. An identical file cannot be imported twice.</p>
             <input class="block w-full rounded-xl border p-3" type="file" accept=".csv,text/csv" :disabled="previewing || form.processing" @change="form.file = $event.target.files[0]; resetPreview()" />
             <InputError :message="form.errors.file || form.errors.inventory_type" />
             <button class="btn bg-[#234222] text-white" :disabled="previewing || form.processing || !form.file">{{ previewing ? 'Checking CSV…' : 'Preview CSV' }}</button>

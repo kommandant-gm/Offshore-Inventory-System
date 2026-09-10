@@ -8,9 +8,20 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 
-class SupervisorWorkflowNotification extends Notification
+class SupervisorWorkflowNotification extends Notification implements \Illuminate\Contracts\Queue\ShouldQueue
 {
     use Queueable;
+
+    public ?int $activityLogId = null;
+
+    public function failed(?\Throwable $error): void
+    {
+        if ($this->activityLogId) \App\Models\EmailActivityLog::whereKey($this->activityLogId)
+            ->where('status', '!=', 'sent')->update(['status' => 'failed', 'error' => $error?->getMessage()]);
+    }
+
+    public int $tries = 3;
+    public int $backoff = 30;
 
     public function __construct(
         private readonly string $subject,
@@ -20,7 +31,7 @@ class SupervisorWorkflowNotification extends Notification
         private readonly string $actionLabel,
         private readonly ?string $attachmentPath = null,
         private readonly ?string $attachmentName = null,
-    ) {}
+    ) { $this->afterCommit(); }
 
     public function via(object $notifiable): array { return ['mail']; }
 

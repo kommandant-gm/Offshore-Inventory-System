@@ -49,7 +49,7 @@ class AppServiceProvider extends ServiceProvider
             if ($notification->activityAttachmentName()) $lines[] = "Attachment: {$notification->activityAttachmentName()}";
             $lines[] = 'This is an acknowledgement notification from the Dayang Inventory Management System.';
 
-            EmailActivityLog::create([
+            EmailActivityLog::updateOrCreate(['id' => $notification->activityLogId], [
                 'recipient' => $recipient,
                 'subject' => $notification->activitySubject(),
                 'body' => implode("\n\n", $lines),

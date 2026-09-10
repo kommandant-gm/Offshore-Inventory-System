@@ -119,9 +119,11 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::resource('locations', LocationController::class)->only(['index', 'store', 'update']);
     Route::get('/miri-inventory', [MajorEquipmentController::class, 'index'])->name('major-equipment.index');
     Route::get('/miri-inventory/dashboard', [MajorEquipmentController::class, 'dashboard'])->name('major-equipment.dashboard');
+    Route::get('/miri-inventory/import-status/{task}', [MajorEquipmentController::class, 'importStatus'])->whereUuid('task')->name('major-equipment.import.status');
     Route::get('/miri-inventory/movement', [MajorEquipmentController::class, 'movement'])->name('major-equipment.movement');
     Route::get('/miri-inventory/log', [MiriLogController::class, 'index'])->name('major-equipment.log');
     Route::get('/miri-cogs', [MiriCogController::class, 'index'])->name('miri-cogs.index');
+    Route::get('/miri-cogs/items', [MiriCogController::class, 'items'])->name('miri-cogs.items');
     Route::get('/miri-cogs/create', [MiriCogController::class, 'create'])->name('miri-cogs.create');
     Route::post('/miri-cogs', [MiriCogController::class, 'store'])->name('miri-cogs.store');
     Route::post('/miri-cogs/{cog}/sign', [MiriCogController::class, 'sign'])->name('miri-cogs.sign');

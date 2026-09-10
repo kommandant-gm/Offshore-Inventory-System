@@ -13,7 +13,20 @@ class SupervisorNotificationService
     {
         try {
             foreach (array_filter(array_unique(array_merge($this->recipients(), $additionalRecipients))) as $address) {
-                Notification::route('mail', $address)->notify($notification);
+                $queued = clone $notification;
+                $entry = \App\Models\EmailActivityLog::create([
+                    'recipient' => $address, 'subject' => $queued->activitySubject(), 'body' => $queued->activityIntro(),
+                    'details' => $queued->activityDetails(), 'action_url' => $queued->activityUrl(),
+                    'action_label' => $queued->activityActionLabel(), 'attachment_name' => $queued->activityAttachmentName(),
+                    'notification_type' => $queued->activityType(), 'status' => 'pending',
+                ]);
+                $queued->activityLogId = $entry->id;
+                try {
+                    Notification::route('mail', $address)->notify($queued);
+                } catch (\Throwable $error) {
+                    $queued->failed($error);
+                    Log::error($logMessage, ['exception' => $error]);
+                }
             }
         } catch (\Throwable $exception) {
             Log::error($logMessage, ['exception' => $exception]);

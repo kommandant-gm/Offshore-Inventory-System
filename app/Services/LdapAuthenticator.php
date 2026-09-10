@@ -309,6 +309,7 @@ class LdapAuthenticator
             $user->branches()->attach($klBranchId, ['access_level' => 'edit', 'is_default' => true]);
         }
 
+        app(BranchContext::class)->forget();
         return $user;
     }
 

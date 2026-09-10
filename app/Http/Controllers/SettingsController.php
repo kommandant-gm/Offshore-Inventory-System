@@ -78,7 +78,7 @@ class SettingsController extends Controller
             'rolePresets' => collect(AccessMatrix::roleOptions())
                 ->mapWithKeys(fn (string $label, string $value) => [$value => AccessMatrix::permissionsForRole($value)]),
             'branchOptions' => Branch::query()->where('active', true)->orderBy('name')->get(['id', 'code', 'name']),
-            'users' => User::query()->where('directory_active', true)
+            'users' => User::query()->with('branches')->where('directory_active', true)
                 ->orderBy('name')
                 ->get()
                 ->map(fn (User $user) => [
@@ -240,6 +240,7 @@ class SettingsController extends Controller
             $user->setRawAttributes($target->getAttributes(), true);
         });
 
+        app(\App\Services\BranchContext::class)->forget();
         $auditLogger->record(
             module: 'settings',
             event: 'access_updated',
