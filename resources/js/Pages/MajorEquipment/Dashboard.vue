@@ -1,10 +1,11 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MiriRentalDashboard from '@/Components/MiriRentalDashboard.vue';
+import MiriConstructionDashboard from '@/Components/MiriConstructionDashboard.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-const props = defineProps({ summary: Object, categories: Array, locations: Array, recent: Array, expiry: Object, expiring: Array, rentalDashboard: Object, activeDashboard: String, inventoryType: String, typeCounts: Object, statusBreakdown: Array, quality: Object, quantityRecorded: Number });
+const props = defineProps({ summary: Object, categories: Array, locations: Array, recent: Array, expiry: Object, expiring: Array, rentalDashboard: Object, constructionDashboard: Object, canEditConstruction: Boolean, activeDashboard: String, inventoryType: String, typeCounts: Object, statusBreakdown: Array, quality: Object, quantityRecorded: Number });
 const activeDashboard = ref(props.activeDashboard ?? 'major');
 watch(() => props.activeDashboard, value => activeDashboard.value = value ?? 'major');
 const selectionLabel = computed(() => props.inventoryType === 'cargo' ? 'Cargo' : props.inventoryType === 'machinery' ? 'Machinery' : 'Major Equipment');
@@ -55,11 +56,13 @@ const pie = computed(() => {
     <Head title="Miri Inventory Dashboard" />
     <AuthenticatedLayout>
         <section class="dashboard-shell space-y-6">
-            <nav class="inline-flex rounded-2xl border border-[#d8e7d4] bg-white p-1.5 shadow-[0_8px_28px_rgba(39,89,45,.06)]" aria-label="Miri dashboard view">
+            <nav class="inline-flex flex-wrap rounded-2xl border border-[#d8e7d4] bg-white p-1.5 shadow-[0_8px_28px_rgba(39,89,45,.06)]" aria-label="Miri dashboard view">
                 <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'major' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'major'" @click="router.get(route('major-equipment.dashboard'), { view: 'major', inventory_type: inventoryType || 'all' }, { preserveScroll: true })">Major Equipment</button>
                 <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'rentals' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'rentals'" @click="router.get(route('major-equipment.dashboard'), { view: 'rentals', inventory_type: inventoryType || 'all' }, { preserveScroll: true })">Rentals</button>
+                <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'construction' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'construction'" title="Construction TEC, Garnet & PPE" @click="router.get(route('major-equipment.dashboard'), { view: 'construction' }, { preserveScroll: true })">TEC, Garnet &amp; PPE</button>
             </nav>
-            <MiriRentalDashboard v-if="activeDashboard === 'rentals'" :dashboard="rentalDashboard" />
+            <MiriConstructionDashboard v-if="activeDashboard === 'construction'" :dashboard="constructionDashboard" :can-edit="canEditConstruction" />
+            <MiriRentalDashboard v-else-if="activeDashboard === 'rentals'" :dashboard="rentalDashboard" />
             <template v-else>
             <nav class="flex flex-wrap gap-2" aria-label="Major Equipment dashboard filter">
                 <Link v-for="[key,label] in [['all','All Major Equipment'],['machinery','Machinery'],['cargo','Cargo']]" :key="key"

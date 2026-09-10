@@ -80,6 +80,13 @@ class MajorEquipmentController extends Controller
 
         $selection = $request->validate(['inventory_type' => ['nullable', 'in:all,machinery,cargo']]);
         $type = $selection['inventory_type'] ?? 'all';
+        if ($request->query('view') === 'construction') {
+            return Inertia::render('MajorEquipment/Dashboard', [
+                'activeDashboard' => 'construction', 'inventoryType' => $type,
+                'constructionDashboard' => app(\App\Services\ConstructionDashboardService::class)->data(),
+                'canEditConstruction' => $request->user()->canEdit('assets'),
+            ]);
+        }
         if ($request->query('view') === 'rentals') {
             return Inertia::render('MajorEquipment/Dashboard', [
                 'activeDashboard' => 'rentals', 'inventoryType' => $type,
