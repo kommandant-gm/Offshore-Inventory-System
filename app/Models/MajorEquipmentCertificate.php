@@ -11,6 +11,15 @@ class MajorEquipmentCertificate extends Model
 {
     use BelongsToBranch, HasFactory;
 
+    protected $hidden = ['image_path'];
+
+    protected $appends = ['has_image'];
+
+    public function getHasImageAttribute(): bool
+    {
+        return filled($this->image_path);
+    }
+
     protected $table = 'miri_inventory_certificates';
 
     protected $fillable = [
@@ -21,6 +30,7 @@ class MajorEquipmentCertificate extends Model
     protected function casts(): array
     {
         return [
+            'image_uploaded_at' => 'datetime',
             'issue_date' => 'date',
             'expiry_date' => 'date',
         ];

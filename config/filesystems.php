@@ -30,6 +30,14 @@ return [
 
     'disks' => [
 
+        'certificates' => [
+            'driver' => 'local',
+            'root' => env('CERTIFICATE_STORAGE_ROOT', storage_path('app/private/miri/certificates')),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

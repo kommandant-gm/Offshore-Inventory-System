@@ -9,6 +9,7 @@ use App\Models\MajorEquipmentCertificate;
 use App\Models\MiriRentalItem;
 use App\Models\MiriInventoryCategory;
 use App\Services\MiriEquipmentCsvService;
+use App\Services\MiriCertificateService;
 use App\Services\BranchContext;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
@@ -222,19 +223,16 @@ class MajorEquipmentController extends Controller
         return Inertia::render('MajorEquipment/Form', ['inventoryType' => $request->query('inventory_type') === 'cargo' ? 'cargo' : 'machinery', 'equipment' => null, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
-    public function store(SaveMajorEquipmentRequest $request, AuditLogger $auditLogger): RedirectResponse
+    public function store(SaveMajorEquipmentRequest $request, AuditLogger $auditLogger, MiriCertificateService $certificateService): RedirectResponse
     {
         $this->ensureMiri($request);
         $data = $request->validated();
         $certificates = $data['certificates'] ?? [];
-        unset($data['certificates']);
+        $removedIds = $data['removed_certificate_ids'] ?? [];
+        unset($data['certificates'], $data['removed_certificate_ids']);
         $data['branch_id'] = app(BranchContext::class)->id($request->user());
-        $equipment = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $certificates) {
-            $equipment = MajorEquipment::create($data);
-            foreach ($certificates as $certificate) $equipment->certificates()->create(['branch_id' => $equipment->branch_id, ...$certificate]);
-            return $equipment;
-        });
-        $auditLogger->record('miri_inventory', 'created', "Added Miri equipment record {$equipment->description}.", $equipment, after: $equipment->toArray(), user: $request->user(), request: $request);
+        $equipment = $certificateService->save(new MajorEquipment(), $data, $certificates, $removedIds, $request->user()->id);
+        $auditLogger->record('miri_inventory', 'created', "Added Miri equipment record {$equipment->description}.", $equipment, after: $equipment->load('certificates')->toArray(), user: $request->user(), request: $request);
         return redirect()->route('major-equipment.show', $equipment)->with('success', 'Miri equipment registered.');
     }
 
@@ -246,19 +244,16 @@ class MajorEquipmentController extends Controller
         return Inertia::render('MajorEquipment/Form', ['equipment' => $equipment, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
-    public function update(SaveMajorEquipmentRequest $request, MajorEquipment $equipment, AuditLogger $auditLogger): RedirectResponse
+    public function update(SaveMajorEquipmentRequest $request, MajorEquipment $equipment, AuditLogger $auditLogger, MiriCertificateService $certificateService): RedirectResponse
     {
         $this->ensureMiri($request);
-        $before = $equipment->toArray();
+        $before = $equipment->load('certificates')->toArray();
         $data = $request->validated();
         $certificates = $data['certificates'] ?? [];
-        unset($data['certificates']);
-        \Illuminate\Support\Facades\DB::transaction(function () use ($equipment, $data, $certificates): void {
-            $equipment->update($data);
-            $equipment->certificates()->delete();
-            foreach ($certificates as $certificate) $equipment->certificates()->create(['branch_id' => $equipment->branch_id, ...$certificate]);
-        });
-        $auditLogger->record('miri_inventory', 'updated', "Updated Miri equipment record {$equipment->description}.", $equipment, before: $before, after: $equipment->fresh()->toArray(), user: $request->user(), request: $request);
+        $removedIds = $data['removed_certificate_ids'] ?? [];
+        unset($data['certificates'], $data['removed_certificate_ids']);
+        $certificateService->save($equipment, $data, $certificates, $removedIds, $request->user()->id);
+        $auditLogger->record('miri_inventory', 'updated', "Updated Miri equipment record {$equipment->description}.", $equipment, before: $before, after: $equipment->fresh()->load('certificates')->toArray(), user: $request->user(), request: $request);
         return redirect()->route('major-equipment.show', $equipment)->with('success', 'Miri equipment updated.');
     }
 

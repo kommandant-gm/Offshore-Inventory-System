@@ -133,6 +133,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::post('/miri-inventory/import/preview', [MajorEquipmentController::class, 'previewImport'])->name('major-equipment.import.preview');
     Route::post('/miri-inventory/import', [MajorEquipmentController::class, 'storeImport'])->name('major-equipment.import.store');
     Route::get('/miri-inventory/{equipment}', [MajorEquipmentController::class, 'show'])->name('major-equipment.show');
+    Route::get('/miri-inventory/{equipment}/certificates/{certificate}/image', [\App\Http\Controllers\MiriCertificateImageController::class, 'show'])->whereNumber('certificate')->name('major-equipment.certificates.image');
     Route::get('/miri-inventory/{equipment}/pdf', [MajorEquipmentController::class, 'pdf'])->name('major-equipment.pdf');
     Route::get('/miri-inventory/{equipment}/edit', [MajorEquipmentController::class, 'edit'])->name('major-equipment.edit');
     Route::patch('/miri-inventory/{equipment}', [MajorEquipmentController::class, 'update'])->name('major-equipment.update');
