@@ -1,7 +1,8 @@
 <script setup>
+import PaintStockCards from '@/Components/PaintStockCards.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-const props = defineProps({ records: Object, filters: Object, summary: Object, options: Object, canEdit: Boolean });
+const props = defineProps({ records: Object, filters: Object, summary: Object, stockSummary: Object, options: Object, canEdit: Boolean });
 const form = useForm({ search: props.filters.search || '', section_2: props.filters.section_2 || '', location: props.filters.location || '', quality: props.filters.quality || '' });
 const apply = () => form.get(route('paint.index'), { preserveState: true, preserveScroll: true });
 const qty = value => value === null ? 'Not recorded' : Number(value).toLocaleString('en-GB', { maximumFractionDigits: 3 });
@@ -26,6 +27,7 @@ const cards = [['total','Records',''], ['unconfirmed_dates','Unconfirmed dates',
                 <label class="text-xs text-slate-600">Review / dates<select v-model="form.quality" class="mt-2 w-full rounded-xl border-slate-200"><option value="">All records</option><option value="review">Needs review</option><option value="duplicates">Possible repeat rows</option><option value="unconfirmed">Unconfirmed dates</option><option value="expired">Past best before</option><option value="due_30_days">Best before in 30 days</option></select></label>
                 <div class="flex items-end gap-2"><button class="btn bg-[#4f9f4a] text-white" :disabled="form.processing">Apply</button><Link :href="route('paint.index')" class="btn">Clear</Link></div>
             </form>
+            <PaintStockCards :stock-summary="stockSummary" scope-label="Follows applied filters, not just this page" />
             <div class="overflow-hidden rounded-3xl border border-[#d8e7d4] bg-white">
                 <p class="p-5 text-sm text-slate-600">{{ records.total }} records · Showing {{ records.from || 0 }}–{{ records.to || 0 }}</p>
                 <div class="overflow-x-auto"><table class="table"><thead><tr><th>Description / Type</th><th>Batch</th><th>Location</th><th>Balance CAN</th><th>Balance LTR</th><th>Best before</th><th>Review</th><th>Actions</th></tr></thead><tbody>

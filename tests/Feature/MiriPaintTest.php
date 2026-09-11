@@ -45,6 +45,36 @@ class MiriPaintTest extends TestCase
         rewind($handle); $bytes = stream_get_contents($handle); fclose($handle);
         return UploadedFile::fake()->createWithContent('Paint.csv', $bytes);
     }
+    public function test_stock_cards_sum_filtered_snapshots_and_keep_missing_values_distinct_from_zero(): void
+    {
+        $branch = $this->staff();
+        foreach (range(1, 26) as $i) MiriPaintItem::create(['branch_id' => $branch, 'category' => 'PAINT',
+            'description' => 'Included', 'section_2' => 'HEMPEL', 'opening_cans' => 1, 'opening_litres' => 0.5,
+            'opening_unit_price' => $i === 1 ? 0 : 20, 'opening_total_price' => 10,
+            'balance_cans' => 0, 'closing_total_price' => 0]);
+        MiriPaintItem::create(['branch_id' => $branch, 'category' => 'PAINT', 'description' => 'Blank', 'section_2' => 'HEMPEL']);
+        MiriPaintItem::create(['branch_id' => $branch, 'category' => 'PAINT', 'description' => 'Excluded',
+            'section_2' => 'OTHER', 'opening_total_price' => 999]);
+        MiriPaintItem::create(['branch_id' => Branch::where('code', 'KL-IT')->value('id'),
+            'category' => 'PAINT', 'section_2' => 'HEMPEL', 'opening_total_price' => 9999]);
+        foreach ([1, 2] as $page) {
+            $this->get(route('paint.index', ['section_2' => 'HEMPEL', 'page' => $page]))->assertOk()
+                ->assertInertia(fn (Assert $p) => $p->where('stockSummary.records', 27)
+                    ->where('stockSummary.opening_cans', fn ($v) => (float) $v === 26.0)
+                    ->where('stockSummary.opening_litres', fn ($v) => (float) $v === 13.0)
+                    ->where('stockSummary.opening_total_price', fn ($v) => (float) $v === 260.0)
+                    ->where('stockSummary.opening_total_price_count', 26)
+                    ->where('stockSummary.opening_unit_price_min', fn ($v) => (float) $v === 0.0)
+                    ->where('stockSummary.opening_unit_price_max', fn ($v) => (float) $v === 20.0)
+                    ->where('stockSummary.closing_total_price', fn ($v) => $v !== null && (float) $v === 0.0)
+                    ->where('stockSummary.balance_litres', null)->where('stockSummary.balance_litres_count', 0)
+                    ->where('stockSummary.closing_unit_price_min', null));
+        }
+        $this->get(route('paint.index', ['search' => 'no-match']))->assertInertia(fn (Assert $p) => $p
+            ->where('stockSummary.records', 0)->where('stockSummary.opening_total_price', null)
+            ->where('stockSummary.opening_total_price_count', 0));
+    }
+
     public function test_dates_are_split_only_when_unambiguous_and_single_dates_never_assumed(): void
     {
         $service = app(PaintCsvService::class);

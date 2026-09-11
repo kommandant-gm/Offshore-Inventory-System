@@ -57,7 +57,9 @@ class MiriPaintController extends Controller
         if (($filters['quality'] ?? '') === 'expired') $query->expiryEligible()->where('best_before_date', '<', today()->toDateString());
         if (($filters['quality'] ?? '') === 'due_30_days') $query->expiryEligible()->whereBetween('best_before_date', [today()->toDateString(), today()->addDays(30)->toDateString()]);
         $options = fn ($column) => (clone $base)->whereNotNull($column)->where($column, '<>', '')->distinct()->orderBy($column)->pluck($column);
+        $stockSummary = app(\App\Services\PaintStockSummary::class)->data($query);
         return Inertia::render('Paint/Index', [
+            'stockSummary' => $stockSummary,
             'records' => $query->orderBy('category')->orderBy('description')->orderBy('miri_paint_items.id')->paginate(25)->withQueryString(),
             'filters' => $filters, 'canEdit' => $request->user()->canEdit('assets'),
             'options' => ['category' => $options('category'), 'section_1' => $options('section_1'), 'section_2' => $options('section_2'), 'location' => $options('current_location')],

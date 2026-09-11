@@ -2,7 +2,7 @@
 
 ## Behaviour
 
-A separate register at /miri-paint, available from the Miri sidebar to users with assets read/edit access. Existing Major Equipment, Construction, Rentals, KL and Kemaman records are not modified. No Paint dashboard, automatic stock movement posting or new attachment system is added in this release.
+A separate register at /miri-paint, available from the Miri sidebar to users with assets read/edit access. Existing Major Equipment, Construction, Rentals, KL and Kemaman records are not modified. A Paint tab on the Miri dashboard provides record counts, opening/closing stock and price summaries, date coverage, and paginated paint-type/location charts. Automatic stock movement posting and a new attachment system are not included.
 
 The original Paint CSV uses three header records and 32 meaningful columns. The importer validates the main grouped headers, Opening/Closing Stock subheaders and individual columns. Empty trailing columns and entirely empty rows are skipped; unexpected populated columns are rejected. Reference text, multiline document details, category spelling, blanks and zero values are preserved.
 
@@ -18,6 +18,8 @@ Opening/closing cans, litres, unit prices and total prices are independent field
 - These are register-level indicators, not background emails/notifications. Do not interpret an unconfirmed source date as evidence that a batch is usable or expired.
 
 ## Review and duplicate candidates
+
+The register's Opening Stock and Closing Stock cards aggregate all rows matching the applied filters, independently of pagination. CAN and LTR quantities remain separate. Total prices are sums of recorded source values, while unit prices display the recorded minimum/maximum range (never a sum or average). Each metric includes its populated-record count. Missing values are excluded and an entirely missing metric displays Not recorded; explicit zeros remain zero. Possible repeated rows are included, so these source summaries are not a verified inventory valuation.
 
 Possible repeats use a normalized description + batch + current location key within this register and branch. Case and surrounding spaces are ignored; batch number alone is not unique. Missing location participates as unknown, so repeated unknown-location rows are flagged conservatively. Blank batch/description is not a duplicate key. Candidates remain separate until staff review them; editing identifying details updates matching.
 
@@ -50,6 +52,14 @@ Source rows are not automatically imported into the application or production da
 Files are staged privately until processing finishes/fails. Database import and audit/task completion are transactional; a processing failure rolls back records. Identical queued/completed files are blocked by a branch-scoped hash. Changed files are treated as new imports, not updates. After a failed task, review the cause and preview/upload again; do not queue:retry the old terminal task.
 
 The staged CSV is private, not application-encrypted on disk: use restricted permissions and encrypted disks/backups where needed.
+
+## Dashboard
+
+Open the Paint tab beside TEC, Garnet & PPE on the Miri dashboard. Data is loaded only for the selected dashboard; Paint aggregates are branch-scoped and do not query other inventory registers. Stock summaries share the same calculation and card component as the Paint Register, but cover all Miri Paint rows.
+
+Best-before coverage partitions records into past, today through 30 days, beyond 30 days, unconfirmed meaning, and no confirmed best-before date (including manufacture-only records). Unconfirmed dates are never treated as expiry dates. The priority list shows up to six confirmed past/approaching dates, earliest first. Type and location charts show six groups per page. Recent records are limited to six; source snapshots are not sent to the dashboard.
+
+No additional database migration or import worker change is needed for this dashboard.
 
 ## Verification
 
