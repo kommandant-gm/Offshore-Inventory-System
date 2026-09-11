@@ -50,6 +50,7 @@
         { name: 'Major Equipment Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
         { name: 'Rental Register', icon: TruckIcon, route: 'miri-rental.index' },
         { name: 'Construction TEC, Garnet & PPE Register', icon: BuildingStorefrontIcon, route: 'construction.index', active: 'construction.*', wrapLabel: true },
+        { name: 'Paint Register', icon: BuildingStorefrontIcon, route: 'paint.index', active: 'paint.*' },
         { name: 'Miri COG', icon: ClipboardDocumentListIcon, route: 'miri-cogs.index' },
         { name: 'Inventory Movement', icon: ArrowsRightLeftIcon, route: 'major-equipment.movement' },
         { name: 'Miri Log', icon: ClipboardDocumentListIcon, route: 'major-equipment.log' },

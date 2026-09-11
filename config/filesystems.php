@@ -29,6 +29,13 @@ return [
     */
 
     'disks' => [
+        'paint' => [
+            'driver' => 'local',
+            'root' => env('PAINT_STORAGE_ROOT', storage_path('app/private/miri/paint')),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+        ],
         'construction' => [
             'driver' => 'local',
             'root' => env('CONSTRUCTION_STORAGE_ROOT', storage_path('app/private/miri/construction')),
