@@ -26,48 +26,108 @@ class MiriCogController extends Controller
     public function create(Request $request): Response
     {
         $this->ensureMiri($request); abort_unless($request->user()?->canEdit('cogs'), 403);
-        return Inertia::render('MiriCog/Create', ['movementTypes' => self::TYPES]);
+        return Inertia::render('MiriCog/Create', ['movementTypes' => self::TYPES, 'registerTypes' => \App\Services\MiriCogSource::TYPES]);
     }
 
-    public function items(Request $request)
+    public function items(Request $request, \App\Services\MiriCogSource $sources)
     {
         $this->ensureMiri($request); abort_unless($request->user()?->canEdit('cogs'), 403);
-        $data = $request->validate(['search' => ['nullable', 'string', 'max:255'], 'type' => ['required', 'in:Major equipment,Rental']]);
-        $rental = $data['type'] === 'Rental';
-        $identifier = $rental ? 'serial_tag_equipment_no' : 'tag_no';
-        $query = $rental ? MiriRentalItem::query() : MajorEquipment::query();
-        $items = $query->when($data['search'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q
-            ->where($identifier, 'like', '%'.$term.'%')->orWhere('description', 'like', '%'.$term.'%')
-            ->orWhere('current_location', 'like', '%'.$term.'%')->when(ctype_digit($term), fn ($q) => $q->orWhere('id', $term))))
-            ->orderBy('id')->limit(26)->get(['id', $identifier, 'description', 'unit', 'current_location']);
-        return response()->json(['has_more' => $items->count() > 25, 'items' => $items->take(25)->map(fn ($item) => [
-            'key' => ($rental ? 'rental:' : 'equipment:').$item->id, 'type' => $data['type'],
-            'id' => $item->id, 'identifier' => $item->$identifier, 'description' => $item->description,
-            'unit' => $item->unit, 'location' => $item->current_location,
+        $data = $request->validate(['search'=>['nullable','string','max:255'], 'type'=>['required',\Illuminate\Validation\Rule::in($sources::TYPES)]]);
+        $branch = app(BranchContext::class)->id($request->user());
+        $identifier = $sources->identifier($data['type']);
+        $items = $sources->query($data['type'],$branch)
+            ->when($data['search'] ?? null, fn ($q,$term) => $q->where(fn ($q) => $q->where($identifier,'like','%'.$term.'%')->orWhere('description','like','%'.$term.'%')->orWhere('current_location','like','%'.$term.'%')->when(ctype_digit($term),fn ($q)=>$q->orWhere('id',$term))))
+            ->orderBy('id')->limit(26)->get();
+        return response()->json(['has_more'=>$items->count()>25, 'items'=>$items->take(25)->map(fn ($item)=>[
+            ...$sources->snapshot($item,$data['type']), 'key'=>$data['type'].':'.$item->id, 'id'=>$item->id,
+            'type'=>$data['type'], 'location'=>$item->current_location,
         ])->values()]);
     }
 
-    public function store(Request $request, AuditLogger $auditLogger): RedirectResponse
+    public function store(Request $request, AuditLogger $auditLogger, \App\Services\MiriCogSource $sources): RedirectResponse
     {
-        $this->ensureMiri($request); abort_unless($request->user()?->canEdit('cogs'), 403);
-        $data = $request->validate(['movement_type' => ['required', 'in:'.implode(',', self::TYPES)], 'document_date' => ['required', 'date'], 'from_location' => ['nullable', 'string', 'max:255'], 'to_location' => ['nullable', 'string', 'max:255'], 'receiver_name' => ['nullable', 'string', 'max:255'], 'receiver_email' => ['nullable', 'email', 'max:255'], 'issued_by_name' => ['required', 'string', 'max:255'], 'remarks' => ['nullable', 'string'], 'items' => ['required', 'array', 'min:1'], 'items.*.item_type' => ['required', 'in:Major equipment,Rental'], 'items.*.item_id' => ['required', 'integer'], 'items.*.quantity' => ['required', 'numeric', 'min:0.01'], 'items.*.remarks' => ['nullable', 'string']]);
-        $branchId = app(BranchContext::class)->id($request->user());
-        $cog = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $branchId, $request) {
-            $prefix = 'MIRI-COG-'.now()->format('Y'); $next = ((int) MiriCog::withoutGlobalScopes()->where('branch_id', $branchId)->where('cog_no', 'like', $prefix.'-%')->count()) + 1;
-            $cog = MiriCog::create([...collect($data)->except('items')->all(), 'branch_id' => $branchId, 'cog_no' => $prefix.'-'.str_pad((string) $next, 4, '0', STR_PAD_LEFT), 'status' => 'draft', 'created_by' => $request->user()->id]);
-            foreach ($data['items'] as $line) {
-                $model = $line['item_type'] === 'Rental' ? MiriRentalItem::query()->findOrFail($line['item_id']) : MajorEquipment::query()->findOrFail($line['item_id']);
-                $cog->items()->create(['branch_id' => $branchId, 'item_type' => $line['item_type'], 'item_id' => $model->id, 'identifier' => $line['item_type'] === 'Rental' ? $model->serial_tag_equipment_no : $model->tag_no, 'description' => $model->description, 'quantity' => $line['quantity'], 'unit' => $model->unit, 'current_location' => $model->current_location, 'remarks' => $line['remarks'] ?? null]);
+        $this->ensureMiri($request); abort_unless($request->user()?->canEdit('cogs'),403);
+        $rules = [
+            'movement_type'=>['required',\Illuminate\Validation\Rule::in(self::TYPES)], 'document_date'=>['required','date_format:Y-m-d'],
+            'receiver_email'=>['nullable','email','max:255'], 'remarks'=>['nullable','string','max:1000'],
+            'items'=>['required','array','min:1','max:100'],
+            'items.*.item_type'=>['required',\Illuminate\Validation\Rule::in($sources::TYPES)],
+            'items.*.item_id'=>['required','integer'], 'items.*.quantity'=>['required','numeric','min:0.001','max:999999999.999','decimal:0,3'],
+        ];
+        foreach (['from_location','to_location','receiver_name','issued_by_name','consignee_name','consignee_department','from_department','copy_to','destination','issued_designation','verified_by_name','verified_designation','receiver_designation'] as $key) $rules[$key] = [$key === 'issued_by_name' ? 'required' : 'nullable','string','max:255'];
+        foreach (['issued_date','verified_date','received_date'] as $key) $rules[$key] = ['nullable','date_format:Y-m-d'];
+        foreach (['description','size_model','identifier','serial_no','mr_reference','remarks','unit'] as $key) $rules['items.*.'.$key] = ['nullable','string','max:'.($key === 'unit' ? 20 : (in_array($key,['remarks','mr_reference']) ? 1000 : 255))];
+        $data = $request->validate($rules);
+        $branch = app(BranchContext::class)->id($request->user());
+        $cog = \Illuminate\Support\Facades\DB::transaction(function () use ($data,$branch,$request,$sources,$auditLogger) {
+            // Serialize numbering per branch, retaining the existing number format.
+            \App\Models\Branch::whereKey($branch)->lockForUpdate()->firstOrFail();
+            $prefix = 'MIRI-COG-'.now()->format('Y');
+            $last = MiriCog::withoutGlobalScopes()->where('branch_id',$branch)->where('cog_no','like',$prefix.'-%')->pluck('cog_no')
+                ->map(fn ($no)=>(int) substr($no,strlen($prefix)+1))->max() ?? 0;
+            $cog = MiriCog::create([...collect($data)->except('items')->all(), 'branch_id'=>$branch,
+                'cog_no'=>$prefix.'-'.str_pad((string)($last+1),4,'0',STR_PAD_LEFT), 'status'=>'draft', 'created_by'=>$request->user()->id]);
+            foreach ($data['items'] as $i=>$line) {
+                $model = $sources->query($line['item_type'],$branch)->findOrFail($line['item_id']);
+                $snapshot = $sources->snapshot($model,$line['item_type']);
+                foreach (['description','size_model','identifier','serial_no','mr_reference','remarks','unit'] as $key) if (array_key_exists($key,$line)) $snapshot[$key] = $line[$key];
+                if ($line['item_type'] === 'Paint') {
+                    $snapshot['identifier'] = null; // Batch is not an equipment tag.
+                    $snapshot['unit'] = strtoupper(trim($snapshot['unit'] ?? ''));
+                    if (! in_array($snapshot['unit'],['CAN','LTR'])) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.unit"=>'Choose CAN or LTR for Paint.']);
+                }
+                if (blank($snapshot['unit'])) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.unit"=>'Enter the issue unit; it is missing from the source record.']);
+                $cog->items()->create([...$snapshot,'branch_id'=>$branch,'item_type'=>$line['item_type'],'item_id'=>$model->id,'quantity'=>$line['quantity']]);
             }
+            $auditLogger->record('miri_cogs','created',"Created Miri COG {$cog->cog_no}. Document only; no stock movements.",$cog,after:$cog->toArray(),user:$request->user(),request:$request);
             return $cog;
         });
-        $auditLogger->record('miri_cogs', 'created', "Created Miri COG {$cog->cog_no}.", $cog, after: $cog->toArray(), user: $request->user(), request: $request);
-        return redirect()->route('miri-cogs.show', $cog)->with('success', "COG {$cog->cog_no} created.");
+        return redirect()->route('miri-cogs.show',$cog)->with('success',"COG {$cog->cog_no} created.");
     }
 
-    public function show(Request $request, MiriCog $cog): Response { $this->ensureMiri($request); abort_unless($request->user()?->canRead('cogs'), 403); $cog->load(['items', 'creator']); return Inertia::render('MiriCog/Show', ['cog' => $cog, 'canEdit' => $request->user()->canEdit('cogs')]); }
-    public function sign(Request $request, MiriCog $cog, AuditLogger $auditLogger): RedirectResponse { $this->ensureMiri($request); abort_unless($request->user()?->canEdit('cogs'), 403); $data = $request->validate(['signature' => ['required', 'string', 'max:200000']]); $cog->update(['signature' => $data['signature'], 'signed_at' => now(), 'signed_ip' => $request->ip(), 'status' => 'signed', 'updated_by' => $request->user()->id]); $auditLogger->record('miri_cogs', 'signed', "Signed Miri COG {$cog->cog_no}.", $cog, after: ['status' => 'signed', 'signed_at' => $cog->signed_at?->toIso8601String()], user: $request->user(), request: $request); return back()->with('success', "COG {$cog->cog_no} signed."); }
-    public function pdf(Request $request, MiriCog $cog) { $this->ensureMiri($request); abort_unless($request->user()?->canRead('cogs'), 403); $cog->load(['items', 'creator']); return Pdf::loadView('miri-cogs.pdf', ['cog' => $cog, 'logoPath' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('images/dayang-logo.png')))]) ->download('miri-cog-'.$cog->cog_no.'.pdf'); }
+    private function authorizeDocument(Request $request, MiriCog $cog, bool $edit = false): void
+    {
+        $this->ensureMiri($request);
+        abort_unless($cog->branch_id === app(BranchContext::class)->id($request->user()),404);
+        abort_unless($edit ? $request->user()->canEdit('cogs') : $request->user()->canRead('cogs'),403);
+    }
+    public function show(Request $request, MiriCog $cog): Response
+    {
+        $this->authorizeDocument($request,$cog);
+        $cog->load(['items','creator']);
+        return Inertia::render('MiriCog/Show',['cog'=>$cog,'document'=>app(\App\Services\MiriCogDocument::class)->data($cog),'canEdit'=>$request->user()->canEdit('cogs')]);
+    }
+    public function sign(Request $request, MiriCog $cog, AuditLogger $auditLogger): RedirectResponse
+    {
+        $this->authorizeDocument($request,$cog,true);
+        $data = $request->validate(['signature'=>['required','string','max:200000']]);
+        $valid = preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/=]+)$/D',$data['signature'],$matches);
+        $bytes = $valid ? base64_decode($matches[1],true) : false;
+        $info = $bytes ? @getimagesizefromstring($bytes) : false;
+        if (! $info || $info[2] !== IMAGETYPE_PNG || $info[0]>2000 || $info[1]>1000) throw \Illuminate\Validation\ValidationException::withMessages(['signature'=>'Use a valid PNG signature drawn below.']);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cog,$request,$data,$auditLogger) {
+            $locked = MiriCog::whereKey($cog->id)->lockForUpdate()->firstOrFail();
+            abort_if($locked->signature || $locked->status === 'signed',409,'This COG is already signed.');
+            $locked->update(['signature'=>$data['signature'],'signed_at'=>now(),'signed_ip'=>$request->ip(),'status'=>'signed','updated_by'=>$request->user()->id]);
+            $auditLogger->record('miri_cogs','signed',"Signed Miri COG {$locked->cog_no}.",$locked,after:['status'=>'signed','signed_at'=>$locked->signed_at?->toIso8601String()],user:$request->user(),request:$request);
+        });
+        return back()->with('success','Receiver signature recorded.');
+    }
+    public function pdf(Request $request, MiriCog $cog)
+    {
+        $this->authorizeDocument($request,$cog);
+        $cog->load(['items','creator']);
+        $pdf = Pdf::loadView('miri-cogs.pdf',[
+            'cog'=>$cog,'document'=>app(\App\Services\MiriCogDocument::class)->data($cog),
+            'logoPath'=>'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/dayang-logo.png'))),
+        ])->setPaper('a4','landscape');
+        // Uncompressed font streams avoid corrupted embedded-font rendering on this host.
+        return response($pdf->output(['compress'=>0]),200,[
+            'Content-Type'=>'application/pdf',
+            'Content-Disposition'=>'attachment; filename="miri-cog-'.preg_replace('/[^A-Za-z0-9_-]/','-',$cog->cog_no).'.pdf"',
+            'Cache-Control'=>'private, no-store',
+        ]);
+    }
     private function summary(MiriCog $cog): array { return ['id' => $cog->id, 'cog_no' => $cog->cog_no, 'movement_type' => $cog->movement_type, 'document_date' => $cog->document_date?->format('Y-m-d'), 'from_location' => $cog->from_location, 'to_location' => $cog->to_location, 'status' => $cog->status, 'items_count' => $cog->items_count, 'created_by' => $cog->creator?->name ?: 'System', 'created_at' => $cog->created_at?->format('d M Y, H:i')]; }
     private function ensureMiri(Request $request): void { abort_unless(app(BranchContext::class)->branch($request->user())?->code === 'MIRI', 404); }
 }

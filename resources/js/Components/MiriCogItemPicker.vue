@@ -55,11 +55,11 @@ onBeforeUnmount(() => { ++sequence; clearTimeout(timer); controller?.abort(); })
 
 <template>
     <div>
-        <input v-model="search" type="search" aria-label="Search inventory items" placeholder="Search tag, description, location or record ID" class="input input-bordered mt-2 w-full" @focus="!results.length && !loading && load()" />
+        <input v-model="search" type="search" aria-label="Search inventory items" placeholder="Search tag / batch, description, location or record ID" class="input input-bordered mt-2 w-full" @focus="!results.length && !loading && load()" />
         <select :value="modelValue" class="input input-bordered mt-2 w-full" aria-label="Inventory item" @change="select" @focus="!results.length && !loading && load()">
             <option value="">Select an item</option>
-            <option v-if="chosen && !results.some(item => item.id === chosen.id)" :value="chosen.id">#{{ chosen.id }} · {{ chosen.identifier }} · {{ chosen.description }}</option>
-            <option v-for="item in results" :key="item.key" :value="item.id">#{{ item.id }} · {{ item.identifier || 'Unidentified' }} · {{ item.description || 'Unnamed' }} · {{ item.location || 'No location' }}</option>
+            <option v-if="chosen && !results.some(item => item.id === chosen.id)" :value="chosen.id">#{{ chosen.id }} · {{ chosen.identifier || chosen.batch_no || 'Unidentified' }} · {{ chosen.description }}</option>
+            <option v-for="item in results" :key="item.key" :value="item.id">#{{ item.id }} · {{ item.identifier || item.batch_no || 'Unidentified' }} · {{ item.description || 'Unnamed' }} · {{ item.location || 'No location' }}</option>
         </select>
         <p class="mt-1 text-xs text-slate-500" role="status">{{ error || (loading ? 'Searching…' : hasMore ? 'Showing first 25 matches. Refine your search for more.' : search && !results.length ? 'No matching items.' : 'Search to find an inventory item.') }}</p>
     </div>

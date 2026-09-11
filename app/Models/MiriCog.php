@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MiriCog extends Model
 {
     use BelongsToBranch, HasFactory;
-    protected $fillable = ['branch_id', 'cog_no', 'movement_type', 'document_date', 'from_location', 'to_location', 'receiver_name', 'receiver_email', 'issued_by_name', 'remarks', 'status', 'signature', 'signed_at', 'signed_ip', 'created_by', 'updated_by'];
-    protected function casts(): array { return ['document_date' => 'date', 'signed_at' => 'datetime']; }
+    protected $fillable = ['consignee_name','consignee_department','from_department','copy_to','destination','issued_designation','verified_by_name','verified_designation','receiver_designation','issued_date','verified_date','received_date', 'branch_id', 'cog_no', 'movement_type', 'document_date', 'from_location', 'to_location', 'receiver_name', 'receiver_email', 'issued_by_name', 'remarks', 'status', 'signature', 'signed_at', 'signed_ip', 'created_by', 'updated_by'];
+    protected function casts(): array { return ['issued_date' => 'date:Y-m-d', 'verified_date' => 'date:Y-m-d', 'received_date' => 'date:Y-m-d', 'document_date' => 'date:Y-m-d', 'signed_at' => 'datetime']; }
     public function items(): HasMany { return $this->hasMany(MiriCogItem::class); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
 }
