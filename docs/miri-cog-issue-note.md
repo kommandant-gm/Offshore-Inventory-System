@@ -15,7 +15,7 @@ The Miri COG create/view/download flow now follows the supplied DESB Internal Is
 
 ## Form and PDF
 
-Header fields include consignee/department, from department/location, to, copy, destination, document date, and signatory names/designations/dates. New document numbers use DESB/YY/NNN and continue the highest suffix from both the legacy MIRI-COG-YYYY-NNNN and new format for the current year. Historical reference numbers are retained. Creation locks the branch while selecting the next suffix to prevent duplicate concurrent numbers.
+Header fields include consignee/department, from department/location, to, copy, destination, document date, and signatory names/designations/dates. New document numbers use DESB/YY/NNN and continue the highest suffix from both the legacy MIRI-COG-YYYY-NNNN and new format for the current year. Historical reference numbers remain stored for traceability; their displayed reference is converted to DESB/YY/NNN in the register, preview, PDF and allocation messages. Creation locks the branch while selecting the next suffix to prevent duplicate concurrent numbers.
 
 The PDF uses A4 landscape, the existing Dayang logo, green company heading, red number, sample table columns, form/revision codes, certification and acknowledgement-return text. Long item/reference/remarks text wraps into continuation rows. Pages repeat the header and show Page X of Y. Totals are separated by uppercase/trimmed unit; synonymous units are not silently converted. Unknown units on historical notes are marked UNSPECIFIED. More than four unit totals get a dedicated totals section.
 
@@ -27,7 +27,7 @@ The PDF uses uncompressed output for this renderer because compressed embedded-f
 
 ## Deployment and compatibility
 
-Deploy the code and run the frontend build. Back up first, review pending migrations, then apply 2026_09_11_001000_extend_miri_cog_issue_notes through the normal production migration workflow. Existing COGs retain their numbers and records; new nullable fields appear blank on old documents. The new layout applies to their downloads too.
+Deploy the code and run the frontend build. Back up first, review pending migrations, then apply 2026_09_11_001000_extend_miri_cog_issue_notes through the normal production migration workflow. Existing COGs retain their stored numbers and records; new nullable fields appear blank on old documents. The new layout applies to their downloads too.
 
 The migration adds only Miri COG metadata/snapshot fields and widens COG quantity precision. No KL/Kemaman or source inventory tables are changed. Rolling back drops new metadata, so back it up; the wider quantity precision is intentionally retained on rollback to avoid rounding stored values.
 
@@ -49,4 +49,4 @@ Staff may cancel an unfulfilled, unsigned outbound draft with a mandatory reason
 
 ## September PDF amendments
 
-General PDF text is 10 pt, with 11 pt quantity totals. Company heading and issue-note title retain their sizes. Table widths (percent) are Item 4, QTY 5, Unit 5, Description 30, Size/Model 11, Tag 14, Serial 11, MR 12, Remarks 8. Quantity and unit values are centred. All three signatory boxes have a signature line. Larger text uses ten continuation rows per page with narrower character wrapping, including long quantities; the web preview uses the same column proportions and document rows. Existing references remain unchanged, and PDF filenames safely replace slashes in new numbers.
+General PDF text is 10 pt, with 11 pt quantity totals. Company heading and issue-note title retain their sizes. Table widths (percent) are Item 4, QTY 5, Unit 5, Description 30, Size/Model 11, Tag 14, Serial 11, MR 12, Remarks 8. Quantity and unit values are centred. All three signatory boxes have a signature line. Larger text uses ten continuation rows per page with narrower character wrapping, including long quantities; the web preview uses the same column proportions and document rows. Legacy MIRI-COG references display as DESB/YY/NNN as well; PDF filenames safely replace slashes.

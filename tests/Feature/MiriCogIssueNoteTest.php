@@ -37,6 +37,14 @@ class MiriCogIssueNoteTest extends TestCase
         $this->post(route('miri-cogs.store'), $payload)->assertSessionHasNoErrors();
         $this->assertSame('DESB/26/006', MiriCog::latest('id')->firstOrFail()->cog_no);
         $this->assertSame('MIRI-COG-2026-0004', $legacy->fresh()->cog_no);
+        $this->assertSame('DESB/26/004', $legacy->fresh()->display_cog_no);
+        $this->get(route('miri-cogs.show', $legacy))->assertOk()->assertInertia(fn (Assert $p) => $p->where('cog.display_cog_no', 'DESB/26/004'));
+        $this->get(route('miri-cogs.index'))->assertOk()->assertInertia(fn (Assert $p) => $p->where('cogs.data', fn ($rows) => collect($rows)->contains('cog_no', 'DESB/26/004')));
+        $doc = app(MiriCogDocument::class)->data($legacy->load('items'));
+        $html = view('miri-cogs.pdf', ['cog'=>$legacy, 'document'=>$doc, 'logoPath'=>''])->render();
+        $this->assertStringContainsString('DESB/26/004', $html);
+        $this->assertStringNotContainsString('MIRI-COG-2026-0004', $html);
+        $this->get(route('miri-cogs.pdf', $legacy))->assertOk()->assertHeader('content-disposition', 'attachment; filename="miri-cog-DESB-26-004.pdf"');
         $this->travelTo(now()->setDate(2027, 1, 1));
         $this->post(route('miri-cogs.store'), $payload)->assertSessionHasNoErrors();
         $this->assertSame('DESB/27/001', MiriCog::latest('id')->firstOrFail()->cog_no);

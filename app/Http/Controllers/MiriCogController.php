@@ -154,10 +154,10 @@ class MiriCogController extends Controller
         // Uncompressed font streams avoid corrupted embedded-font rendering on this host.
         return response($pdf->output(['compress'=>0]),200,[
             'Content-Type'=>'application/pdf',
-            'Content-Disposition'=>'attachment; filename="miri-cog-'.preg_replace('/[^A-Za-z0-9_-]/','-',$cog->cog_no).'.pdf"',
+            'Content-Disposition'=>'attachment; filename="miri-cog-'.preg_replace('/[^A-Za-z0-9_-]/','-',$cog->display_cog_no).'.pdf"',
             'Cache-Control'=>'private, no-store',
         ]);
     }
-    private function summary(MiriCog $cog): array { return ['id' => $cog->id, 'cog_no' => $cog->cog_no, 'movement_type' => $cog->movement_type, 'document_date' => $cog->document_date?->format('Y-m-d'), 'from_location' => $cog->from_location, 'to_location' => $cog->to_location, 'status' => $cog->status, 'items_count' => $cog->items_count, 'created_by' => $cog->creator?->name ?: 'System', 'created_at' => $cog->created_at?->format('d M Y, H:i')]; }
+    private function summary(MiriCog $cog): array { return ['id' => $cog->id, 'cog_no' => $cog->display_cog_no, 'movement_type' => $cog->movement_type, 'document_date' => $cog->document_date?->format('Y-m-d'), 'from_location' => $cog->from_location, 'to_location' => $cog->to_location, 'status' => $cog->status, 'items_count' => $cog->items_count, 'created_by' => $cog->creator?->name ?: 'System', 'created_at' => $cog->created_at?->format('d M Y, H:i')]; }
     private function ensureMiri(Request $request): void { abort_unless(app(BranchContext::class)->branch($request->user())?->code === 'MIRI', 404); }
 }

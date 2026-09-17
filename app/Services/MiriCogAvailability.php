@@ -23,7 +23,7 @@ class MiriCogAvailability
             $id = $line->item_id;
             $quantity = (int) round((float) $line->quantity * 1000);
             if (in_array($line->cog->movement_type, self::OUTBOUND, true)) {
-                $state[$id][] = ['cog_no' => $line->cog->cog_no, 'quantity' => $quantity];
+                $state[$id][] = ['cog_no' => $line->cog->display_cog_no, 'quantity' => $quantity];
             } elseif ($line->cog->movement_type === 'Received backload') {
                 foreach ($state[$id] ?? [] as $i => $allocation) {
                     $returned = min($quantity, $allocation['quantity']);
