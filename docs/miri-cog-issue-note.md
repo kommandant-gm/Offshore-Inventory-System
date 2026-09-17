@@ -15,7 +15,7 @@ The Miri COG create/view/download flow now follows the supplied DESB Internal Is
 
 ## Form and PDF
 
-Header fields include consignee/department, from department/location, to, copy, destination, document date, and signatory names/designations/dates. Document numbering remains MIRI-COG-YYYY-NNNN. Creation locks the branch while selecting the next suffix to prevent duplicate concurrent numbers.
+Header fields include consignee/department, from department/location, to, copy, destination, document date, and signatory names/designations/dates. New document numbers use DESB/YY/NNN and continue the highest suffix from both the legacy MIRI-COG-YYYY-NNNN and new format for the current year. Historical reference numbers are retained. Creation locks the branch while selecting the next suffix to prevent duplicate concurrent numbers.
 
 The PDF uses A4 landscape, the existing Dayang logo, green company heading, red number, sample table columns, form/revision codes, certification and acknowledgement-return text. Long item/reference/remarks text wraps into continuation rows. Pages repeat the header and show Page X of Y. Totals are separated by uppercase/trimmed unit; synonymous units are not silently converted. Unknown units on historical notes are marked UNSPECIFIED. More than four unit totals get a dedicated totals section.
 
@@ -38,3 +38,15 @@ No queue worker is needed to create or download a COG. Existing import workers a
 php artisan test --compact tests/Feature/MiriCogIssueNoteTest.php tests/Feature/InventoryPerformanceTest.php
 
 Tests cover four-source item selection, branch/read-only permissions, no source changes, preserved snapshots, Paint units, distinct-unit totals, invalid references, atomic creation, signature validation/replay and multi-page PDF counts. Test PDFs are written only to private testing storage for visual review.
+
+## Equipment availability
+
+Major Equipment and Rental records are reserved by draft or signed outbound COGs (Issue out, Transfer, Return to supplier). The picker displays the holding COG numbers and disables outbound selection. Saving checks the same rule under the existing branch row lock, so concurrent submissions cannot both reserve equipment. Repeated equipment rows in one note are rejected.
+
+Received backload releases the recorded quantity; partial returns keep the record blocked until the outstanding quantity reaches zero. Returns exceeding outstanding COG quantities are rejected. Existing non-cancelled COG history is replayed in creation order, including historical duplicate issues; returns consume the oldest outstanding allocations first. Source register stock and location fields are unchanged. Paint and Construction quantity-based stock handling is unchanged.
+
+Staff may cancel an unfulfilled, unsigned outbound draft with a mandatory reason and confirmation that equipment was never dispatched. Cancellation is audited, retains the document, and releases its reservation. Signed notes, backloads, and notes with subsequent backload history cannot be cancelled. Cancelled notes cannot be signed. No migration is required. Equipment issued outside the COG register is not inferred from source register fields.
+
+## September PDF amendments
+
+General PDF text is 10 pt, with 11 pt quantity totals. Company heading and issue-note title retain their sizes. Table widths (percent) are Item 4, QTY 5, Unit 5, Description 30, Size/Model 11, Tag 14, Serial 11, MR 12, Remarks 8. Quantity and unit values are centred. All three signatory boxes have a signature line. Larger text uses ten continuation rows per page with narrower character wrapping, including long quantities; the web preview uses the same column proportions and document rows. Existing references remain unchanged, and PDF filenames safely replace slashes in new numbers.

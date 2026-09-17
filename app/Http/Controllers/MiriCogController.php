@@ -38,9 +38,12 @@ class MiriCogController extends Controller
         $items = $sources->query($data['type'],$branch)
             ->when($data['search'] ?? null, fn ($q,$term) => $q->where(fn ($q) => $q->where($identifier,'like','%'.$term.'%')->orWhere('description','like','%'.$term.'%')->orWhere('current_location','like','%'.$term.'%')->when(ctype_digit($term),fn ($q)=>$q->orWhere('id',$term))))
             ->orderBy('id')->limit(26)->get();
+        $allocations = app(\App\Services\MiriCogAvailability::class)->outstanding($branch, $data['type'], $items->pluck('id')->all());
         return response()->json(['has_more'=>$items->count()>25, 'items'=>$items->take(25)->map(fn ($item)=>[
             ...$sources->snapshot($item,$data['type']), 'key'=>$data['type'].':'.$item->id, 'id'=>$item->id,
             'type'=>$data['type'], 'location'=>$item->current_location,
+            'allocated_to'=>array_values(array_unique(array_column($allocations[$item->id] ?? [], 'cog_no'))),
+            'outstanding_quantity'=>array_sum(array_column($allocations[$item->id] ?? [], 'quantity')) / 1000,
         ])->values()]);
     }
 
@@ -60,13 +63,19 @@ class MiriCogController extends Controller
         $data = $request->validate($rules);
         $branch = app(BranchContext::class)->id($request->user());
         $cog = \Illuminate\Support\Facades\DB::transaction(function () use ($data,$branch,$request,$sources,$auditLogger) {
-            // Serialize numbering per branch, retaining the existing number format.
+            // Serialize availability checks, returns, cancellation and numbering per branch.
             \App\Models\Branch::whereKey($branch)->lockForUpdate()->firstOrFail();
-            $prefix = 'MIRI-COG-'.now()->format('Y');
-            $last = MiriCog::withoutGlobalScopes()->where('branch_id',$branch)->where('cog_no','like',$prefix.'-%')->pluck('cog_no')
-                ->map(fn ($no)=>(int) substr($no,strlen($prefix)+1))->max() ?? 0;
+            app(\App\Services\MiriCogAvailability::class)->validate($branch, $data['movement_type'], $data['items']);
+            $prefix = 'DESB/'.now()->format('y').'/';
+            $legacyPrefix = 'MIRI-COG-'.now()->format('Y').'-';
+            $last = MiriCog::withoutGlobalScopes()->where('branch_id', $branch)
+                ->where(fn ($q) => $q->where('cog_no', 'like', $prefix.'%')->orWhere('cog_no', 'like', $legacyPrefix.'%'))
+                ->pluck('cog_no')->map(function ($number) use ($prefix, $legacyPrefix) {
+                    $suffix = substr($number, str_starts_with($number, $prefix) ? strlen($prefix) : strlen($legacyPrefix));
+                    return ctype_digit($suffix) ? (int) $suffix : 0;
+                })->max() ?? 0;
             $cog = MiriCog::create([...collect($data)->except('items')->all(), 'branch_id'=>$branch,
-                'cog_no'=>$prefix.'-'.str_pad((string)($last+1),4,'0',STR_PAD_LEFT), 'status'=>'draft', 'created_by'=>$request->user()->id]);
+                'cog_no'=>$prefix.str_pad((string)($last+1),3,'0',STR_PAD_LEFT), 'status'=>'draft', 'created_by'=>$request->user()->id]);
             foreach ($data['items'] as $i=>$line) {
                 $model = $sources->query($line['item_type'],$branch)->findOrFail($line['item_id']);
                 $snapshot = $sources->snapshot($model,$line['item_type']);
@@ -107,12 +116,33 @@ class MiriCogController extends Controller
         if (! $info || $info[2] !== IMAGETYPE_PNG || $info[0]>2000 || $info[1]>1000) throw \Illuminate\Validation\ValidationException::withMessages(['signature'=>'Use a valid PNG signature drawn below.']);
         \Illuminate\Support\Facades\DB::transaction(function () use ($cog,$request,$data,$auditLogger) {
             $locked = MiriCog::whereKey($cog->id)->lockForUpdate()->firstOrFail();
-            abort_if($locked->signature || $locked->status === 'signed',409,'This COG is already signed.');
+            abort_if($locked->signature || $locked->status !== 'draft',409,'Only an unsigned draft COG can be signed.');
             $locked->update(['signature'=>$data['signature'],'signed_at'=>now(),'signed_ip'=>$request->ip(),'status'=>'signed','updated_by'=>$request->user()->id]);
             $auditLogger->record('miri_cogs','signed',"Signed Miri COG {$locked->cog_no}.",$locked,after:['status'=>'signed','signed_at'=>$locked->signed_at?->toIso8601String()],user:$request->user(),request:$request);
         });
         return back()->with('success','Receiver signature recorded.');
     }
+    public function cancel(Request $request, MiriCog $cog, AuditLogger $auditLogger): RedirectResponse
+    {
+        $this->authorizeDocument($request, $cog, true);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cog, $request, $auditLogger, $data) {
+            \App\Models\Branch::whereKey($cog->branch_id)->lockForUpdate()->firstOrFail();
+            $locked = MiriCog::whereKey($cog->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->status === 'draft' && ! $locked->signature && in_array($locked->movement_type, \App\Services\MiriCogAvailability::OUTBOUND, true), 409, 'Only an unfulfilled draft outbound note can be cancelled.');
+            foreach ($locked->items as $item) {
+                $laterReturn = \App\Models\MiriCogItem::where('branch_id', $locked->branch_id)
+                    ->where('item_type', $item->item_type)->where('item_id', $item->item_id)
+                    ->where('miri_cog_id', '>', $locked->id)
+                    ->whereHas('cog', fn ($q) => $q->where('movement_type', 'Received backload')->where('status', '!=', 'cancelled'))->exists();
+                abort_if($laterReturn, 409, 'This note has subsequent return history and cannot be cancelled.');
+            }
+            $locked->update(['status' => 'cancelled', 'updated_by' => $request->user()->id]);
+            $auditLogger->record('miri_cogs', 'cancelled', "Cancelled unfulfilled Miri COG {$locked->cog_no}.", $locked, after: ['status' => 'cancelled', 'reason' => $data['reason']], user: $request->user(), request: $request);
+        });
+        return back()->with('success', 'Unfulfilled issue note cancelled; equipment reservations released.');
+    }
+
     public function pdf(Request $request, MiriCog $cog)
     {
         $this->authorizeDocument($request,$cog);

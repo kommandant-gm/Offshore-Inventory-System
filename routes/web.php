@@ -151,6 +151,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::get('/miri-cogs/items', [MiriCogController::class, 'items'])->name('miri-cogs.items');
     Route::get('/miri-cogs/create', [MiriCogController::class, 'create'])->name('miri-cogs.create');
     Route::post('/miri-cogs', [MiriCogController::class, 'store'])->name('miri-cogs.store');
+    Route::post('/miri-cogs/{cog}/cancel', [MiriCogController::class, 'cancel'])->name('miri-cogs.cancel');
     Route::post('/miri-cogs/{cog}/sign', [MiriCogController::class, 'sign'])->name('miri-cogs.sign');
     Route::get('/miri-cogs/{cog}/pdf', [MiriCogController::class, 'pdf'])->name('miri-cogs.pdf');
     Route::get('/miri-cogs/{cog}', [MiriCogController::class, 'show'])->name('miri-cogs.show');
