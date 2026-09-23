@@ -7,6 +7,8 @@ use App\Services\CidbInventoryReport;
 use App\Services\CidbReportWorkbook;
 use App\Services\PaintInventoryReport;
 use App\Services\PaintReportWorkbook;
+use App\Services\RentalSummaryReport;
+use App\Services\RentalSummaryWorkbook;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -73,6 +75,42 @@ class MiriReportsController extends Controller
         abort_unless($request->user()?->canRead('assets'), 403);
 
         return $branch->id;
+    }
+
+    public function rental(Request $request): Response
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->rentalFilters($request);
+        $service = app(RentalSummaryReport::class);
+
+        return Inertia::render('MiriReports/RentalSummary', [
+            'filters' => $filters, 'columns' => RentalSummaryReport::COLUMNS, 'options' => $service->options($branch),
+            'report' => $request->boolean('preview') ? $service->generate($branch, $filters) : null,
+        ]);
+    }
+
+    public function exportRental(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->rentalFilters($request);
+        $report = app(RentalSummaryReport::class)->generate($branch, $filters);
+        abort_if($report['unavailable'] !== null, 422, $report['unavailable'] ?? 'Report unavailable.');
+        $path = app(RentalSummaryWorkbook::class)->create($report, $filters);
+
+        return response()->download($path, "equipment-rental-list-summary-{$filters['month']}.xlsx", [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'private, no-store',
+        ])->deleteFileAfterSend(true);
+    }
+
+    private function rentalFilters(Request $request): array
+    {
+        $validated = $request->validate([
+            'month' => ['sometimes', 'required', 'date_format:Y-m', 'before_or_equal:'.now('Asia/Kuala_Lumpur')->format('Y-m')],
+            'project' => ['nullable', 'string', 'max:255'], 'location' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        return ['month' => $validated['month'] ?? now('Asia/Kuala_Lumpur')->format('Y-m'), 'project' => $validated['project'] ?? '', 'location' => $validated['location'] ?? ''];
     }
 
     private function filters(Request $request): array

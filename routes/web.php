@@ -48,6 +48,8 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'syste
 
 Route::middleware(['auth', 'system.access'])->group(function () {
     Route::get('/miri-reports', [\App\Http\Controllers\MiriReportsController::class, 'index'])->name('miri-reports.index');
+    Route::get('/miri-reports/equipment-rental-summary', [\App\Http\Controllers\MiriReportsController::class, 'rental'])->name('miri-reports.rental');
+    Route::get('/miri-reports/equipment-rental-summary/export', [\App\Http\Controllers\MiriReportsController::class, 'exportRental'])->name('miri-reports.rental.export');
     Route::get('/miri-reports/bintulu-yard-cidb-training', [\App\Http\Controllers\MiriReportsController::class, 'bintuluCidb'])->name('miri-reports.bintulu-cidb');
     Route::get('/miri-reports/bintulu-yard-cidb-training/export', [\App\Http\Controllers\MiriReportsController::class, 'exportCidb'])->name('miri-reports.cidb.export');
     Route::get('/miri-reports/bintulu-yard-paint', [\App\Http\Controllers\MiriReportsController::class, 'bintuluPaint'])->name('miri-reports.bintulu-paint');

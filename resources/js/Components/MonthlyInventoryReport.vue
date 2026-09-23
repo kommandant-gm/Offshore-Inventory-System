@@ -2,11 +2,12 @@
 import { computed, ref, watch } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 
-const props = defineProps({ filters: Object, report: Object, columns: Object, title: String, description: String, scope: String, previewRoute: String, exportRoute: String });
-const form = useForm({ month: props.filters.month });
+const props = defineProps({ filters: Object, report: Object, columns: Object, options: Object, title: String, description: String, scope: String, previewRoute: String, exportRoute: String });
+const form = useForm({ ...props.filters });
 const page = ref(1);
-const dirty = computed(() => form.month !== props.filters.month);
+const dirty = computed(() => Object.keys(props.filters).some(key => form[key] !== props.filters[key]));
 const rows = computed(() => props.report?.rows.slice((page.value - 1) * 25, page.value * 25) ?? []);
 const pages = computed(() => Math.max(1, Math.ceil((props.report?.rows.length ?? 0) / 25)));
 watch(() => props.report, () => { page.value = 1; });
@@ -29,7 +30,17 @@ const display = value => value === null || value === '' ? '—' : typeof value =
                         <input v-model="form.month" type="month" required class="input input-bordered mt-2 w-full" />
                         <span v-if="form.errors.month" class="text-red-700">{{ form.errors.month }}</span>
                     </label>
-                    <p class="self-center text-sm text-slate-500 md:col-span-2">{{ scope }}</p>
+                    <template v-if="options">
+                        <label class="text-sm">Project / Contract
+                            <CustomSelect v-model="form.project" class="select select-bordered mt-2 w-full"><option value="">All projects</option><option v-for="value in options.projects" :key="value" :value="value">{{ value }}</option></CustomSelect>
+                            <span v-if="form.errors.project" class="text-red-700">{{ form.errors.project }}</span>
+                        </label>
+                        <label class="text-sm">Warehouse / Location
+                            <CustomSelect v-model="form.location" class="select select-bordered mt-2 w-full"><option value="">All locations</option><option v-for="value in options.locations" :key="value" :value="value">{{ value }}</option></CustomSelect>
+                            <span v-if="form.errors.location" class="text-red-700">{{ form.errors.location }}</span>
+                        </label>
+                    </template>
+                    <p class="self-center text-sm text-slate-500" :class="options ? 'md:col-span-3' : 'md:col-span-2'">{{ scope }}</p>
                 </div>
                 <div class="mt-5 flex flex-wrap items-center gap-3">
                     <button class="btn bg-[#4f9f4a] text-white" :disabled="form.processing">{{ form.processing ? 'Preparing…' : 'Preview report' }}</button>
