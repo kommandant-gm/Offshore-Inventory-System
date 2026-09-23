@@ -1,6 +1,9 @@
 # Monthly paint inventory report
 
-Open **Reports**, select a month, then **Preview report**. BTU/LBN and Hempel/IP are combined in one report; brand and storage remain visible on each row.
+Open **Reports** and choose **Bintulu Yard Paint Inventory Report**. Select a month,
+then **Preview report**. This dedicated report includes Bintulu locations only,
+with Hempel and IP together. Preview and export reject other location parameters.
+The Reports landing page provides a separate card for each available report.
 The preview displays 25 rows per page. **Export Excel** includes all matching rows.
 Changing a filter requires a new preview before export. Export regenerates the report
 from the latest stored data for the applied filters.

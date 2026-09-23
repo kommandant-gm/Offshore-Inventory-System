@@ -48,6 +48,7 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'syste
 
 Route::middleware(['auth', 'system.access'])->group(function () {
     Route::get('/miri-reports', [\App\Http\Controllers\MiriReportsController::class, 'index'])->name('miri-reports.index');
+    Route::get('/miri-reports/bintulu-yard-paint', [\App\Http\Controllers\MiriReportsController::class, 'bintuluPaint'])->name('miri-reports.bintulu-paint');
     Route::get('/miri-reports/paint/export', [\App\Http\Controllers\MiriReportsController::class, 'export'])->name('miri-reports.paint.export');
     Route::patch('/miri-inventory/company-assignment', [\App\Http\Controllers\MiriCompanyController::class, 'assign'])->name('miri-company.assign');
     Route::delete('/miri-register/{register}/{item}', [\App\Http\Controllers\MiriRegisterDeletionController::class, 'destroy'])

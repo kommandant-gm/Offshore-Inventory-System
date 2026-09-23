@@ -53,7 +53,7 @@
         { name: 'Paint Register', icon: BuildingStorefrontIcon, route: 'paint.index', active: 'paint.*' },
         { name: 'Internal Issue Note', icon: ClipboardDocumentListIcon, route: 'miri-cogs.index' },
         { name: 'Inventory Movement', icon: ArrowsRightLeftIcon, route: 'major-equipment.movement' },
-        { name: 'Reports', icon: ChartBarIcon, route: 'miri-reports.index' },
+        { name: 'Reports', icon: ChartBarIcon, route: 'miri-reports.index', active: 'miri-reports.*' },
         { name: 'Miri Log', icon: ClipboardDocumentListIcon, route: 'major-equipment.log' },
     ];
     const klItems = [

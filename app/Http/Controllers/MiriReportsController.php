@@ -13,11 +13,18 @@ class MiriReportsController extends Controller
 {
     public function index(Request $request): Response
     {
+        $this->authorizeReport($request);
+
+        return Inertia::render('MiriReports/Index');
+    }
+
+    public function bintuluPaint(Request $request): Response
+    {
         $branch = $this->authorizeReport($request);
         $filters = $this->filters($request);
         $report = $request->boolean('preview') ? app(PaintInventoryReport::class)->generate($branch, $filters) : null;
 
-        return Inertia::render('MiriReports/Index', ['filters' => $filters, 'report' => $report, 'columns' => PaintInventoryReport::COLUMNS]);
+        return Inertia::render('MiriReports/BintuluPaint', ['filters' => $filters, 'report' => $report, 'columns' => PaintInventoryReport::COLUMNS]);
     }
 
     public function export(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
@@ -28,7 +35,7 @@ class MiriReportsController extends Controller
         abort_if($report['unavailable'] !== null, 422, $report['unavailable'] ?? 'Report unavailable.');
         $path = app(PaintReportWorkbook::class)->create($report, $filters);
 
-        return response()->download($path, "paint-inventory-{$filters['location']}-{$filters['month']}.xlsx", [
+        return response()->download($path, "bintulu-yard-paint-inventory-report-{$filters['month']}.xlsx", [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'private, no-store',
         ])->deleteFileAfterSend(true);
@@ -47,10 +54,10 @@ class MiriReportsController extends Controller
     {
         $validated = $request->validate([
             'month' => ['sometimes', 'required', 'date_format:Y-m', 'before_or_equal:'.now('Asia/Kuala_Lumpur')->format('Y-m')],
-            'location' => ['sometimes', 'required', 'in:all,BTU,LBN'],
+            'location' => ['sometimes', 'required', 'in:BTU'],
             'brand' => ['sometimes', 'required', 'in:all,IP Paint,Hempel Paint'],
         ]);
 
-        return [...['month' => now('Asia/Kuala_Lumpur')->format('Y-m'), 'location' => 'all', 'brand' => 'all'], ...$validated];
+        return [...['month' => now('Asia/Kuala_Lumpur')->format('Y-m'), 'location' => 'BTU', 'brand' => 'all'], ...$validated];
     }
 }
