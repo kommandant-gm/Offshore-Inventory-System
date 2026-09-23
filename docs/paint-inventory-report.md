@@ -1,6 +1,6 @@
 # Monthly paint inventory report
 
-Open **Reports**, select month, BTU/LBN and paint type, then **Preview report**.
+Open **Reports**, select a month, then **Preview report**. BTU/LBN and Hempel/IP are combined in one report; brand and storage remain visible on each row.
 The preview displays 25 rows per page. **Export Excel** includes all matching rows.
 Changing a filter requires a new preview before export. Export regenerates the report
 from the latest stored data for the applied filters.
@@ -25,13 +25,25 @@ produce an unavailable message instead of a misleading empty report.
   month. They do not erase prior-month issue history.
 - Adjustments stay separate, including unknown adjustment quantities as blanks.
 - CAN and LTR have separate rows. No conversion or mixed-unit total is inferred.
-- No price columns are exported. Missing quantities are blank, genuine zero is 0.
+- Report prices remain visible (the dashboard price removal does not apply here).
+  Recorded opening/closing item values appear once on the LTR row, with an explicit
+  remark; they are not recalculated valuations. Unit price uses the recorded closing
+  price (or opening price if absent) on the matching recorded CAN/LTR unit row.
+  Historical prices and undated received/issued values remain blank. Missing
+  quantities are blank, genuine zero is 0.
 
-The workbook uses a values-only XLSX table with frozen headings, column filters,
-three-decimal quantities and a Report notes sheet. Inventory text is written as
-inline strings, so formula-like input is never evaluated. Temporary export files
-are removed after sending the response. The XLSX writer requires PHP ZipArchive,
-which is also used by existing Excel imports.
+The XLSX export copies `resources/report-templates/paint-inventory.xlsx`, the
+user-provided workbook. It preserves the logo, original styles, A:Q column order,
+merged headings, widths, frozen panes, landscape settings and sign-off positions.
+Rows 15?32 expand when needed; totals, sign-off and print area move accordingly.
+Old source formulas are removed. Quantity totals are populated only with complete
+coverage in one unit; financial totals are populated only with complete recorded
+values. Old approver names and signature dates are left blank. Report notes are
+on a separate sheet. Price columns remain in their original positions.
+
+Inventory text is written as inline strings, so formula-like input is never evaluated.
+Temporary export files are removed after sending the response. PHP ZipArchive and
+DOM are required. Exports do not depend on the user's Downloads directory.
 
 Validation: `MiriPaintReportTest` covers filtering/branch scope, current/historical
 balances, missing history, read-only generation, validation/access, unavailable

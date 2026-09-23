@@ -9,17 +9,18 @@ use Illuminate\Support\Facades\Schema;
 class PaintInventoryReport
 {
     public const COLUMNS = [
-        'id' => 'Record', 'description' => 'Description', 'batch' => 'Batch', 'brand' => 'Brand',
-        'opening' => 'Opening stock', 'received' => 'Total received', 'issued' => 'Tracked issues',
-        'other_outbound' => 'Other outbound', 'returns' => 'Backloads / reversals', 'adjustments' => 'Adjustments',
-        'closing' => 'Balance stock', 'unit' => 'Unit', 'location' => 'Storage location',
-        'po' => 'Purchase order', 'do' => 'Delivery order', 'remarks' => 'Remarks',
+        'number' => 'Item', 'description' => 'Decription', 'brand' => 'Brand',
+        'opening' => 'Opening Stock', 'received' => 'Total Received', 'issued' => 'Total Issued (W/H Used)',
+        'closing' => 'Balance Stock', 'unit' => 'Unit', 'unit_price' => 'Unit Price',
+        'opening_value' => 'Opening Stock Value', 'received_value' => 'Total Received Value',
+        'issued_value' => 'Total Issued Value (W/H Used)', 'closing_value' => 'Balance Stk Value',
+        'location' => 'Location Storage', 'po' => 'Purchase Order No.', 'do' => 'Delivery Order No.', 'remarks' => 'Remarks',
     ];
 
     public function generate(int $branch, array $filters): array
     {
         $notes = [
-            'Prices are excluded. CAN and LTR are separate quantities; do not add them together.',
+            'Prices are included where recorded for the current stock period. Historical prices are not snapshotted. CAN and LTR are separate quantities; mixed-unit grand totals are left blank.',
             'Total received is blank: purchase receipts are not separately dated in the stock ledger. Imported receipt quantities are not monthly totals.',
             'Movement columns show posted ledger activity in the selected stock month, including posted draft issue notes. Zero means no tracked movement, not proof of no historical activity.',
             'Backloads and cancellation reversals are shown in the month posted. Other outbound includes transfers and supplier returns. Adjustments are not treated as receipts.',
@@ -43,7 +44,7 @@ class PaintInventoryReport
         $rows = [];
         foreach ($items as $item) {
             $brand = $classification->brand($item->section_2);
-            if ($classification->location($item->current_location) !== $filters['location']) {
+            if (! in_array($classification->location($item->current_location), $filters['location'] === 'all' ? ['BTU', 'LBN'] : [$filters['location']], true)) {
                 continue;
             }
             if ($filters['brand'] !== 'all' && $brand !== $filters['brand']) {
@@ -90,7 +91,33 @@ class PaintInventoryReport
                 if ($closing === null) {
                     $remarks[] = 'Closing balance missing';
                 }
+                if ($item->batch_no) {
+                    $remarks[] = 'Batch: '.$item->batch_no;
+                }
+                foreach (['other_outbound' => 'Other outbound', 'returns' => 'Backloads / reversals', 'adjustments' => 'Adjustments'] as $key => $label) {
+                    if ($totals[$key] === null) {
+                        $remarks[] = $label.': unknown';
+                    } elseif ($totals[$key] !== 0) {
+                        $remarks[] = $label.': '.($totals[$key] / 1000).' '.$unit;
+                    }
+                }
+                $money = fn ($value) => $value === null ? null : (float) $value;
+                $priceUnit = match (strtoupper(trim($item->unit ?? ''))) {
+                    'LTR', 'L', 'LITRE', 'LITRES', 'LITER', 'LITERS' => 'LTR',
+                    'CAN', 'CANS' => 'CAN', default => null,
+                };
+                // Saved monetary totals describe the item, not each parallel unit row.
+                $showMoney = $current && $unit === 'LTR';
+                $unitPrice = $current && $priceUnit === $unit ? $money($item->closing_unit_price ?? $item->opening_unit_price) : null;
+                if ($showMoney) {
+                    $remarks[] = 'Values are recorded item totals, not recalculated; shown once on LTR row';
+                }
+                if ($unitPrice !== null) {
+                    $remarks[] = 'Unit price uses recorded '.($item->closing_unit_price !== null ? 'closing' : 'opening').' price and item unit';
+                }
                 $rows[] = [
+                    'number' => count($rows) + 1,
+                    'unit_price' => $unitPrice, 'opening_value' => $showMoney ? $money($item->opening_total_price) : null, 'received_value' => null, 'issued_value' => null, 'closing_value' => $showMoney ? $money($item->closing_total_price) : null,
                     'id' => $item->id, 'description' => $item->description, 'batch' => $item->batch_no, 'brand' => $brand,
                     'opening' => $opening === null ? null : (float) $opening, 'received' => null,
                     ...array_map(fn ($value) => ! $known || $value === null ? null : $value / 1000, $totals),

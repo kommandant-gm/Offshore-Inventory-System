@@ -2,12 +2,11 @@
 import { computed, ref, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import CustomSelect from '@/Components/CustomSelect.vue';
 
 const props = defineProps({ filters: Object, report: Object, columns: Object });
-const form = useForm({ ...props.filters });
+const form = useForm({ month: props.filters.month });
 const page = ref(1);
-const dirty = computed(() => Object.keys(props.filters).some(key => form[key] !== props.filters[key]));
+const dirty = computed(() => form.month !== props.filters.month);
 const rows = computed(() => props.report?.rows.slice((page.value - 1) * 25, page.value * 25) ?? []);
 const pages = computed(() => Math.max(1, Math.ceil((props.report?.rows.length ?? 0) / 25)));
 watch(() => props.report, () => { page.value = 1; });
@@ -29,18 +28,7 @@ const display = value => value === null || value === '' ? '—' : typeof value =
                         <input v-model="form.month" type="month" required class="input input-bordered mt-2 w-full" />
                         <span v-if="form.errors.month" class="text-red-700">{{ form.errors.month }}</span>
                     </label>
-                    <label class="text-sm">Location
-                        <CustomSelect v-model="form.location" class="select select-bordered mt-2 w-full">
-                            <option value="BTU">Bintulu (BTU)</option><option value="LBN">Labuan (LBN)</option>
-                        </CustomSelect>
-                        <span v-if="form.errors.location" class="text-red-700">{{ form.errors.location }}</span>
-                    </label>
-                    <label class="text-sm">Paint type
-                        <CustomSelect v-model="form.brand" class="select select-bordered mt-2 w-full">
-                            <option value="all">All paint types</option><option value="Hempel Paint">Hempel</option><option value="IP Paint">IP</option>
-                        </CustomSelect>
-                        <span v-if="form.errors.brand" class="text-red-700">{{ form.errors.brand }}</span>
-                    </label>
+                    <p class="self-center text-sm text-slate-500 md:col-span-2">Combined report for Bintulu and Labuan, including Hempel and IP paint.</p>
                 </div>
                 <div class="mt-5 flex flex-wrap items-center gap-3">
                     <button class="btn bg-[#4f9f4a] text-white" :disabled="form.processing">{{ form.processing ? 'Preparing…' : 'Preview report' }}</button>

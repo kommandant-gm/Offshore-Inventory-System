@@ -47,10 +47,10 @@ class MiriReportsController extends Controller
     {
         $validated = $request->validate([
             'month' => ['sometimes', 'required', 'date_format:Y-m', 'before_or_equal:'.now('Asia/Kuala_Lumpur')->format('Y-m')],
-            'location' => ['sometimes', 'required', 'in:BTU,LBN'],
+            'location' => ['sometimes', 'required', 'in:all,BTU,LBN'],
             'brand' => ['sometimes', 'required', 'in:all,IP Paint,Hempel Paint'],
         ]);
 
-        return [...['month' => now('Asia/Kuala_Lumpur')->format('Y-m'), 'location' => 'BTU', 'brand' => 'all'], ...$validated];
+        return [...['month' => now('Asia/Kuala_Lumpur')->format('Y-m'), 'location' => 'all', 'brand' => 'all'], ...$validated];
     }
 }

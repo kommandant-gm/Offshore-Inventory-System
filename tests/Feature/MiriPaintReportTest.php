@@ -34,7 +34,7 @@ class MiriPaintReportTest extends TestCase
     public function test_preview_and_export_are_scoped_and_do_not_change_stock(): void
     {
         [$user, $branch] = $this->reader();
-        $item = MiriPaintItem::create(['branch_id' => $branch, 'description' => '=HYPERLINK("bad") & paint', 'section_2' => 'HEMPEL PAINT', 'current_location' => 'BINTULU PAINT STORE', 'opening_litres' => 20.125, 'balance_litres' => 17.125, 'balance_cans' => 0, 'stock_in_qty' => 999]);
+        $item = MiriPaintItem::create(['branch_id' => $branch, 'description' => '=HYPERLINK("bad") & paint', 'section_2' => 'HEMPEL PAINT', 'current_location' => 'BINTULU PAINT STORE', 'opening_litres' => 20.125, 'balance_litres' => 17.125, 'balance_cans' => 0, 'stock_in_qty' => 999, 'unit' => 'LTR', 'closing_unit_price' => 12.5, 'opening_total_price' => 251.56, 'closing_total_price' => 214.06]);
         MiriPaintItem::create(['branch_id' => $branch, 'description' => 'Excluded Labuan', 'current_location' => 'LBN', 'section_2' => 'HEMPEL PAINT']);
         MiriPaintItem::create(['branch_id' => $branch, 'description' => 'Excluded IP', 'current_location' => 'BTU', 'section_2' => 'IP']);
         MiriPaintItem::create(['branch_id' => Branch::where('code', 'KL-IT')->value('id'), 'description' => 'Private', 'current_location' => 'BTU', 'section_2' => 'HEMPEL PAINT']);
@@ -47,19 +47,30 @@ class MiriPaintReportTest extends TestCase
         $this->get(route('miri-reports.index', [...$filters, 'preview' => 1]))->assertOk()->assertInertia(fn (AssertableInertia $p) => $p
             ->component('MiriReports/Index')->has('report.rows', 2)->where('report.rows.0.opening', 20.125)
             ->where('report.rows.0.received', null)->where('report.rows.0.issued', 4)->where('report.rows.0.returns', 1)
-            ->where('report.rows.0.adjustments', null)->where('report.rows.1.closing', 0));
+            ->where('report.rows.0.unit_price', 12.5)->where('report.rows.0.opening_value', 251.56)->where('report.rows.1.opening_value', null)->where('report.rows.0.adjustments', null)->where('report.rows.1.closing', 0));
         $response = $this->get(route('miri-reports.paint.export', $filters))->assertOk()->assertDownload('paint-inventory-BTU-2026-09.xlsx');
         $path = $response->baseResponse->getFile()->getPathname();
         $zip = new ZipArchive;
         $this->assertTrue($zip->open($path));
         try {
             for ($i = 0; $i < $zip->numFiles; $i++) {
-                $this->assertNotFalse(simplexml_load_string($zip->getFromIndex($i)));
+                if (str_ends_with($zip->getNameIndex($i), '.xml') || str_ends_with($zip->getNameIndex($i), '.rels')) {
+                    $this->assertNotFalse(simplexml_load_string($zip->getFromIndex($i)));
+                }
             }
             $xml = $zip->getFromName('xl/worksheets/sheet1.xml');
             $this->assertStringContainsString('=HYPERLINK', $xml);
             $this->assertStringNotContainsString('<f>', $xml);
             $this->assertStringNotContainsString('Private', $xml);
+            $template = new ZipArchive;
+            $template->open(resource_path('report-templates/paint-inventory.xlsx'));
+            $this->assertSame($template->getFromName('xl/styles.xml'), $zip->getFromName('xl/styles.xml'));
+            $this->assertSame($template->getFromName('xl/media/image1.png'), $zip->getFromName('xl/media/image1.png'));
+            $this->assertStringContainsString('width="53.7109375"', $xml);
+            $this->assertStringContainsString('r="I15"', $xml);
+            $this->assertStringContainsString('<v>12.5</v>', $xml);
+            $this->assertFalse($zip->locateName('xl/calcChain.xml'));
+            $template->close();
             $this->assertStringContainsString('<v>20.125</v>', $xml);
             $this->assertStringContainsString('Report notes', $zip->getFromName('xl/workbook.xml'));
         } finally {
@@ -113,5 +124,37 @@ class MiriPaintReportTest extends TestCase
         $this->get(route('miri-reports.index', ['preview' => 1]))->assertOk()->assertInertia(fn (AssertableInertia $p) => $p
             ->has('report.rows', 0)->where('report.unavailable', 'Paint reporting requires the existing paint register and stock-history database migrations.'));
         $this->get(route('miri-reports.paint.export'))->assertUnprocessable();
+    }
+
+    public function test_combined_report_expands_template_without_losing_rows_or_print_area(): void
+    {
+        [, $branch] = $this->reader();
+        foreach (range(1, 25) as $i) {
+            MiriPaintItem::create(['branch_id' => $branch, 'description' => sprintf('Paint %02d', $i),
+                'current_location' => $i % 2 ? 'BTU' : 'LBN', 'section_2' => $i % 2 ? 'HEMPEL PAINT' : 'IP',
+                'opening_litres' => 2, 'balance_litres' => 1]);
+        }
+        $this->get(route('miri-reports.index', ['preview' => 1]))->assertOk()->assertInertia(fn (AssertableInertia $p) => $p
+            ->where('filters.location', 'all')->has('report.rows', 25));
+        $response = $this->get(route('miri-reports.paint.export'))->assertOk();
+        $path = $response->baseResponse->getFile()->getPathname();
+        $zip = new ZipArchive;
+        $zip->open($path);
+        try {
+            $xml = $zip->getFromName('xl/worksheets/sheet1.xml');
+            $this->assertStringContainsString('Paint 25', $xml);
+            $this->assertStringContainsString('BINTULU &amp; LABUAN YARDS', $xml);
+            $this->assertStringContainsString('r="B40"', $xml);
+            $this->assertStringContainsString('r="B44"', $xml);
+            $this->assertStringContainsString('$A$1:$Q$47', $zip->getFromName('xl/workbook.xml'));
+            $doc = simplexml_load_string($xml);
+            $doc->registerXPathNamespace('s', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+            $this->assertCount(25, $doc->xpath('//s:row[@r >= 15 and @r <= 39]/s:c[starts-with(@r,"B")]/s:is'));
+            $this->assertSame('25', (string) $doc->xpath('//s:c[@r="G40"]/s:v')[0]);
+            $this->assertEmpty($doc->xpath('//s:c[@r="B45"]/s:is')); // No inherited approver names.
+        } finally {
+            $zip->close();
+            unlink($path);
+        }
     }
 }
