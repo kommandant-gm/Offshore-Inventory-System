@@ -1,4 +1,5 @@
 <script setup>
+import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
@@ -32,7 +33,7 @@ function assignDate(field) {
                 <p class="mt-2 text-sm text-amber-900">Single dates must be identified by staff. Confirmed date pairs follow the source heading: manufacture → best before. Unconfirmed dates are excluded from expiry alerts.</p>
                 <div v-if="record?.unconfirmed_date" class="mt-3 flex flex-wrap gap-2"><button type="button" class="btn btn-sm" @click="assignDate('manufacture_date')">Use single date as manufacture</button><button type="button" class="btn btn-sm" @click="assignDate('best_before_date')">Use single date as best before</button></div>
                 <div class="mt-4 grid gap-4 md:grid-cols-3">
-                    <label class="text-sm">Date meaning<select v-model="form.date_status" class="mt-2 w-full rounded-xl border-slate-200"><option value="not_recorded" :disabled="!!record?.original_date">Not recorded</option><option value="unconfirmed">Unconfirmed — needs review</option><option value="confirmed">Confirmed meaning</option></select></label>
+                    <label class="text-sm">Date meaning<CustomSelect v-model="form.date_status" class="mt-2 w-full rounded-xl border-slate-200"><option value="not_recorded" :disabled="!!record?.original_date">Not recorded</option><option value="unconfirmed">Unconfirmed — needs review</option><option value="confirmed">Confirmed meaning</option></CustomSelect></label>
                     <label class="text-sm">Manufacture date<input v-model="form.manufacture_date" type="date" class="mt-2 w-full rounded-xl border-slate-200" /></label>
                     <label class="text-sm">Best-before date<input v-model="form.best_before_date" type="date" class="mt-2 w-full rounded-xl border-slate-200" /></label>
                 </div>

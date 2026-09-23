@@ -25,6 +25,7 @@ class PaintDashboardService
             'summary' => [...$dates, 'duplicates' => (clone $query)->duplicateBatch()->count(),
                 'review' => (clone $query)->where(fn ($q) => $q->where('needs_review', true)->orWhere(fn ($q) => $q->duplicateBatch()))->count()],
             'stock' => app(PaintStockSummary::class)->data($query),
+            'quantities' => app(PaintQuantitySummary::class)->data($query),
             'types' => $group('section_2'), 'locations' => $group('current_location'),
             'attention' => (clone $query)->expiryEligible()->where('best_before_date', '<=', $soon)
                 ->orderBy('best_before_date')->orderBy('id')->limit(6)->get(['id', 'description', 'batch_no', 'current_location', 'best_before_date'])

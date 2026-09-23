@@ -1,4 +1,5 @@
 <script setup>
+import CustomSelect from '@/Components/CustomSelect.vue';
 import { computed, ref, watch } from 'vue';
 import { Link } from '@inertiajs/vue3';
 
@@ -47,7 +48,7 @@ const dueLabel = (days) => days === 0 ? 'Due today' : `${days} days left`;
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5"><article class="rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-sm sm:p-6 lg:col-span-5">
                 <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-semibold uppercase text-blue-500">Rental health</p><h2 class="mt-1 text-xl font-bold text-slate-800">Status overview</h2></div><span class="text-right text-xs text-slate-400"><strong class="block text-lg text-slate-700">{{ overviewTotal }}</strong>rental records</span></div>
                 <label class="mt-4 block text-sm font-semibold text-slate-600">Project / Contract
-                    <select v-model="project" class="mt-2 w-full rounded-xl border-slate-200"><option value="">All projects</option><option v-for="item in dashboard.projects" :key="item.project" :value="item.project">{{ item.project }}</option></select>
+                    <CustomSelect v-model="project" class="mt-2 w-full rounded-xl border-slate-200"><option value="">All projects</option><option v-for="item in dashboard.projects" :key="item.project" :value="item.project">{{ item.project }}</option></CustomSelect>
                 </label>
                 <div class="mt-5 space-y-3"><div v-for="item in overviewStatuses" :key="item.label" class="flex items-center gap-3"><span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: statusColor(item.label) }"/><span class="min-w-0 flex-1 text-sm font-semibold text-slate-600">{{ item.label }}</span><div class="hidden h-2 w-20 overflow-hidden rounded-full bg-slate-100 sm:block"><span class="block h-full" :style="{ width: `${percent(item.value)}%`, backgroundColor: statusColor(item.label) }"/></div><strong class="text-right text-sm text-slate-800">{{ item.value }} <small class="font-normal text-slate-500">({{ percent(item.value) }}%)</small></strong></div></div>
                 <p class="mt-4 text-xs text-slate-500">Counts represent rental records. Overdue is an alert that can overlap On Hire or Issued. Off Hire, Received Backload and Returned to Supplier are excluded from overdue.</p>
@@ -61,7 +62,7 @@ const dueLabel = (days) => days === 0 ? 'Due today' : `${days} days left`;
             </article><article class="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:col-span-5">
                 <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase text-violet-500">Deployment footprint</p><h2 class="mt-1 text-xl font-bold text-slate-800">Rental locations</h2></div><span class="text-right text-xs text-slate-500"><strong class="block text-lg text-slate-800">{{ locationTotal }}</strong>rental records</span></div>
                 <label class="mt-4 block text-sm font-semibold text-slate-600">Project / Contract
-                    <select v-model="locationProject" class="mt-2 w-full rounded-xl border-slate-200"><option value="">All projects</option><option v-for="item in dashboard.projects" :key="item.project" :value="item.project">{{ item.project }}</option></select>
+                    <CustomSelect v-model="locationProject" class="mt-2 w-full rounded-xl border-slate-200"><option value="">All projects</option><option v-for="item in dashboard.projects" :key="item.project" :value="item.project">{{ item.project }}</option></CustomSelect>
                 </label>
                 <p class="mt-3 text-xs text-slate-500">Totals include all statuses. Overdue can overlap On Hire or Issued; completed rentals are excluded from overdue.</p>
                 <div class="mt-5 space-y-5">

@@ -1,4 +1,5 @@
 <script setup>
+import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import axios from 'axios';
 import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue';
@@ -90,29 +91,29 @@ onBeforeUnmount(() => { ++sequence; clearTimeout(timer); controller?.abort(); })
         <CompanyField v-model="company" filter />
         <div v-if="major" class="mt-2 space-y-3">
             <label class="block text-sm">Equipment type
-                <select v-model="inventoryType" class="mt-1 w-full rounded-xl border-slate-200" @change="resetRefinements">
+                <CustomSelect v-model="inventoryType" class="mt-1 w-full rounded-xl border-slate-200" @change="resetRefinements">
                     <option value="">All Machinery and Cargo</option>
                     <option value="machinery">Machinery</option>
                     <option value="cargo">Cargo</option>
-                </select>
+                </CustomSelect>
             </label>
             <div class="grid gap-3 sm:grid-cols-2">
                 <label v-for="[key, label] in [['description', 'Description'], ['section_2', 'Subcategory'], ['location', 'Current location']]" :key="key" class="block text-sm">{{ label }}
-                    <select v-model="refinements[key]" class="mt-1 w-full rounded-xl border-slate-200">
+                    <CustomSelect v-model="refinements[key]" class="mt-1 w-full rounded-xl border-slate-200">
                         <option value="">All</option>
                         <option v-if="refinements[key] && !options[key].includes(refinements[key])" :value="refinements[key]" disabled>{{ refinements[key] }} (no matching records)</option>
                         <option v-for="value in options[key]" :key="value" :value="value">{{ value }}</option>
-                    </select>
+                    </CustomSelect>
                 </label>
             </div>
             <p class="text-xs text-slate-500">Choose Machinery or Cargo, then narrow by description, subcategory or location. Results update automatically.</p>
         </div>
         <input v-model="search" type="search" aria-label="Search inventory items" placeholder="Search tag / batch, description, location or record ID" class="input input-bordered mt-2 w-full" @focus="!results.length && !loading && load()" />
-        <select :value="modelValue" class="input input-bordered mt-2 w-full" aria-label="Inventory item" @change="select" @focus="!results.length && !loading && load()">
+        <CustomSelect :model-value="modelValue" class="input input-bordered mt-2 w-full" aria-label="Inventory item" @change="select" @focus="!results.length && !loading && load()">
             <option value="">Select an item</option>
             <option v-if="chosen && !results.some(item => item.id === chosen.id)" :value="chosen.id">#{{ chosen.id }} · {{ chosen.identifier || chosen.batch_no || 'Unidentified' }} · {{ chosen.description }}</option>
             <option v-for="item in results" :key="item.key" :value="item.id" :disabled="blocked(item)">#{{ item.id }} · {{ item.identifier || item.batch_no || 'Unidentified' }} · {{ item.description || 'Unnamed' }} · {{ item.location || 'No location' }}{{ item.allocated_to?.length ? ' - Allocated to ' + item.allocated_to.join(', ') + ' - Outstanding: ' + item.outstanding_quantity : '' }}</option>
-        </select>
+        </CustomSelect>
         <p class="mt-1 text-xs text-slate-500" role="status">{{ error || (loading ? 'Loading items...' : results.length ? `Showing ${results.length} matches${hasMore ? '. Load more to see the rest.' : '. All matches loaded.'}` : 'No matching items.') }}</p>
         <button v-if="hasMore" type="button" class="btn btn-sm mt-2" :disabled="loading" @click="load(true)">{{ loading ? 'Loading...' : 'Load more' }}</button>
     </div>

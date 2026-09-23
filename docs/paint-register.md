@@ -19,7 +19,7 @@ Opening/closing cans, litres, unit prices and total prices are independent field
 
 ## Review and duplicate candidates
 
-The register's Opening Stock and Closing Stock cards aggregate all rows matching the applied filters, independently of pagination. CAN and LTR quantities remain separate. Total prices are sums of recorded source values, while unit prices display the recorded minimum/maximum range (never a sum or average). Each metric includes its populated-record count. Missing values are excluded and an entirely missing metric displays Not recorded; explicit zeros remain zero. Possible repeated rows are included, so these source summaries are not a verified inventory valuation.
+The dashboard and register Opening Stock and Closing Stock cards show LTR quantities with independent All / IP Paint / Hempel Paint / Other selections. Brand totals follow the applied company and register filters across all pages. IP includes the imported INTERNATION PAINT spelling and INTERNATIONAL PAINT; unrecognised or missing brands remain in Other. Closing stock shows available litres to issue. Missing LTR values display Not recorded, explicit zero remains zero, and coverage counts show how many records have LTR balances. CAN quantities are not converted to litres. Prices remain stored on records but are no longer displayed in these cards. Dashboard alerts are labelled Expired and Expire in 30 days, using confirmed best-before dates only.
 
 Possible repeats use a normalized description + batch + current location key within this register and branch. Case and surrounding spaces are ignored; batch number alone is not unique. Missing location participates as unknown, so repeated unknown-location rows are flagged conservatively. Blank batch/description is not a duplicate key. Candidates remain separate until staff review them; editing identifying details updates matching.
 
@@ -89,3 +89,9 @@ CAN and LTR are independent balances. There is no pack-size conversion. Unknown 
 Paint View includes immutable monthly snapshots and paginated stock movement history. Editors can record receipts, legacy backloads and corrections using the closing-stock fields with a review note. Stock changes require the form's current stock token, preventing an older edit form from overwriting COG deductions or a month rollover. Metadata-only edits do not post stock. Opening-balance corrections are audited by the existing record audit; closing corrections also appear in the stock ledger.
 
 Verify with `php -d extension=pdo_sqlite -d memory_limit=512M vendor/phpunit/phpunit/phpunit --filter="PaintStockLedgerTest|MiriPaintTest|MiriPaintDashboardTest|MiriCogIssueNoteTest"` on the Windows development environment. These tests use an isolated in-memory database.
+
+## Paint quantity charts
+
+The Paint dashboard replaces the paint-type and current-location record-count charts with LTR quantities. Paint types show current available closing stock and current Malaysia-month COG Issue out quantities separately for BTU and LBN. Issued quantities exclude cancellations, historical imported issue fields, other months, transfers, supplier returns and CAN movements. Backloads do not reduce gross issued quantities. Both quantities are grouped by the paint record's current location and respect company and branch scope.
+
+The location chart shows only BTU, LBN, SKA and SBA. Whole-word BTU/BINTULU and LBN/LABUAN aliases include stores and racks; explicit SKA/SBA names take precedence. Other and missing locations are excluded with a record-count notice. Missing stock remains unknown, not zero; coverage counts identify partial totals. No can-to-litre conversion is performed.

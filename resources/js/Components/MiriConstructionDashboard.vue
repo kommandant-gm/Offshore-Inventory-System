@@ -1,4 +1,5 @@
 <script setup>
+import CustomSelect from '@/Components/CustomSelect.vue';
 import { Link } from '@inertiajs/vue3';
 import { computed, reactive, watch } from 'vue';
 const props = defineProps({ dashboard: Object, canEdit: Boolean });
@@ -67,8 +68,8 @@ watch(() => props.dashboard, () => {
                 <h2 class="text-lg font-bold text-[#234222]">{{ chart.title }}</h2>
                 <p class="mt-2 text-xs text-slate-500">Available to issue equals recorded stock balance. COG reservations are not deducted. Quantities are grouped by unit.</p>
                 <div v-if="chart.key === 'locations'" class="mt-4 grid gap-3 sm:grid-cols-2">
-                    <label class="text-sm text-slate-600">Category<select v-model="stockFilters.category" class="mt-1 w-full rounded-xl border-slate-200"><option value="">All categories</option><option v-for="row in dashboard.categories" :key="row.label" :value="row.label">{{ row.label }}</option></select></label>
-                    <label class="text-sm text-slate-600">Location<select v-model="stockFilters.location" class="mt-1 w-full rounded-xl border-slate-200"><option value="">All locations</option><option v-for="row in dashboard.locations" :key="row.label" :value="row.label">{{ row.label }}</option></select></label>
+                    <label class="text-sm text-slate-600">Category<CustomSelect v-model="stockFilters.category" class="mt-1 w-full rounded-xl border-slate-200"><option value="">All categories</option><option v-for="row in dashboard.categories" :key="row.label" :value="row.label">{{ row.label }}</option></CustomSelect></label>
+                    <label class="text-sm text-slate-600">Location<CustomSelect v-model="stockFilters.location" class="mt-1 w-full rounded-xl border-slate-200"><option value="">All locations</option><option v-for="row in dashboard.locations" :key="row.label" :value="row.label">{{ row.label }}</option></CustomSelect></label>
                 </div>
                 <div class="my-5 flex-1 space-y-4">
                     <div v-for="row in stockVisible(chart.key)" :key="row.key" class="rounded-xl border border-slate-100 p-3">

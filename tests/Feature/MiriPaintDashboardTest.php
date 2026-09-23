@@ -49,6 +49,33 @@ class MiriPaintDashboardTest extends TestCase
         DB::disableQueryLog();
         foreach (['miri_inventory_items','miri_construction_items','miri_rental_items'] as $table) $this->assertStringNotContainsString($table,$sql);
     }
+    public function test_brand_stock_groups_preserve_unknown_and_zero_balances_and_company_scope(): void
+    {
+        $branch = $this->staff();
+        foreach ([['INTERNATION PAINT', 10, 4], [' international paint ', 2.5, 0], ['IP', null, null],
+            ['HEMPEL PAINT', 20, 8], ['HEMPEL', null, null], ['Unknown brand', 3, 1]] as [$type, $opening, $closing]) {
+            MiriPaintItem::create(['branch_id' => $branch, 'company' => 'DESB', 'category' => 'PAINT',
+                'section_2' => $type, 'opening_litres' => $opening, 'balance_litres' => $closing]);
+        }
+        MiriPaintItem::create(['branch_id' => $branch, 'company' => 'FTSB', 'section_2' => 'IP', 'balance_litres' => 999]);
+        MiriPaintItem::create(['branch_id' => Branch::where('code', 'KL-IT')->value('id'),
+            'company' => 'DESB', 'section_2' => 'IP', 'balance_litres' => 999]);
+        $this->get(route('major-equipment.dashboard', ['view' => 'paint', 'company' => 'DESB']))->assertOk()
+            ->assertInertia(fn (Assert $p) => $p
+                ->where('paintDashboard.stock.paint_types.ip.records', 3)
+                ->where('paintDashboard.stock.paint_types.ip.opening_litres', fn ($v) => (float) $v === 12.5)
+                ->where('paintDashboard.stock.paint_types.ip.balance_litres', fn ($v) => (float) $v === 4.0)
+                ->where('paintDashboard.stock.paint_types.ip.balance_litres_count', 2)
+                ->where('paintDashboard.stock.paint_types.hempel.records', 2)
+                ->where('paintDashboard.stock.paint_types.hempel.balance_litres', fn ($v) => (float) $v === 8.0)
+                ->where('paintDashboard.stock.paint_types.other.records', 1));
+        $this->get(route('paint.index', ['company' => 'DESB', 'section_2' => 'IP']))->assertOk()
+            ->assertInertia(fn (Assert $p) => $p->where('stockSummary.paint_types.ip.records', 1)
+                ->where('stockSummary.paint_types.ip.balance_litres', null)
+                ->where('stockSummary.paint_types.hempel.records', 0)
+                ->where('stockSummary.paint_types.hempel.balance_litres', null));
+    }
+
     public function test_empty_dashboard_and_reader_permissions(): void
     {
         $this->staff();

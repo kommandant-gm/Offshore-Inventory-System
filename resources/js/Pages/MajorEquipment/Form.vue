@@ -1,4 +1,5 @@
 <script setup>
+import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
@@ -55,13 +56,13 @@ const removeCertificate = (index) => {
                 <h2 class="text-lg font-semibold">{{ cargo ? 'Cargo' : 'Machinery' }} classification</h2>
                 <p class="mt-2 text-sm text-slate-500">Major Equipment / {{ cargo ? 'Cargo Set' : 'Machinery' }}</p>
                 <div class="mt-5 grid gap-4 md:grid-cols-3">
-                    <div><label class="label-text">Category</label><select v-model="form.category" class="select select-bordered mt-2 w-full"><option v-for="category in categories" :key="category" :value="category">{{ category }}</option></select><InputError :message="form.errors.category" /></div>
+                    <div><label class="label-text">Category</label><CustomSelect v-model="form.category" class="select select-bordered mt-2 w-full"><option v-for="category in categories" :key="category" :value="category">{{ category }}</option></CustomSelect><InputError :message="form.errors.category" /></div>
                     <div v-for="[key, label] in fields.slice(0, 2)" :key="key"><label class="label-text">{{ label }}</label><TextInput v-model="form[key]" class="mt-2 w-full" /><InputError :message="form.errors[key]" /></div>
                 </div>
             </section>
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">Equipment details</h2>
-                <div class="mt-5 grid gap-4 md:grid-cols-3"><div v-for="[key, label] in detailFields" :key="key"><label class="label-text">{{ label }}</label><TextInput v-model="form[key]" class="mt-2 w-full" /><InputError :message="form.errors[key]" /></div><div><label class="label-text">Status</label><TextInput v-if="cargo" v-model="form.status" class="mt-2 w-full" placeholder="Status as recorded" /><select v-else v-model="form.status" class="select select-bordered mt-2 w-full"><option value="">Not recorded</option><option v-if="form.status && !['In Use', 'Standby', 'Under Repair', 'Damaged'].includes(form.status)" :value="form.status">{{ form.status }}</option><option>In Use</option><option>Standby</option><option>Under Repair</option><option>Damaged</option></select></div></div>
+                <div class="mt-5 grid gap-4 md:grid-cols-3"><div v-for="[key, label] in detailFields" :key="key"><label class="label-text">{{ label }}</label><TextInput v-model="form[key]" class="mt-2 w-full" /><InputError :message="form.errors[key]" /></div><div><label class="label-text">Status</label><TextInput v-if="cargo" v-model="form.status" class="mt-2 w-full" placeholder="Status as recorded" /><CustomSelect v-else v-model="form.status" class="select select-bordered mt-2 w-full"><option value="">Not recorded</option><option v-if="form.status && !['In Use', 'Standby', 'Under Repair', 'Damaged'].includes(form.status)" :value="form.status">{{ form.status }}</option><option>In Use</option><option>Standby</option><option>Under Repair</option><option>Damaged</option></CustomSelect></div></div>
             </section>
             <section v-if="cargo" class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">Cargo specifications</h2>
@@ -78,7 +79,7 @@ const removeCertificate = (index) => {
                 <div class="flex items-center justify-between gap-3"><div><h2 class="text-lg font-semibold">Certificates</h2><p class="text-sm text-slate-500">Attach one PDF or image per certificate (PDF, JPG, PNG or WebP), up to 5 MB. Images: maximum 4096 × 4096 pixels. Upload up to 10 files / 20 MB per save.</p></div><button type="button" class="btn bg-[#4f9f4a] text-white" @click="addCertificate">Add certificate</button></div>
                 <div v-for="(certificate, index) in form.certificates" :key="certificate.row_key" class="mt-4 rounded-xl border border-[#e1efdc] p-4">
                     <div class="grid gap-3 md:grid-cols-3">
-                        <label><span class="label-text">Certificate type</span><select v-model="certificate.certificate_type" class="select select-bordered mt-1 w-full"><option v-for="type in visibleCertificateTypes" :key="type">{{ type }}</option></select></label>
+                        <label><span class="label-text">Certificate type</span><CustomSelect v-model="certificate.certificate_type" class="select select-bordered mt-1 w-full"><option v-for="type in visibleCertificateTypes" :key="type">{{ type }}</option></CustomSelect></label>
                         <label><span class="label-text">Certificate number</span><TextInput v-model="certificate.certificate_no" class="mt-1 w-full" /></label>
                         <label><span class="label-text">Issue date</span><input v-model="certificate.issue_date" type="date" class="input input-bordered mt-1 w-full" /></label>
                         <label><span class="label-text">Expiry date</span><input v-model="certificate.expiry_date" type="date" class="input input-bordered mt-1 w-full" /></label>

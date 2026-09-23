@@ -1,4 +1,5 @@
 <script setup>
+import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import BulkCompanyAssignment from '@/Components/BulkCompanyAssignment.vue';
 import { useCompanySelection } from '@/Composables/useCompanySelection';
@@ -34,9 +35,9 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.records.dat
             <form class="grid gap-3 rounded-3xl border border-[#d8e7d4] bg-white p-5 md:grid-cols-3" @submit.prevent="apply">
                 <p class="text-xs text-slate-500 md:col-span-3">Apply filters to update results and available options. Options follow the search and other selected filters.</p>
                 <CompanyField v-model="filters.company" filter /><label class="md:col-span-2"><span class="text-xs font-semibold">Search</span><input v-model="filters.search" class="input input-bordered mt-1 w-full" placeholder="Description, tag, model, location or rack" /></label>
-                <label><span class="text-xs font-semibold">Data quality</span><select v-model="filters.quality" class="select select-bordered mt-1 w-full"><option value="">All records</option><option v-if="qualityOptions.includes('review') || filters.quality === 'review'" :disabled="!qualityOptions.includes('review')" value="review">Needs review</option><option v-if="qualityOptions.includes('duplicates') || filters.quality === 'duplicates'" :disabled="!qualityOptions.includes('duplicates')" value="duplicates">Duplicate tags</option></select></label>
+                <label><span class="text-xs font-semibold">Data quality</span><CustomSelect v-model="filters.quality" class="select select-bordered mt-1 w-full"><option value="">All records</option><option v-if="qualityOptions.includes('review') || filters.quality === 'review'" :disabled="!qualityOptions.includes('review')" value="review">Needs review</option><option v-if="qualityOptions.includes('duplicates') || filters.quality === 'duplicates'" :disabled="!qualityOptions.includes('duplicates')" value="duplicates">Duplicate tags</option></CustomSelect></label>
                 <label v-for="[key,label] in [['category','Category'],['section_1','Section 1'],['section_2','Section 2'],['location','Current location']]" :key="key">
-                    <span class="text-xs font-semibold">{{ label }}</span><select v-model="filters[key]" class="select select-bordered mt-1 w-full"><option value="">All</option><option v-if="filters[key] && !options[key].includes(filters[key])" :value="filters[key]" disabled>{{ filters[key] }} (no matching records)</option><option v-for="value in options[key]" :key="value">{{ value }}</option></select>
+                    <span class="text-xs font-semibold">{{ label }}</span><CustomSelect v-model="filters[key]" class="select select-bordered mt-1 w-full"><option value="">All</option><option v-if="filters[key] && !options[key].includes(filters[key])" :value="filters[key]" disabled>{{ filters[key] }} (no matching records)</option><option v-for="value in options[key]" :key="value">{{ value }}</option></CustomSelect>
                 </label>
                 <div class="flex items-end gap-2"><button class="btn bg-[#4f9f4a] text-white">Apply filters</button><button type="button" class="btn" @click="clear">Clear</button></div>
             </form>

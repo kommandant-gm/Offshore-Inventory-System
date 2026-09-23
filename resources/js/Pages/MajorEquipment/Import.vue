@@ -1,4 +1,5 @@
 <script setup>
+import CustomSelect from '@/Components/CustomSelect.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import InputError from '@/Components/InputError.vue';
@@ -34,7 +35,7 @@ const submit = () => form.post(route('major-equipment.import.store'));
             <Link v-for="task in recentImports" :key="task.id" :href="route('major-equipment.import.status', task.id)" class="mt-2 block text-sm text-green-800 underline">{{ task.filename }} — {{ task.status }}</Link>
         </section>
         <form class="space-y-5 rounded-3xl border border-[#d8e7d4] bg-white p-6" @submit.prevent="preview">
-            <label class="block max-w-sm"><span class="text-sm font-bold">CSV format</span><select v-model="form.inventory_type" class="select select-bordered mt-2 w-full" :disabled="previewing || form.processing" @change="resetPreview"><option value="machinery">Machinery — existing format</option><option value="cargo">Cargo — dimensions, quantity and inspections</option></select></label>
+            <label class="block max-w-sm"><span class="text-sm font-bold">CSV format</span><CustomSelect v-model="form.inventory_type" class="select select-bordered mt-2 w-full" :disabled="previewing || form.processing" @change="resetPreview"><option value="machinery">Machinery — existing format</option><option value="cargo">Cargo — dimensions, quantity and inspections</option></CustomSelect></label>
             <p class="text-sm text-slate-600">Confirmed imports run in the background; progress is shown on a separate page. Duplicate tags will be imported and highlighted for review. Blank quantities stay unspecified. Invalid dates are retained as import warnings. An identical file cannot be imported twice.</p>
             <input class="block w-full rounded-xl border p-3" type="file" accept=".csv,text/csv" :disabled="previewing || form.processing" @change="form.file = $event.target.files[0]; resetPreview()" />
             <InputError :message="form.errors.file || form.errors.inventory_type" />

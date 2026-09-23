@@ -377,7 +377,7 @@ const importLdapUsers = () => {
                     <div class="mt-5 space-y-3 border-t border-[#d8e7d4] pt-4 text-sm text-[#65748b]">
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <p role="status">Showing {{ visibleUsers.length ? directoryPageStart + 1 : 0 }}?{{ directoryPageStart + paginatedUsers.length }} of {{ visibleUsers.length }} matching employees<span v-if="visibleUsers.length !== users.length"> ({{ users.length }} total)</span>.</p>
-                            <label class="flex items-center gap-2">Employees per page<select v-model.number="directoryPageSize" class="rounded-lg border-[#d8e7d4] py-1.5 text-sm focus:border-[#9b0000] focus:ring-[#9b0000]"><option :value="12">12</option><option :value="24">24</option><option :value="48">48</option></select></label>
+                            <label class="flex items-center gap-2">Employees per page<CustomSelect v-model.number="directoryPageSize" class="rounded-lg border-[#d8e7d4] py-1.5 text-sm focus:border-[#9b0000] focus:ring-[#9b0000]"><option :value="12">12</option><option :value="24">24</option><option :value="48">48</option></CustomSelect></label>
                         </div>
                         <nav aria-label="Employee directory pagination" class="flex flex-wrap items-center justify-end gap-3">
                             <button type="button" :disabled="directoryPage === 1" class="min-h-10 rounded-xl border border-[#dce3ed] bg-white px-4 py-2 text-sm font-semibold text-[#31415b] hover:bg-[#fff4f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9b0000] disabled:cursor-not-allowed disabled:opacity-40" @click="directoryPage--">Previous</button>

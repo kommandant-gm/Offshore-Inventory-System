@@ -1,4 +1,5 @@
 <script setup>
+import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
@@ -40,15 +41,15 @@ const submit = () => form[item ? 'patch' : 'post'](item ? route('miri-rental.upd
                 <div class="mt-5 grid gap-4 md:grid-cols-3">
                     <div v-for="[key, label] in group.fields" :key="key">
                         <label class="label-text">{{ label }}</label>
-                        <select v-if="key === 'category'" v-model="form[key]" class="select select-bordered mt-2 w-full"><option value="">Select category</option><option v-for="category in categories" :key="category" :value="category">{{ category }}</option></select>
-                        <select v-else-if="key === 'status'" v-model="form[key]" class="select select-bordered mt-2 w-full"><option v-for="status in statuses" :key="status">{{ status }}</option></select>
+                        <CustomSelect v-if="key === 'category'" v-model="form[key]" class="select select-bordered mt-2 w-full"><option value="">Select category</option><option v-for="category in categories" :key="category" :value="category">{{ category }}</option></CustomSelect>
+                        <CustomSelect v-else-if="key === 'status'" v-model="form[key]" class="select select-bordered mt-2 w-full"><option v-for="status in statuses" :key="status">{{ status }}</option></CustomSelect>
                         <input v-else-if="key.endsWith('_date') || key === 'rental_due_date'" v-model="form[key]" type="date" class="input input-bordered mt-2 w-full" />
                         <TextInput v-else v-model="form[key]" class="mt-2 w-full" />
                         <InputError :message="form.errors[key]" />
                     </div>
                 </div>
             </section>
-            <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm"><label class="label-text">Status</label><select v-model="form.status" class="select select-bordered mt-2 w-full md:w-1/3"><option v-for="status in statuses" :key="status">{{ status }}</option></select><label class="label-text mt-5 block">Remarks</label><textarea v-model="form.remarks" class="textarea textarea-bordered mt-2 w-full" rows="4" /></section>
+            <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm"><label class="label-text">Status</label><CustomSelect v-model="form.status" class="select select-bordered mt-2 w-full md:w-1/3"><option v-for="status in statuses" :key="status">{{ status }}</option></CustomSelect><label class="label-text mt-5 block">Remarks</label><textarea v-model="form.remarks" class="textarea textarea-bordered mt-2 w-full" rows="4" /></section>
             <div class="flex gap-3"><PrimaryButton :disabled="form.processing">{{ item ? 'Save changes' : 'Register rental' }}</PrimaryButton><Link class="btn" :href="route('miri-rental.index')">Cancel</Link></div>
         </form>
     </AuthenticatedLayout>

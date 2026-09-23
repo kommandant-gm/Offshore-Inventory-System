@@ -1,4 +1,5 @@
 <script setup>
+import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MiriPaintDashboard from '@/Components/MiriPaintDashboard.vue';
@@ -125,10 +126,10 @@ const pie = computed(() => {
             <div class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
                 <article class="self-start rounded-[1.5rem] border border-[#d9e8d5] bg-white p-5 shadow-[0_12px_35px_rgba(39,89,45,.07)] sm:p-6 lg:col-span-5"><div class="flex items-start justify-between gap-4"><div><p class="text-[10px] font-extrabold uppercase tracking-[.22em] text-blue-500">Equipment allocation</p><h2 class="mt-1 text-xl font-black tracking-tight text-slate-800">Status overview</h2></div><span class="text-right text-xs text-slate-400"><strong class="block text-lg text-slate-700">{{ overviewTotal }}</strong>records</span></div>
                     <label class="mt-5 block text-sm font-semibold text-[#50694e]">Subcategory
-                        <select v-model="selectedSubcategory" class="mt-2 w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]">
+                        <CustomSelect v-model="selectedSubcategory" class="mt-2 w-full rounded-xl border-[#d8e7d4] text-sm focus:border-[#4f9f4a] focus:ring-[#4f9f4a]">
                             <option value="">All subcategories</option>
                             <option v-for="item in categories" :key="item.category" :value="item.category">{{ item.category }}</option>
-                        </select>
+                        </CustomSelect>
                     </label>
                     <p class="mt-2 text-xs text-slate-500">Status percentages use the selected subcategory's record total, or all records when all subcategories are selected.</p>
                     <div class="mt-7 grid items-center gap-7 sm:grid-cols-[12rem,minmax(0,1fr)]"><div class="relative mx-auto h-44 w-44 rounded-full p-3 shadow-inner sm:h-48 sm:w-48" :style="{ background: pie }"><div class="flex h-full w-full flex-col items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_#edf4ea]"><span class="text-3xl font-black text-[#173a21]">{{ overviewTotal }}</span><span class="mt-1 text-xs font-semibold text-[#7b8f78]">Total records</span></div></div><div class="min-w-0 space-y-2"><div v-for="item in visibleStatuses" :key="item.label" class="flex items-center gap-3 rounded-xl px-3 py-2.5"><span class="h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-[#edf5ea]" :style="{ backgroundColor: item.color }"/><span class="min-w-0 flex-1 break-words text-sm font-semibold text-[#5c715a]">{{ statusLabel(item.label) }}</span><span class="shrink-0 text-right"><strong class="block text-sm font-black text-[#173a21]">{{ item.value }}</strong><small class="text-[10px] font-bold text-[#93a391]">{{ percent(item.value, overviewTotal) }}%</small></span></div><p v-if="overviewStatuses.length === 0" class="text-sm text-slate-500">No status records available.</p></div></div>

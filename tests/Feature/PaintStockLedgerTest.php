@@ -48,6 +48,40 @@ class PaintStockLedgerTest extends TestCase
         $this->assertDatabaseCount('miri_cogs', 1);
         $this->assertDatabaseCount('miri_paint_stock_movements', 2);
     }
+    public function test_dashboard_quantities_group_locations_and_count_only_current_uncancelled_litre_issues(): void
+    {
+        $item = $this->setupStock();
+        $item->update(['company' => 'DESB', 'section_2' => 'INTERNATION PAINT', 'current_location' => 'BINTULU PAINT STORE - RACK 4C', 'issue_litres' => 500]);
+        $this->post(route('miri-cogs.store'), $this->payload($item))->assertSessionHasNoErrors();
+        $cancelled = MiriCog::latest('id')->firstOrFail();
+        $this->post(route('miri-cogs.store'), $this->payload($item, 'Issue out', '2'))->assertSessionHasNoErrors();
+        $this->post(route('miri-cogs.store'), $this->payload($item, 'Issue out', '0.5'))->assertSessionHasNoErrors();
+        DB::table('miri_paint_stock_movements')->where('cog_item_id', MiriCog::latest('id')->firstOrFail()->items->first()->id)
+            ->update(['period' => '2026-08-01']);
+        $this->post(route('miri-cogs.store'), $this->payload($item, 'Transfer', '1'))->assertSessionHasNoErrors();
+        $this->post(route('miri-cogs.store'), $this->payload($item, 'Issue out', '1', 'CAN'))->assertSessionHasNoErrors();
+        $this->post(route('miri-cogs.cancel', $cancelled), ['reason' => 'Not dispatched'])->assertSessionHasNoErrors();
+        foreach ([['BTU', 'IP', 4], ['LBN PAINT STORE', 'HEMPEL PAINT', 8], ['LABUAN STORE', 'HEMPEL', 0],
+            ['SKA', 'IP', 2], ['SBA', 'IP', null], ['Unknown', 'IP', 50]] as [$location, $type, $stock]) {
+            MiriPaintItem::create(['branch_id' => $item->branch_id, 'company' => 'DESB', 'category' => 'PAINT',
+                'current_location' => $location, 'section_2' => $type, 'balance_litres' => $stock]);
+        }
+        MiriPaintItem::create(['branch_id' => $item->branch_id, 'company' => 'FTSB', 'current_location' => 'BTU', 'balance_litres' => 999]);
+        MiriPaintItem::create(['branch_id' => Branch::where('code', 'KL-IT')->value('id'), 'company' => 'DESB', 'current_location' => 'BTU', 'balance_litres' => 999]);
+        $this->get(route('major-equipment.dashboard', ['view' => 'paint', 'company' => 'DESB']))->assertOk()
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p
+                ->where('paintDashboard.quantities.period', '2026-09-01')
+                ->where('paintDashboard.quantities.types.0.label', 'IP Paint')
+                ->where('paintDashboard.quantities.types.0.locations.0.issued', fn ($v) => (float) $v === 2.0)
+                ->where('paintDashboard.quantities.types.0.locations.0.stock', fn ($v) => (float) $v === 10.5)
+                ->where('paintDashboard.quantities.locations.0.records', 2)
+                ->where('paintDashboard.quantities.locations.1.stock', fn ($v) => (float) $v === 8.0)
+                ->where('paintDashboard.quantities.locations.1.recorded', 2)
+                ->where('paintDashboard.quantities.locations.2.stock', fn ($v) => (float) $v === 2.0)
+                ->where('paintDashboard.quantities.locations.3.stock', null)
+                ->where('paintDashboard.quantities.excluded_records', 1));
+    }
+
     public function test_backloads_are_bounded_by_tracked_outbound_and_units_stay_separate(): void
     {
         $item = $this->setupStock();

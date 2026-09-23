@@ -60,6 +60,9 @@ class MiriPaintTest extends TestCase
         foreach ([1, 2] as $page) {
             $this->get(route('paint.index', ['section_2' => 'HEMPEL', 'page' => $page]))->assertOk()
                 ->assertInertia(fn (Assert $p) => $p->where('stockSummary.records', 27)
+                    ->where('stockSummary.paint_types.hempel.records', 27)
+                    ->where('stockSummary.paint_types.hempel.opening_litres', fn ($v) => (float) $v === 13.0)
+                    ->where('stockSummary.paint_types.ip.records', 0)
                     ->where('stockSummary.opening_cans', fn ($v) => (float) $v === 26.0)
                     ->where('stockSummary.opening_litres', fn ($v) => (float) $v === 13.0)
                     ->where('stockSummary.opening_total_price', fn ($v) => (float) $v === 260.0)
