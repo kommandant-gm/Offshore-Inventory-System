@@ -47,6 +47,8 @@ Route::post('/asset-checkout-test-preview/sign', [PublicAssetCheckoutController:
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'system.access', 'verified'])->name('dashboard');
 
 Route::middleware(['auth', 'system.access'])->group(function () {
+    Route::get('/miri-reports', [\App\Http\Controllers\MiriReportsController::class, 'index'])->name('miri-reports.index');
+    Route::get('/miri-reports/paint/export', [\App\Http\Controllers\MiriReportsController::class, 'export'])->name('miri-reports.paint.export');
     Route::patch('/miri-inventory/company-assignment', [\App\Http\Controllers\MiriCompanyController::class, 'assign'])->name('miri-company.assign');
     Route::delete('/miri-register/{register}/{item}', [\App\Http\Controllers\MiriRegisterDeletionController::class, 'destroy'])
         ->whereIn('register', ['major', 'rental', 'construction', 'paint'])->whereNumber('item')->name('miri-register.destroy');
