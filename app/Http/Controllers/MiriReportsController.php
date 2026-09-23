@@ -7,8 +7,12 @@ use App\Services\CidbInventoryReport;
 use App\Services\CidbReportWorkbook;
 use App\Services\ConsumableInventoryReport;
 use App\Services\ConsumableReportWorkbook;
+use App\Services\LabuanConsumableInventoryReport;
+use App\Services\LabuanConsumableReportWorkbook;
 use App\Services\PaintInventoryReport;
 use App\Services\PaintReportWorkbook;
+use App\Services\PpeInventoryReport;
+use App\Services\PpeReportWorkbook;
 use App\Services\RentalSummaryReport;
 use App\Services\RentalSummaryWorkbook;
 use Illuminate\Http\Request;
@@ -93,6 +97,52 @@ class MiriReportsController extends Controller
         ])->deleteFileAfterSend(true);
     }
 
+    public function bintuluPpe(Request $request): Response
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->filters($request);
+        $report = $request->boolean('preview') ? app(PpeInventoryReport::class)->generate($branch, $filters['month']) : null;
+
+        return Inertia::render('MiriReports/BintuluPpe', ['filters' => $filters, 'report' => $report, 'columns' => PpeInventoryReport::COLUMNS]);
+    }
+
+    public function exportPpe(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->filters($request);
+        $report = app(PpeInventoryReport::class)->generate($branch, $filters['month']);
+        abort_if($report['unavailable'] !== null, 422, $report['unavailable'] ?? 'Report unavailable.');
+        $path = app(PpeReportWorkbook::class)->create($report, $filters);
+
+        return response()->download($path, "bintulu-yard-ppe-inventory-report-{$filters['month']}.xlsx", [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'private, no-store',
+        ])->deleteFileAfterSend(true);
+    }
+
+    public function labuanConsumable(Request $request): Response
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->filters($request, 'LBN');
+        $report = $request->boolean('preview') ? app(LabuanConsumableInventoryReport::class)->generate($branch, $filters['month']) : null;
+
+        return Inertia::render('MiriReports/LabuanConsumable', ['filters' => $filters, 'report' => $report, 'columns' => LabuanConsumableInventoryReport::COLUMNS]);
+    }
+
+    public function exportLabuanConsumable(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->filters($request, 'LBN');
+        $report = app(LabuanConsumableInventoryReport::class)->generate($branch, $filters['month']);
+        abort_if($report['unavailable'] !== null, 422, $report['unavailable'] ?? 'Report unavailable.');
+        $path = app(LabuanConsumableReportWorkbook::class)->create($report, $filters);
+
+        return response()->download($path, "labuan-warehouse-general-store-consumable-inventory-report-{$filters['month']}.xlsx", [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'private, no-store',
+        ])->deleteFileAfterSend(true);
+    }
+
     private function authorizeReport(Request $request): int
     {
         $branch = app(BranchContext::class)->branch($request->user());
@@ -138,14 +188,14 @@ class MiriReportsController extends Controller
         return ['month' => $validated['month'] ?? now('Asia/Kuala_Lumpur')->format('Y-m'), 'project' => $validated['project'] ?? '', 'location' => $validated['location'] ?? ''];
     }
 
-    private function filters(Request $request): array
+    private function filters(Request $request, string $location = 'BTU'): array
     {
         $validated = $request->validate([
             'month' => ['sometimes', 'required', 'date_format:Y-m', 'before_or_equal:'.now('Asia/Kuala_Lumpur')->format('Y-m')],
-            'location' => ['sometimes', 'required', 'in:BTU'],
+            'location' => ['sometimes', 'required', 'in:'.$location],
             'brand' => ['sometimes', 'required', 'in:all,IP Paint,Hempel Paint'],
         ]);
 
-        return [...['month' => now('Asia/Kuala_Lumpur')->format('Y-m'), 'location' => 'BTU', 'brand' => 'all'], ...$validated];
+        return [...['month' => now('Asia/Kuala_Lumpur')->format('Y-m'), 'location' => $location, 'brand' => 'all'], ...$validated];
     }
 }

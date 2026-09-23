@@ -18,6 +18,11 @@ abstract class ConstructionInventoryReport
 
     abstract protected function reportLabel(): string;
 
+    protected function locationCode(): string
+    {
+        return 'BTU';
+    }
+
     public function generate(int $branch, string $month): array
     {
         $notes = [
@@ -38,7 +43,7 @@ abstract class ConstructionInventoryReport
         $end = $start->setTimezone('Asia/Kuala_Lumpur')->addMonth()->utc();
         $current = $month === now('Asia/Kuala_Lumpur')->format('Y-m');
         $items = MiriConstructionItem::withoutGlobalScopes()->where('branch_id', $branch)->orderBy('description')->orderBy('id')->get()
-            ->filter(fn ($item) => app(PaintQuantitySummary::class)->location($item->current_location) === 'BTU'
+            ->filter(fn ($item) => app(PaintQuantitySummary::class)->location($item->current_location) === $this->locationCode()
                 && $this->matches($item));
         $history = DB::table('miri_construction_stock_movements')->where('branch_id', $branch)
             ->whereIn('construction_item_id', $items->modelKeys())->where('created_at', '<', $end->toDateTimeString())

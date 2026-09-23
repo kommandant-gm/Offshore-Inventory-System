@@ -7,10 +7,15 @@ import CustomSelect from '@/Components/CustomSelect.vue';
 const props = defineProps({ filters: Object, report: Object, columns: Object, options: Object, title: String, description: String, scope: String, previewRoute: String, exportRoute: String });
 const form = useForm({ ...props.filters });
 const page = ref(1);
+const coveragePage = ref(1);
+const coveragePageSize = 10;
+const coverageCount = computed(() => props.report?.notes?.length ?? 0);
+const coveragePages = computed(() => Math.max(1, Math.ceil(coverageCount.value / coveragePageSize)));
+const coverageNotes = computed(() => props.report?.notes?.slice((coveragePage.value - 1) * coveragePageSize, coveragePage.value * coveragePageSize) ?? []);
 const dirty = computed(() => Object.keys(props.filters).some(key => form[key] !== props.filters[key]));
 const rows = computed(() => props.report?.rows.slice((page.value - 1) * 25, page.value * 25) ?? []);
 const pages = computed(() => Math.max(1, Math.ceil((props.report?.rows.length ?? 0) / 25)));
-watch(() => props.report, () => { page.value = 1; });
+watch(() => props.report, () => { page.value = 1; coveragePage.value = 1; });
 const preview = () => form.transform(data => ({ ...data, preview: 1 })).get(route(props.previewRoute), { preserveState: true, preserveScroll: true });
 const display = value => value === null || value === '' ? '—' : typeof value === 'number' ? value.toLocaleString(undefined, { maximumFractionDigits: 3 }) : value;
 </script>
@@ -75,7 +80,12 @@ const display = value => value === null || value === '' ? '—' : typeof value =
                     </section>
                     <details class="rounded-2xl border border-[#d8e7d4] bg-white p-5" open>
                         <summary class="cursor-pointer font-semibold">Report coverage</summary>
-                        <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-600"><li v-for="note in report.notes" :key="note">{{ note }}</li></ul>
+                        <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-600"><li v-for="(note, index) in coverageNotes" :key="`${coveragePage}-${index}`">{{ note }}</li></ul>
+                        <nav v-if="coveragePages > 1" aria-label="Report coverage pagination" class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm">
+                            <button type="button" class="btn btn-sm" :disabled="coveragePage === 1" @click="coveragePage--">Previous</button>
+                            <span aria-live="polite">Notes {{ (coveragePage - 1) * coveragePageSize + 1 }}–{{ Math.min(coveragePage * coveragePageSize, coverageCount) }} of {{ coverageCount }} · Page {{ coveragePage }} of {{ coveragePages }}</span>
+                            <button type="button" class="btn btn-sm" :disabled="coveragePage >= coveragePages" @click="coveragePage++">Next</button>
+                        </nav>
                     </details>
                 </template>
             </template>
