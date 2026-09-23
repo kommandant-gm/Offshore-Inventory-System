@@ -1,10 +1,11 @@
 # Bintulu Yard CIDB Training Item Inventory Report
 
 Open Reports, choose the CIDB report card, select a month and preview or export.
-Only Miri construction records at BTU/Bintulu locations with the whole word CIDB
-in Category, Section 1 or Section 2 are included. WQT TRAINING is excluded unless
-the record also explicitly has a CIDB classification. This is the user's confirmed
-scope. Labuan, other branches and non-CIDB inventory are excluded.
+Only Miri construction records at BTU/Bintulu locations with Section 1 set to
+WQT TRAINING are included (case-insensitive, ignoring outer whitespace), regardless
+of category. The user's latest correction replaces the former Consumable-category
+filter. Labuan, other branches and other Section 1 values are excluded. The CIDB
+report name and supplied template remain unchanged.
 
 The original supplied workbook is bundled at
 `resources/report-templates/cidb-training-inventory.xlsx`. Its logo, headers,
