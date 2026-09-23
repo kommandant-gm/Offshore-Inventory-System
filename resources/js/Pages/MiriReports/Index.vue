@@ -17,6 +17,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
                     <p class="mt-2 text-sm text-slate-500">Monthly paint stock, movements and recorded values for Bintulu Yard.</p>
                     <span class="mt-4 inline-block text-sm font-semibold text-green-700">Open report &rarr;</span>
                 </Link>
+                <Link :href="route('miri-reports.bintulu-cidb')" class="block rounded-2xl border border-[#d8e7d4] bg-white p-6 transition hover:border-green-600 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-600">
+                    <h2 class="text-lg font-semibold text-[#234222]">Bintulu Yard CIDB Training Item Inventory Report</h2>
+                    <p class="mt-2 text-sm text-slate-500">Monthly CIDB training stock, movements and recorded values for Bintulu Yard.</p>
+                    <span class="mt-4 inline-block text-sm font-semibold text-green-700">Open report &rarr;</span>
+                </Link>
             </div>
         </div>
     </AuthenticatedLayout>
