@@ -118,12 +118,56 @@ class PaintReportWorkbook
             $this->cell($rows[2], 'B', '                     LOCATION : '.$location);
             $this->cell($rows[3], 'B', '                     MONTHLY : GENERAL STORE PAINT INVENTORY STATUS FOR '.$month);
             $this->cell($rows[4], 'B', '                     UPDATED: '.strtoupper(now('Asia/Kuala_Lumpur')->format('d F Y')));
-            foreach ($report['rows'] as $i => $data) {
-                foreach (array_keys(PaintInventoryReport::COLUMNS) as $index => $key) {
-                    $this->cell($rows[15 + $i], chr(65 + $index), $data[$key] ?? null);
+            // Hide the template's obsolete top total and spacer rows.
+            foreach (range(8, 14) as $n) {
+                $rows[$n]->setAttribute('hidden', '1');
+            }
+            $pane = $xp->query('//s:pane')->item(0);
+            $pane->setAttribute('ySplit', '7');
+            $pane->setAttribute('topLeftCell', 'B15');
+            $styles = $this->document($zip->getFromName('xl/styles.xml'));
+            $styleQuery = $this->xpath($styles);
+            $formats = $styleQuery->query('//s:cellXfs')->item(0);
+            $wrapped = [];
+            $widths = [];
+            foreach ($xp->query('//s:cols/s:col') as $column) {
+                if ((int) $column->getAttribute('min') <= 17) {
+                    $widths[(int) $column->getAttribute('min')] = (float) $column->getAttribute('width');
                 }
             }
-            $this->cell($rows[8], 'B', 'GRAND TOTAL');
+            foreach ($report['rows'] as $i => $data) {
+                $lines = 1;
+                foreach (array_keys(PaintInventoryReport::COLUMNS) as $index => $key) {
+                    $this->cell($rows[15 + $i], chr(65 + $index), $data[$key] ?? null);
+                    $cell = $xp->query('s:c[@r="'.chr(65 + $index).(15 + $i).'"]', $rows[15 + $i])->item(0);
+                    $base = (int) $cell->getAttribute('s');
+                    if (! isset($wrapped[$base])) {
+                        $format = $formats->childNodes->item($base)->cloneNode(true);
+                        $alignment = $styleQuery->query('s:alignment', $format)->item(0);
+                        if (! $alignment) {
+                            $alignment = $styles->createElementNS(self::NS, 'alignment');
+                            $format->appendChild($alignment);
+                        }
+                        $alignment->setAttribute('wrapText', '1');
+                        $alignment->setAttribute('shrinkToFit', '0');
+                        $alignment->setAttribute('vertical', 'top');
+                        $alignment->setAttribute('horizontal', is_numeric($data[$key] ?? null) ? 'right' : 'left');
+                        $format->setAttribute('applyAlignment', '1');
+                        $wrapped[$base] = $formats->childNodes->length;
+                        $formats->appendChild($format);
+                    }
+                    $cell->setAttribute('s', (string) $wrapped[$base]);
+                    $textLines = 0;
+                    foreach (explode("\n", (string) ($data[$key] ?? '')) as $line) {
+                        $textLines += max(1, (int) ceil(mb_strwidth($line) / max(1, ($widths[$index + 1] ?? 10) - 2)));
+                    }
+                    $lines = max($lines, $textLines);
+                }
+                $rows[15 + $i]->setAttribute('ht', (string) min(409, max(22.5, $lines * 12)));
+                $rows[15 + $i]->setAttribute('customHeight', '1');
+            }
+            $formats->setAttribute('count', (string) $formats->childNodes->length);
+            $zip->addFromString('xl/styles.xml', $styles->saveXML());
             $this->cell($rows[33 + $offset], 'B', 'GRAND TOTAL FOR PAINT ITEM');
             foreach (['J' => 'opening_value', 'M' => 'closing_value'] as $column => $key) {
                 $values = array_column(array_values(array_filter($report['rows'], fn ($row) => $row['unit'] === 'LTR')), $key);
@@ -131,7 +175,6 @@ class PaintReportWorkbook
                     continue;
                 }
                 $total = array_sum(array_map(fn ($value) => (int) round($value * 100), $values)) / 100;
-                $this->cell($rows[8], $column, $total);
                 $this->cell($rows[33 + $offset], $column, $total);
             }
             // A single quantity total is meaningful only for one unit with complete coverage.
@@ -142,7 +185,6 @@ class PaintReportWorkbook
                         continue;
                     }
                     $total = array_sum(array_map(fn ($value) => (int) round($value * 1000), $values)) / 1000;
-                    $this->cell($rows[8], $column, $total);
                     $this->cell($rows[33 + $offset], $column, $total);
                 }
             }
@@ -160,7 +202,7 @@ class PaintReportWorkbook
             $wx->query('//s:sheet')->item(0)->setAttribute('name', $name);
             foreach ($wx->query('//s:definedName') as $defined) {
                 $defined->nodeValue = $defined->getAttribute('name') === '_xlnm.Print_Area'
-                    ? "'{$name}'!\$A\$1:\$Q\$".(40 + $offset) : "'{$name}'!\$6:\$8";
+                    ? "'{$name}'!\$A\$1:\$Q\$".(40 + $offset) : "'{$name}'!\$6:\$7";
             }
             // Drop the source file's local folder path and stale calculation chain.
             foreach (iterator_to_array($workbook->getElementsByTagNameNS('http://schemas.openxmlformats.org/markup-compatibility/2006', 'AlternateContent')) as $node) {

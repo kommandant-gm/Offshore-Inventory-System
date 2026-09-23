@@ -64,7 +64,18 @@ class MiriPaintReportTest extends TestCase
             $this->assertStringNotContainsString('Private', $xml);
             $template = new ZipArchive;
             $template->open(resource_path('report-templates/paint-inventory.xlsx'));
-            $this->assertSame($template->getFromName('xl/styles.xml'), $zip->getFromName('xl/styles.xml'));
+            $sheet = simplexml_load_string($xml);
+            $sheet->registerXPathNamespace('s', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+            $styles = simplexml_load_string($zip->getFromName('xl/styles.xml'));
+            $styles->registerXPathNamespace('s', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+            $remarkStyle = (int) $sheet->xpath('//s:c[@r="Q15"]')[0]['s'];
+            $this->assertSame('1', (string) $styles->xpath('//s:cellXfs/s:xf')[''.$remarkStyle]->alignment['wrapText']);
+            $this->assertEmpty($sheet->xpath('//s:c[@r="B8"]/s:is'));
+            $this->assertSame('1', (string) $sheet->xpath('//s:row[@r="8"]')[0]['hidden']);
+            $this->assertSame(1, substr_count($xml, 'GRAND TOTAL'));
+            $this->assertStringNotContainsString('Values are recorded item totals', $xml);
+            $this->assertStringNotContainsString('Closing balance missing', $xml);
+            $this->assertStringContainsString('Opening balance missing', $zip->getFromName('xl/worksheets/report-notes.xml'));
             $this->assertSame($template->getFromName('xl/media/image1.png'), $zip->getFromName('xl/media/image1.png'));
             $this->assertStringContainsString('width="53.7109375"', $xml);
             $this->assertStringContainsString('r="I15"', $xml);
@@ -96,7 +107,7 @@ class MiriPaintReportTest extends TestCase
         $this->assertNull($row['opening']);
         $this->assertNull($row['closing']);
         $this->assertNull($row['issued']);
-        $this->assertStringContainsString('history unavailable', $row['remarks']);
+        $this->assertStringContainsString('history unavailable', implode(' ', $service->generate($branch, [...$filters, 'month' => '2026-07'])['notes']));
         $item->update(['stock_period' => '2026-08-01']);
         $service->generate($branch, [...$filters, 'month' => '2026-09']);
         $this->assertSame('2026-08-01', $item->fresh()->stock_period);

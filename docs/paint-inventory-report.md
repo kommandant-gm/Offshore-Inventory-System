@@ -48,3 +48,8 @@ DOM are required. Exports do not depend on the user's Downloads directory.
 Validation: `MiriPaintReportTest` covers filtering/branch scope, current/historical
 balances, missing history, read-only generation, validation/access, unavailable
 schema, XLSX XML structure, precision, and formula-like text.
+
+The obsolete top total/spacer rows are hidden. Grand totals appear only below the
+items, and print titles repeat only the column headings. Body cells wrap with
+content-based row heights. Missing-balance notices and valuation explanations
+appear on Report notes rather than crowding the main Remarks column.

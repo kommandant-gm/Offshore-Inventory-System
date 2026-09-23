@@ -20,6 +20,7 @@ class PaintInventoryReport
     public function generate(int $branch, array $filters): array
     {
         $notes = [
+            'Opening/closing values are recorded item totals, not recalculated, and appear once on the LTR row. Unit price uses the recorded closing price (or opening price if absent) and item unit.',
             'Prices are included where recorded for the current stock period. Historical prices are not snapshotted. CAN and LTR are separate quantities; mixed-unit grand totals are left blank.',
             'Total received is blank: purchase receipts are not separately dated in the stock ledger. Imported receipt quantities are not monthly totals.',
             'Movement columns show posted ledger activity in the selected stock month, including posted draft issue notes. Zero means no tracked movement, not proof of no historical activity.',
@@ -91,6 +92,10 @@ class PaintInventoryReport
                 if ($closing === null) {
                     $remarks[] = 'Closing balance missing';
                 }
+                if ($remarks !== []) {
+                    $notes[] = 'Item '.(count($rows) + 1).' / '.$unit.': '.implode('; ', $remarks).'.';
+                }
+                $remarks = [];
                 if ($item->batch_no) {
                     $remarks[] = 'Batch: '.$item->batch_no;
                 }
@@ -109,12 +114,6 @@ class PaintInventoryReport
                 // Saved monetary totals describe the item, not each parallel unit row.
                 $showMoney = $current && $unit === 'LTR';
                 $unitPrice = $current && $priceUnit === $unit ? $money($item->closing_unit_price ?? $item->opening_unit_price) : null;
-                if ($showMoney) {
-                    $remarks[] = 'Values are recorded item totals, not recalculated; shown once on LTR row';
-                }
-                if ($unitPrice !== null) {
-                    $remarks[] = 'Unit price uses recorded '.($item->closing_unit_price !== null ? 'closing' : 'opening').' price and item unit';
-                }
                 $rows[] = [
                     'number' => count($rows) + 1,
                     'unit_price' => $unitPrice, 'opening_value' => $showMoney ? $money($item->opening_total_price) : null, 'received_value' => null, 'issued_value' => null, 'closing_value' => $showMoney ? $money($item->closing_total_price) : null,
