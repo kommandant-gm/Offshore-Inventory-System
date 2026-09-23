@@ -17,6 +17,7 @@ class SaveMajorEquipmentRequest extends FormRequest
         $equipmentId = $this->route('equipment')?->id ?? 0;
         $ownedCertificate = fn () => Rule::exists('miri_inventory_certificates', 'id')->where('miri_inventory_item_id', $equipmentId);
         return [
+            'company' => ['nullable', 'in:DESB,FTSB'],
             'removed_certificate_ids' => ['sometimes', 'array', 'max:100'],
             'removed_certificate_ids.*' => ['integer', 'distinct', $ownedCertificate()],
             'certificates.*.id' => ['nullable', 'integer', 'distinct', $ownedCertificate()],

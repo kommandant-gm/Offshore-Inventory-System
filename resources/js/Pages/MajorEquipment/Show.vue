@@ -18,6 +18,7 @@ const formatDate = (value) => {
     <Head :title="equipment.tag_no || equipment.description || 'Major Equipment'" />
     <AuthenticatedLayout>
         <PageHeader :title="equipment.tag_no || 'Major Equipment'" :description="equipment.description || '-'" />
+        <p class="my-4 text-sm">Company: <strong>{{ equipment.company || 'Not assigned' }}</strong></p>
         <section v-if="duplicates.length" class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
             <h2 class="font-bold text-amber-900">Duplicate tag — review matching records</h2>
             <p class="mt-1 text-sm">This is record #{{ equipment.id }}. These other Miri records share the same tag. No records have been merged.</p>

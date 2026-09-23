@@ -1,10 +1,12 @@
 <script setup>
+import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 const props = defineProps({ record: Object, fields: Array, attachmentSlots: Object });
 const groups = computed(() => [...new Set(props.fields.map(field => field.group))]);
 const form = useForm({
+    company: props.record?.company ?? '',
     ...Object.fromEntries(props.fields.map(field => [field.key, props.record?.[field.key] ?? ''])),
     grouping_reviewed: props.record?.grouping_reviewed || false,
     review_note: props.record?.review_note || '',
@@ -26,6 +28,7 @@ function submit() {
     <Head :title="record ? 'Edit Construction record' : 'Register Construction item'" />
     <AuthenticatedLayout>
         <form class="space-y-5" @submit.prevent="submit">
+            <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
             <header class="rounded-3xl border border-[#d8e7d4] bg-white p-6">
                 <img src="/images/dayang-logo.png" alt="Dayang" class="mb-4 h-14 w-auto object-contain" />
                 <h1 class="text-2xl font-bold text-[#234222]">{{ record ? 'Edit record #' + record.id : 'Register item' }}</h1>

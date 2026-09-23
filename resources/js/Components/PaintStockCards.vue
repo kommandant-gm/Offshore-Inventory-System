@@ -24,6 +24,6 @@ const stockCards = [
                         </dl>
                     </article>
                 </div>
-                <p class="text-xs leading-5 text-slate-500">Source snapshots only—not a verified stock valuation. Missing values are excluded; recorded zeros are included. Possible repeat rows remain included until reviewed. Quantities and prices are not recalculated.</p>
+                <p class="text-xs leading-5 text-slate-500">New Paint COGs update closing stock. Each month carries closing quantities into opening stock. CAN and LTR are independent; missing balances stay unknown. Recorded prices are not recalculated. Imported historical issues are not replayed.</p>
             </section>
 </template>

@@ -1,4 +1,7 @@
 <script setup>
+import CompanyField from '@/Components/CompanyField.vue';
+import BulkCompanyAssignment from '@/Components/BulkCompanyAssignment.vue';
+import { useCompanySelection } from '@/Composables/useCompanySelection';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -6,7 +9,7 @@ import { computed, reactive, watch } from 'vue';
 
 const props = defineProps({
     equipment: Object, summary: Object, tabCounts: Object, filters: Object,
-    categoryOptions: Array, section1Options: Array, section2Options: Array,
+    descriptionOptions: Array, categoryOptions: Array, section1Options: Array, section2Options: Array,
     locationOptions: Array, issueOutLocationOptions: Array, statusOptions: Array, canEdit: Boolean,
 });
 const form = reactive({ ...props.filters });
@@ -18,10 +21,12 @@ const clearFilters = () => { Object.keys(form).filter(k => k !== 'inventory_type
 const qualityFilter = (value) => { form.quality = form.quality === value ? '' : value; applyFilters(); };
 const missing = (item) => ['tag_no', 'description', 'current_location'].filter(key => !String(item[key] ?? '').trim());
 const selectors = computed(() => [
+    ...(cargo.value ? [['description', 'Description', props.descriptionOptions]] : []),
     ['category', 'Category', props.categoryOptions], ['section_1', 'Section', props.section1Options],
     ['section_2', 'Subcategory', props.section2Options], ['location', 'Current location', props.locationOptions],
     ['issue_out_location', 'Issue-out location', props.issueOutLocationOptions], ['status', 'Status', props.statusOptions],
 ]);
+const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.data);
 </script>
 
 <template>
@@ -52,18 +57,19 @@ const selectors = computed(() => [
                     <p class="text-xs font-bold uppercase text-[#60745d]">{{ card.label }}</p><p class="mt-2 text-3xl font-bold text-[#234222]">{{ card.value }}</p>
                 </div>
             </div>
-            <p v-if="cargo" class="text-sm text-slate-500">Counts represent records, not units. Quantity is recorded for {{ summary.quantity_known }} of {{ summary.total }} Cargo records. Source statuses are preserved.</p>
+            <p v-if="cargo" class="text-sm text-slate-500">Counts represent records, not units. Source statuses are preserved.</p>
             <form class="rounded-[1.7rem] border border-[#d8e7d4] bg-white p-5" @submit.prevent="applyFilters">
                 <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="font-bold text-[#234222]">Filter {{ typeLabel }}</h2>
                     <div class="flex gap-2"><button type="button" class="btn btn-sm" @click="clearFilters">Clear filters</button><button class="btn btn-sm bg-[#4f9f4a] text-white">Apply filters</button></div>
                 </div>
+                <p class="mt-3 text-xs text-slate-500">Click Apply filters to update results and available options. Each dropdown reflects the search and other selected filters.</p>
                 <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <label class="sm:col-span-2 lg:col-span-3"><span class="filter-label">Search</span><input v-model.trim="form.search" class="filter-input" type="search" placeholder="Tag, description, model, dimensions, location or COG" /></label>
-                    <label v-for="[key,label,options] in selectors" :key="key"><span class="filter-label">{{ label }}</span><CustomSelect v-model="form[key]" class="filter-input"><option value="">All</option><option v-for="option in options" :key="option" :value="option">{{ option }}</option></CustomSelect></label>
+                    <CompanyField v-model="form.company" filter /><label class="sm:col-span-2 lg:col-span-3"><span class="filter-label">Search</span><input v-model.trim="form.search" class="filter-input" type="search" placeholder="Tag, description, model, dimensions, location or COG" /></label>
+                    <label v-for="[key,label,options] in selectors" :key="key"><span class="filter-label">{{ label }}</span><CustomSelect v-model="form[key]" class="filter-input"><option value="">All</option><option v-if="form[key] && !options.includes(form[key])" :value="form[key]" disabled>{{ form[key] }} (no matching records)</option><option v-for="option in options" :key="option" :value="option">{{ option }}</option></CustomSelect></label>
                 </div>
                 <div class="mt-5 border-t border-[#edf3eb] pt-4">
                     <h3 class="filter-label">Data quality</h3>
-                    <p class="mb-3 text-xs text-slate-500">Select an issue to filter this tab. Duplicate tags are checked across Machinery and Cargo in Miri.</p>
+                    <p class="mb-3 text-xs text-slate-500">Issue counts follow the applied search and dropdown filters. Duplicate tags are checked across Machinery and Cargo in Miri.</p>
                     <div class="flex flex-wrap gap-2">
                         <button v-for="[key,label,count] in [['duplicates','Duplicate tags',summary.duplicates],['missing','Missing details',summary.missing_details],['warnings','Import warnings',summary.warnings]]"
                             :key="key" type="button" class="rounded-xl border px-4 py-2 text-sm font-semibold"
@@ -72,16 +78,17 @@ const selectors = computed(() => [
                     </div>
                 </div>
             </form>
+            <BulkCompanyAssignment v-if="canEdit" :ids="selectedIds" :register="filters.inventory_type" @assigned="selectedIds = []" />
             <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
                 <div class="border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><strong>{{ equipment.total }}</strong> {{ typeLabel }} records found <span v-if="equipment.total">· Showing {{ equipment.from }}–{{ equipment.to }}</span></div>
                 <div class="overflow-x-auto">
                     <table class="table">
-                        <thead><tr><th>Tag No.</th><th>Description</th><th>Category / Subcategory</th>
-                            <template v-if="cargo"><th>Dimensions / Model</th><th>Tonnage</th><th>Length</th><th>Quantity</th></template>
+                        <thead><tr><th v-if="canEdit"><input v-model="allSelected" type="checkbox" aria-label="Select all items on this page" /></th><th>Company</th><th>Tag No.</th><th>Description</th><th>Category / Subcategory</th>
+                            <template v-if="cargo"><th>Dimensions / Model</th><th>Tonnage</th></template>
                             <th>Current location</th><th>Issue-out location</th><th>Status</th><th>Actions</th>
                         </tr></thead>
                         <tbody>
-                            <tr v-for="item in equipment.data" :key="item.id" :class="Number(item.duplicate_count) > 1 ? 'bg-amber-50/70' : ''">
+                            <tr v-for="item in equipment.data" :key="item.id" :class="Number(item.duplicate_count) > 1 ? 'bg-amber-50/70' : ''"><td v-if="canEdit"><input v-model="selectedIds" type="checkbox" :value="item.id" :aria-label="'Select record #' + item.id" /></td><td>{{ item.company || 'Not assigned' }}</td>
                                 <td>
                                     <Link class="font-bold text-[#2f7d32]" :href="route('major-equipment.show', item.id)">{{ item.tag_no || 'No tag' }}</Link>
                                     <p class="text-xs text-slate-400">Record #{{ item.id }}</p>
@@ -93,11 +100,11 @@ const selectors = computed(() => [
                                 </td>
                                 <td>{{ item.description || 'Not recorded' }}<p v-if="!cargo" class="text-xs text-slate-500">{{ item.model_brand || '' }}</p></td>
                                 <td>{{ item.category }}<p class="text-xs text-slate-500">{{ item.section_1 || '-' }} / {{ item.section_2 || '-' }}</p></td>
-                                <template v-if="cargo"><td>{{ item.size_model || '-' }}</td><td>{{ item.size_ton || '-' }}</td><td>{{ item.size_length || '-' }}</td><td>{{ item.quantity ?? 'Not recorded' }} <small v-if="item.quantity !== null">{{ item.unit }}</small></td></template>
+                                <template v-if="cargo"><td>{{ item.size_model || '-' }}</td><td>{{ item.size_ton || '-' }}</td></template>
                                 <td>{{ item.current_location || '-' }}</td><td>{{ item.issue_out_location || '-' }}</td><td>{{ item.status || 'Not recorded' }}</td>
                                 <td><div class="flex gap-2"><Link class="btn btn-xs" :href="route('major-equipment.show', item.id)">View</Link><Link v-if="canEdit" class="btn btn-xs" :href="route('major-equipment.edit', item.id)">Edit</Link></div></td>
                             </tr>
-                            <tr v-if="!equipment.data.length"><td :colspan="cargo ? 11 : 7" class="py-12 text-center text-slate-500">No {{ typeLabel }} records match these filters.</td></tr>
+                            <tr v-if="!equipment.data.length"><td :colspan="(cargo ? 10 : 8) + (canEdit ? 1 : 0)" class="py-12 text-center text-slate-500">No {{ typeLabel }} records match these filters.</td></tr>
                         </tbody>
                     </table>
                 </div>

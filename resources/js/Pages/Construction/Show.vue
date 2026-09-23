@@ -16,6 +16,7 @@ const slotsFor = group => group === 'Certificate' ? ['certificate'] : group === 
                 <p class="mt-2 text-sm text-slate-600">Record #{{ record.id }} · {{ record.tag_no || 'No tag' }} · Stock snapshot: historical quantities have not been replayed.</p>
                 <div class="mt-4 flex gap-3"><Link :href="route('construction.index')" class="btn btn-sm">Back to register</Link><Link v-if="canEdit" :href="route('construction.edit', record.id)" class="btn btn-sm bg-[#234222] text-white">Edit record</Link></div>
             </header>
+            <p class="rounded-xl border bg-white p-4 text-sm">Company: <strong>{{ record.company || 'Not assigned' }}</strong></p>
             <section v-if="record.review_flags.length || duplicates.length" class="rounded-2xl bg-amber-50 p-5">
                 <h2 class="font-bold text-amber-900">Needs review</h2>
                 <ul class="mt-2 list-inside list-disc text-sm text-amber-900"><li v-for="flag in record.review_flags" :key="flag">{{ flag }}</li></ul>

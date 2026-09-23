@@ -174,3 +174,10 @@ Artisan::command('it-licenses:notify-supervisors', function (SupervisorNotificat
 })->purpose('Notify KL IT supervisors about licence expiry and exhausted seats.');
 
 Schedule::command('it-licenses:notify-supervisors')->dailyAt('08:00')->withoutOverlapping();
+
+
+Artisan::command('paint:rollover', function (\App\Services\PaintStockLedger $ledger) {
+    $ledger->rollover();
+    $this->info('Paint stock months are current. Previous months retained.');
+})->purpose('Carry Paint closing quantities into the current month without replaying COGs.');
+Schedule::command('paint:rollover')->timezone('Asia/Kuala_Lumpur')->dailyAt('00:05')->withoutOverlapping();

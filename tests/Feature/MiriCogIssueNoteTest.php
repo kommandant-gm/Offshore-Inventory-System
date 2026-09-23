@@ -30,7 +30,7 @@ class MiriCogIssueNoteTest extends TestCase
         $branch = $this->staff();
         $this->travelTo(now()->setDate(2026, 9, 17));
         $legacy = MiriCog::create(['branch_id'=>$branch, 'cog_no'=>'MIRI-COG-2026-0004', 'movement_type'=>'Issue out', 'document_date'=>'2026-09-01']);
-        $paint = MiriPaintItem::create(['branch_id'=>$branch, 'category'=>'PAINT']);
+        $paint = MiriPaintItem::create(['branch_id'=>$branch, 'category'=>'PAINT', 'balance_litres'=>10]);
         $payload = $this->payload([['item_type'=>'Paint', 'item_id'=>$paint->id, 'quantity'=>1, 'unit'=>'LTR']]);
         $this->post(route('miri-cogs.store'), $payload)->assertSessionHasNoErrors();
         $this->assertSame('DESB/26/005', MiriCog::latest('id')->firstOrFail()->cog_no);
@@ -117,7 +117,7 @@ class MiriCogIssueNoteTest extends TestCase
         $this->post(route('miri-cogs.cancel', $next), ['reason'=>'Never dispatched'])->assertForbidden();
     }
 
-    public function test_all_sources_snapshot_and_never_post_stock(): void {
+    public function test_all_sources_snapshot_and_only_paint_posts_stock(): void {
         $branch=$this->staff();
         $equipment=MajorEquipment::create(['branch_id'=>$branch,'description'=>'Air winch','tag_no'=>'EQ-1','serial_no'=>'SERIAL','model_brand'=>'MODEL','unit'=>'UNIT','quantity'=>5,'current_location'=>'Miri','mr_request'=>'MR-E']);
         $rental=MiriRentalItem::create(['branch_id'=>$branch,'description'=>'Rental compressor','serial_tag_equipment_no'=>'RENTAL-1','unit'=>'UNIT','current_location'=>'Miri','mr_no'=>'MR-R']);
@@ -139,7 +139,8 @@ class MiriCogIssueNoteTest extends TestCase
         $this->assertNull($cog->items[3]->identifier);
         $this->assertSame('BATCH-1',$cog->items[3]->batch_no);
         $this->assertSame('0.710',$cog->items[3]->quantity);
-        foreach ($models as $i=>$model) $this->assertSame($before[$i],$model->fresh()->getRawOriginal());
+        foreach (array_slice($models, 0, 3) as $i=>$model) $this->assertSame($before[$i],$model->fresh()->getRawOriginal());
+        $this->assertSame('19.290', $paint->fresh()->balance_litres);
         $paint->update(['batch_no'=>'CHANGED']);
         $this->assertSame('BATCH-1',$cog->items[3]->fresh()->batch_no);
         $doc=app(MiriCogDocument::class)->data($cog);

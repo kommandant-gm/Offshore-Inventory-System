@@ -32,14 +32,32 @@ class MiriCogController extends Controller
     public function items(Request $request, \App\Services\MiriCogSource $sources)
     {
         $this->ensureMiri($request); abort_unless($request->user()?->canEdit('cogs'), 403);
-        $data = $request->validate(['search'=>['nullable','string','max:255'], 'type'=>['required',\Illuminate\Validation\Rule::in($sources::TYPES)]]);
+        $data = $request->validate(['company'=>['nullable','in:DESB,FTSB,unassigned'], 'search'=>['nullable','string','max:255'], 'type'=>['required',\Illuminate\Validation\Rule::in($sources::TYPES)], 'after_id'=>['nullable','integer','min:0'], 'inventory_type'=>['nullable','in:machinery,cargo'], 'description'=>['nullable','string','max:255'], 'section_2'=>['nullable','string','max:255'], 'location'=>['nullable','string','max:255']]);
         $branch = app(BranchContext::class)->id($request->user());
         $identifier = $sources->identifier($data['type']);
-        $items = $sources->query($data['type'],$branch)
-            ->when($data['search'] ?? null, fn ($q,$term) => $q->where(fn ($q) => $q->where($identifier,'like','%'.$term.'%')->orWhere('description','like','%'.$term.'%')->orWhere('current_location','like','%'.$term.'%')->when(ctype_digit($term),fn ($q)=>$q->orWhere('id',$term))))
+        $base = $sources->query($data['type'], $branch)->companyFilter($data['company'] ?? null)
+            ->when($data['search'] ?? null, fn ($q,$term) => $q->where(fn ($q) => $q->where($identifier,'like','%'.$term.'%')->orWhere('description','like','%'.$term.'%')->orWhere('current_location','like','%'.$term.'%')->when(ctype_digit($term),fn ($q)=>$q->orWhere('id',$term))));
+        $major = $data['type'] === 'Major equipment';
+        if ($major && filled($data['inventory_type'] ?? null)) $base->where('inventory_type', $data['inventory_type']);
+        $filtered = function (?string $except = null) use ($base, $major, $data) {
+            $query = clone $base;
+            if ($major) {
+                foreach (['description' => 'description', 'section_2' => 'section_2', 'location' => 'current_location'] as $key => $column) {
+                    if ($key !== $except && filled($data[$key] ?? null)) $query->where($column, $data[$key]);
+                }
+            }
+            return $query;
+        };
+        $options = [];
+        if ($major) {
+            foreach (['description' => 'description', 'section_2' => 'section_2', 'location' => 'current_location'] as $key => $column) {
+                $options[$key] = $filtered($key)->select($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")->distinct()->orderBy($column)->pluck($column)->values();
+            }
+        }
+        $items = $filtered()->when($data['after_id'] ?? null, fn ($q, $id) => $q->where('id', '>', $id))
             ->orderBy('id')->limit(26)->get();
         $allocations = app(\App\Services\MiriCogAvailability::class)->outstanding($branch, $data['type'], $items->pluck('id')->all());
-        return response()->json(['has_more'=>$items->count()>25, 'items'=>$items->take(25)->map(fn ($item)=>[
+        return response()->json(['options'=>$options, 'has_more'=>$items->count()>25, 'next_after_id'=>$items->take(25)->last()?->id, 'items'=>$items->take(25)->map(fn ($item)=>[
             ...$sources->snapshot($item,$data['type']), 'key'=>$data['type'].':'.$item->id, 'id'=>$item->id,
             'type'=>$data['type'], 'location'=>$item->current_location,
             'allocated_to'=>array_values(array_unique(array_column($allocations[$item->id] ?? [], 'cog_no'))),
@@ -86,9 +104,10 @@ class MiriCogController extends Controller
                     if (! in_array($snapshot['unit'],['CAN','LTR'])) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.unit"=>'Choose CAN or LTR for Paint.']);
                 }
                 if (blank($snapshot['unit'])) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.unit"=>'Enter the issue unit; it is missing from the source record.']);
-                $cog->items()->create([...$snapshot,'branch_id'=>$branch,'item_type'=>$line['item_type'],'item_id'=>$model->id,'quantity'=>$line['quantity']]);
+                $savedLine = $cog->items()->create([...$snapshot,'branch_id'=>$branch,'item_type'=>$line['item_type'],'item_id'=>$model->id,'quantity'=>$line['quantity']]);
+                app(\App\Services\PaintStockLedger::class)->post($savedLine, $request->user()->id);
             }
-            $auditLogger->record('miri_cogs','created',"Created Miri COG {$cog->cog_no}. Document only; no stock movements.",$cog,after:$cog->toArray(),user:$request->user(),request:$request);
+            $auditLogger->record('miri_cogs','created',"Created Miri COG {$cog->cog_no}. Paint stock posted; other registers retain their existing reservation rules.",$cog,after:$cog->toArray(),user:$request->user(),request:$request);
             return $cog;
         });
         return redirect()->route('miri-cogs.show',$cog)->with('success',"COG {$cog->cog_no} created.");
@@ -137,6 +156,7 @@ class MiriCogController extends Controller
                     ->whereHas('cog', fn ($q) => $q->where('movement_type', 'Received backload')->where('status', '!=', 'cancelled'))->exists();
                 abort_if($laterReturn, 409, 'This note has subsequent return history and cannot be cancelled.');
             }
+            foreach ($locked->items as $line) app(\App\Services\PaintStockLedger::class)->post($line, $request->user()->id, true);
             $locked->update(['status' => 'cancelled', 'updated_by' => $request->user()->id]);
             $auditLogger->record('miri_cogs', 'cancelled', "Cancelled unfulfilled Miri COG {$locked->cog_no}.", $locked, after: ['status' => 'cancelled', 'reason' => $data['reason']], user: $request->user(), request: $request);
         });

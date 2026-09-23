@@ -43,26 +43,34 @@ class MiriConstructionController extends Controller
     public function index(Request $request)
     {
         $this->authorizePage($request);
-        $filters = $request->validate(['search' => ['nullable', 'string', 'max:255'], 'category' => ['nullable', 'string', 'max:255'],
+        $filters = $request->validate(['company' => ['nullable', 'in:DESB,FTSB,unassigned'], 'search' => ['nullable', 'string', 'max:255'], 'category' => ['nullable', 'string', 'max:255'],
             'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'], 'location' => ['nullable', 'string', 'max:255'],
             'quality' => ['nullable', 'in:review,duplicates'], 'page' => ['nullable', 'integer', 'min:1']]);
-        $base = MiriConstructionItem::query();
-        $query = (clone $base)->select('miri_construction_items.id', 'category', 'section_1', 'section_2', 'description', 'tag_no', 'stock_balance', 'unit', 'current_location', 'storage_rack', 'certificate_due_date', 'needs_review')->withDuplicateCount()
-            ->when($filters['search'] ?? null, fn ($q, $s) => $q->where(function ($q) use ($s) {
-                foreach (['description', 'tag_no', 'model_brand', 'current_location', 'storage_rack'] as $column) $q->orWhere($column, 'like', '%'.$s.'%');
-            }));
-        foreach (['category', 'section_1', 'section_2'] as $key) $query->when($filters[$key] ?? null, fn ($q, $value) => $q->where($key, $value));
-        $query->when($filters['location'] ?? null, fn ($q, $v) => $q->where('current_location', $v));
-        if (($filters['quality'] ?? '') === 'duplicates') $query->duplicateTag();
-        if (($filters['quality'] ?? '') === 'review') $query->where(fn ($q) => $q->where('needs_review', true)->orWhere(fn ($q) => $q->duplicateTag()));
-        $options = fn ($column) => (clone $base)->whereNotNull($column)->where($column, '<>', '')->distinct()->orderBy($column)->pluck($column);
+        $base = MiriConstructionItem::query()->companyFilter($filters['company'] ?? null);
+        $searchQuery = (clone $base)->when($filters['search'] ?? null, fn ($q, $s) => $q->where(function ($q) use ($s) {
+            foreach (['description', 'tag_no', 'model_brand', 'current_location', 'storage_rack'] as $column) $q->orWhere($column, 'like', '%'.$s.'%');
+        }));
+        $filteredQuery = function (?string $except = null, ?string $quality = null) use ($searchQuery, $filters) {
+            $query = clone $searchQuery;
+            foreach (['category' => 'category', 'section_1' => 'section_1', 'section_2' => 'section_2', 'location' => 'current_location'] as $key => $column) {
+                if ($column !== $except && filled($filters[$key] ?? null)) $query->where($column, $filters[$key]);
+            }
+            if (($quality ?? ($filters['quality'] ?? '')) === 'duplicates') $query->duplicateTag();
+            if (($quality ?? ($filters['quality'] ?? '')) === 'review') $query->where(fn ($q) => $q->where('needs_review', true)->orWhere(fn ($q) => $q->duplicateTag()));
+            return $query;
+        };
+        $query = $filteredQuery()->select('company', 'miri_construction_items.id', 'category', 'section_1', 'section_2', 'description', 'tag_no', 'stock_balance', 'unit', 'current_location', 'storage_rack', 'certificate_due_date', 'needs_review')->withDuplicateCount();
+        $options = fn ($column) => $filteredQuery($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")->distinct()->orderBy($column)->pluck($column)->values();
+        $summaryQuery = $filteredQuery(null, '');
+        $qualityOptions = collect(['review', 'duplicates'])->filter(fn ($quality) => $filteredQuery(null, $quality)->exists())->values();
         return Inertia::render('Construction/Index', [
             'records' => $query->orderBy('category')->orderBy('description')->orderBy('miri_construction_items.id')->paginate(25)->withQueryString(),
+            'qualityOptions' => $qualityOptions,
             'filters' => $filters, 'canEdit' => $request->user()->canEdit('assets'),
             'options' => ['category' => $options('category'), 'section_1' => $options('section_1'), 'section_2' => $options('section_2'), 'location' => $options('current_location')],
-            'summary' => ['total' => (clone $base)->count(), 'duplicates' => (clone $base)->duplicateTag()->count(),
-                'review' => (clone $base)->where(fn ($q) => $q->where('needs_review', true)->orWhere(fn ($q) => $q->duplicateTag()))->count(),
-                'dated_certificates' => (clone $base)->whereNotNull('certificate_due_date')->count()],
+            'summary' => ['total' => (clone $summaryQuery)->count(), 'duplicates' => (clone $summaryQuery)->duplicateTag()->count(),
+                'review' => (clone $summaryQuery)->where(fn ($q) => $q->where('needs_review', true)->orWhere(fn ($q) => $q->duplicateTag()))->count(),
+                'dated_certificates' => (clone $summaryQuery)->whereNotNull('certificate_due_date')->count()],
         ]);
     }
 

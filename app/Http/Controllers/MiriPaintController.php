@@ -20,6 +20,7 @@ class MiriPaintController extends Controller
         $branch = app(BranchContext::class)->branch($request->user());
         abort_unless($branch?->code === 'MIRI', 404);
         abort_unless($edit ? $request->user()?->canEdit('assets') : $request->user()?->canRead('assets'), 403);
+        app(\App\Services\PaintStockLedger::class)->rollover($branch->id);
         return $branch->id;
     }
 
@@ -30,7 +31,9 @@ class MiriPaintController extends Controller
 
     private function record(MiriPaintItem $item, bool $private): array
     {
+        $item->refresh();
         $data = $item->toArray();
+        $data['stock_token'] = app(\App\Services\PaintStockLedger::class)->token($item);
         $data['review_flags'] = $item->reviewFlags();
         if ($private) {
             $data['original_values'] = $item->source_values;
@@ -41,33 +44,41 @@ class MiriPaintController extends Controller
     public function index(Request $request)
     {
         $this->authorizePage($request);
-        $filters = $request->validate(['search' => ['nullable', 'string', 'max:255'], 'category' => ['nullable', 'string', 'max:255'],
+        $filters = $request->validate(['company' => ['nullable', 'in:DESB,FTSB,unassigned'], 'search' => ['nullable', 'string', 'max:255'], 'category' => ['nullable', 'string', 'max:255'],
             'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'], 'location' => ['nullable', 'string', 'max:255'],
             'quality' => ['nullable', 'in:review,duplicates,unconfirmed,expired,due_30_days'], 'page' => ['nullable', 'integer', 'min:1']]);
-        $base = MiriPaintItem::query();
-        $query = (clone $base)->select('miri_paint_items.id', 'category', 'section_1', 'section_2', 'description', 'batch_no', 'balance_cans', 'balance_litres', 'current_location', 'best_before_date', 'manufacture_date', 'date_status', 'needs_review')->withDuplicateCount()
-            ->when($filters['search'] ?? null, fn ($q, $s) => $q->where(function ($q) use ($s) {
-                foreach (['description', 'batch_no', 'current_location', 'storage_rack'] as $column) $q->orWhere($column, 'like', '%'.$s.'%');
-            }));
-        foreach (['category', 'section_1', 'section_2'] as $key) $query->when($filters[$key] ?? null, fn ($q, $value) => $q->where($key, $value));
-        $query->when($filters['location'] ?? null, fn ($q, $v) => $q->where('current_location', $v));
-        if (($filters['quality'] ?? '') === 'duplicates') $query->duplicateBatch();
-        if (($filters['quality'] ?? '') === 'review') $query->where(fn ($q) => $q->where('needs_review', true)->orWhere(fn ($q) => $q->duplicateBatch()));
-        if (($filters['quality'] ?? '') === 'unconfirmed') $query->where('date_status', 'unconfirmed');
-        if (($filters['quality'] ?? '') === 'expired') $query->expiryEligible()->where('best_before_date', '<', today()->toDateString());
-        if (($filters['quality'] ?? '') === 'due_30_days') $query->expiryEligible()->whereBetween('best_before_date', [today()->toDateString(), today()->addDays(30)->toDateString()]);
-        $options = fn ($column) => (clone $base)->whereNotNull($column)->where($column, '<>', '')->distinct()->orderBy($column)->pluck($column);
+        $base = MiriPaintItem::query()->companyFilter($filters['company'] ?? null);
+        $searchQuery = (clone $base)->when($filters['search'] ?? null, fn ($q, $s) => $q->where(function ($q) use ($s) {
+            foreach (['description', 'batch_no', 'current_location', 'storage_rack'] as $column) $q->orWhere($column, 'like', '%'.$s.'%');
+        }));
+        $filteredQuery = function (?string $except = null, ?string $quality = null) use ($searchQuery, $filters) {
+            $query = clone $searchQuery;
+            foreach (['category' => 'category', 'section_1' => 'section_1', 'section_2' => 'section_2', 'location' => 'current_location'] as $key => $column) {
+                if ($column !== $except && filled($filters[$key] ?? null)) $query->where($column, $filters[$key]);
+            }
+            if (($quality ?? ($filters['quality'] ?? '')) === 'duplicates') $query->duplicateBatch();
+            if (($quality ?? ($filters['quality'] ?? '')) === 'review') $query->where(fn ($q) => $q->where('needs_review', true)->orWhere(fn ($q) => $q->duplicateBatch()));
+            if (($quality ?? ($filters['quality'] ?? '')) === 'unconfirmed') $query->where('date_status', 'unconfirmed');
+            if (($quality ?? ($filters['quality'] ?? '')) === 'expired') $query->expiryEligible()->where('best_before_date', '<', today()->toDateString());
+            if (($quality ?? ($filters['quality'] ?? '')) === 'due_30_days') $query->expiryEligible()->whereBetween('best_before_date', [today()->toDateString(), today()->addDays(30)->toDateString()]);
+            return $query;
+        };
+        $query = $filteredQuery()->select('company', 'miri_paint_items.id', 'category', 'section_1', 'section_2', 'description', 'batch_no', 'balance_cans', 'balance_litres', 'current_location', 'best_before_date', 'manufacture_date', 'date_status', 'needs_review')->withDuplicateCount();
+        $options = fn ($column) => $filteredQuery($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")->distinct()->orderBy($column)->pluck($column)->values();
+        $summaryQuery = $filteredQuery(null, '');
+        $qualityOptions = collect(['review', 'duplicates', 'unconfirmed', 'expired', 'due_30_days'])->filter(fn ($quality) => $filteredQuery(null, $quality)->exists())->values();
         $stockSummary = app(\App\Services\PaintStockSummary::class)->data($query);
         return Inertia::render('Paint/Index', [
             'stockSummary' => $stockSummary,
             'records' => $query->orderBy('category')->orderBy('description')->orderBy('miri_paint_items.id')->paginate(25)->withQueryString(),
+            'qualityOptions' => $qualityOptions,
             'filters' => $filters, 'canEdit' => $request->user()->canEdit('assets'),
             'options' => ['category' => $options('category'), 'section_1' => $options('section_1'), 'section_2' => $options('section_2'), 'location' => $options('current_location')],
-            'summary' => ['total' => (clone $base)->count(), 'duplicates' => (clone $base)->duplicateBatch()->count(),
-                'review' => (clone $base)->where(fn ($q) => $q->where('needs_review', true)->orWhere(fn ($q) => $q->duplicateBatch()))->count(),
-                'unconfirmed_dates' => (clone $base)->where('date_status', 'unconfirmed')->count(),
-                'expired' => (clone $base)->expiryEligible()->where('best_before_date', '<', today()->toDateString())->count(),
-                'due_30_days' => (clone $base)->expiryEligible()->whereBetween('best_before_date', [today()->toDateString(), today()->addDays(30)->toDateString()])->count()],
+            'summary' => ['total' => (clone $summaryQuery)->count(), 'duplicates' => (clone $summaryQuery)->duplicateBatch()->count(),
+                'review' => (clone $summaryQuery)->where(fn ($q) => $q->where('needs_review', true)->orWhere(fn ($q) => $q->duplicateBatch()))->count(),
+                'unconfirmed_dates' => (clone $summaryQuery)->where('date_status', 'unconfirmed')->count(),
+                'expired' => (clone $summaryQuery)->expiryEligible()->where('best_before_date', '<', today()->toDateString())->count(),
+                'due_30_days' => (clone $summaryQuery)->expiryEligible()->whereBetween('best_before_date', [today()->toDateString(), today()->addDays(30)->toDateString()])->count()],
         ]);
     }
 
@@ -90,6 +101,8 @@ class MiriPaintController extends Controller
         abort_unless($paint->branch_id === $branchId, 404);
         $duplicates = filled($paint->match_key) ? MiriPaintItem::query()->where('match_key', $paint->match_key)->where('id', '<>', $paint->id)->get(['id', 'description', 'batch_no', 'current_location']) : [];
         return Inertia::render('Paint/Show', ['record' => $this->record($paint, $request->user()->canEdit('assets')),
+            'stockMonths' => DB::table('miri_paint_stock_months')->where('paint_item_id', $paint->id)->where('branch_id', $branchId)->orderByDesc('period')->get(),
+            'stockMovements' => DB::table('miri_paint_stock_movements')->where('paint_item_id', $paint->id)->where('branch_id', $branchId)->orderByDesc('id')->paginate(25)->withQueryString(),
             'canEdit' => $request->user()->canEdit('assets'), 'duplicates' => $duplicates, ...$this->schema()]);
     }
 

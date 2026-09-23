@@ -21,7 +21,7 @@ class ConstructionRecordService
                 if ($exists) $item = MiriConstructionItem::whereKey($item->id)->where('branch_id', $branchId)->lockForUpdate()->firstOrFail();
                 $before = $item->toArray();
                 $personnelBefore = $item->personnel_details;
-                $item->fill(collect($data)->only([...array_column(ConstructionFields::FIELDS, 'key'), 'grouping_reviewed', 'review_note'])->all());
+                $item->fill(collect($data)->only([...array_column(ConstructionFields::FIELDS, 'key'), 'company', 'grouping_reviewed', 'review_note'])->all());
                 $item->branch_id = $branchId;
                 $warnings = $item->import_warnings ?? [];
                 foreach (array_keys($warnings) as $field) if (array_key_exists($field, $data) && $data[$field] !== null && $data[$field] !== '') unset($warnings[$field]);

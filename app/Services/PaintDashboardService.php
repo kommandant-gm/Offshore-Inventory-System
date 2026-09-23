@@ -5,9 +5,10 @@ use App\Models\MiriPaintItem;
 
 class PaintDashboardService
 {
-    public function data(): array
+    public function data(?string $company = null): array
     {
-        $query = MiriPaintItem::query();
+        app(PaintStockLedger::class)->rollover(app(BranchContext::class)->id());
+        $query = MiriPaintItem::query()->companyFilter($company);
         $today = today()->toDateString();
         $soon = today()->addDays(30)->toDateString();
         $dates = (array) (clone $query)->selectRaw("COUNT(*) as total,

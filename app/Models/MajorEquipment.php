@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MajorEquipment extends Model
 {
+    use \App\Models\Concerns\HasInventoryCompany;
     use BelongsToBranch, HasFactory;
 
     protected $table = 'miri_inventory_items';
@@ -16,6 +17,7 @@ class MajorEquipment extends Model
     protected $hidden = ['normalized_tag'];
 
     protected $fillable = [
+        'company',
         'inventory_type', 'size_model', 'size_ton', 'size_length', 'quantity', 'import_warnings', 'source_values',
         'branch_id', 'category', 'section_1', 'section_2', 'description', 'unit',
         'model_brand', 'serial_no', 'tag_no', 'current_location', 'status',

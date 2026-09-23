@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class SavePaintRequest extends FormRequest
 {
     public function authorize(): bool { return $this->user()?->canEdit('assets') ?? false; }
-    public function rules(): array { return PaintFields::rules(); }
+    public function rules(): array { return [...PaintFields::rules(), 'company' => ['nullable', 'in:DESB,FTSB'], 'stock_token' => ['nullable', 'string', 'size:64']]; }
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {

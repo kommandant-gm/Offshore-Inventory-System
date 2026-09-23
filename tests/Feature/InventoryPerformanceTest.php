@@ -68,7 +68,16 @@ class InventoryPerformanceTest extends TestCase
         for ($i = 0; $i < 30; $i++) MajorEquipment::create(['branch_id' => $branch, 'tag_no' => 'TAG-'.$i, 'description' => 'Cargo']);
         MajorEquipment::create(['branch_id' => Branch::where('code', 'KL-IT')->value('id'), 'tag_no' => 'SECRET']);
         $this->get(route('miri-cogs.create'))->assertOk()->assertInertia(fn (Assert $p) => $p->missing('items'));
-        $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment']))->assertOk()->assertJsonCount(25, 'items')->assertJsonPath('has_more', true);
+        $first = $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'search' => 'Cargo']))->assertOk()->assertJsonCount(25, 'items')->assertJsonPath('has_more', true);
+        $cursor = $first->json('next_after_id');
+        $this->assertSame($first->json('items.24.id'), $cursor);
+        $next = $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'search' => 'Cargo', 'after_id' => $cursor]))
+            ->assertOk()->assertJsonCount(5, 'items')->assertJsonPath('has_more', false)->assertJsonPath('items.0.identifier', 'TAG-25');
+        $this->assertCount(30, array_unique(array_merge(array_column($first->json('items'), 'id'), array_column($next->json('items'), 'id'))));
+        $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'after_id' => $next->json('next_after_id')]))
+            ->assertOk()->assertJsonCount(0, 'items')->assertJsonPath('has_more', false)->assertJsonPath('next_after_id', null);
+        $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'search' => 'TAG-29', 'after_id' => $cursor]))->assertJsonCount(1, 'items');
+        $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'after_id' => -1]))->assertUnprocessable();
         $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'search' => 'TAG-29']))->assertJsonCount(1, 'items');
         $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'search' => 'SECRET']))->assertJsonCount(0, 'items');
         $user->update(['permissions' => array_fill_keys(array_keys(AccessMatrix::modules()), 'read')]);
@@ -186,4 +195,80 @@ class InventoryPerformanceTest extends TestCase
         $this->assertSame('sent', $log->fresh()->status);
         $this->assertNotNull($log->fresh()->sent_at);
     }
+    public function test_cog_picker_refines_machinery_and_cargo_before_pagination(): void
+    {
+        $this->staff();
+        $branch = Branch::where('code', 'MIRI')->value('id');
+        $base = ['branch_id' => $branch, 'inventory_type' => 'cargo', 'description' => 'RUBBISH SKID', 'section_2' => 'DNV', 'current_location' => 'Miri'];
+        for ($i = 0; $i < 27; $i++) MajorEquipment::create($base + ['tag_no' => 'SKID-'.$i]);
+        MajorEquipment::create(array_replace($base, ['description' => 'CONTAINER']));
+        MajorEquipment::create(array_replace($base, ['current_location' => 'Bintulu', 'section_2' => 'OTHER']));
+        MajorEquipment::create(array_replace($base, ['inventory_type' => 'machinery', 'description' => 'WINCH', 'section_2' => 'WINCHES']));
+        MajorEquipment::create(array_replace($base, ['branch_id' => Branch::where('code', 'KL-IT')->value('id'), 'description' => 'SECRET']));
+        $filters = ['type' => 'Major equipment', 'inventory_type' => 'cargo', 'description' => 'RUBBISH SKID', 'location' => 'Miri', 'section_2' => 'DNV'];
+        $first = $this->getJson(route('miri-cogs.items', $filters))->assertOk()->assertJsonCount(25, 'items')->assertJsonPath('has_more', true)
+            ->assertJsonPath('options.description', ['CONTAINER', 'RUBBISH SKID'])
+            ->assertJsonPath('options.section_2', ['DNV'])->assertJsonPath('options.location', ['Miri']);
+        $this->getJson(route('miri-cogs.items', $filters + ['after_id' => $first->json('next_after_id')]))->assertOk()
+            ->assertJsonCount(2, 'items')->assertJsonPath('has_more', false)->assertJsonPath('items.0.identifier', 'SKID-25')
+            ->assertJsonPath('options.description', ['CONTAINER', 'RUBBISH SKID']);
+        $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'inventory_type' => 'machinery']))->assertOk()
+            ->assertJsonCount(1, 'items')->assertJsonPath('items.0.description', 'WINCH')->assertJsonPath('options.description', ['WINCH']);
+        $this->getJson(route('miri-cogs.items', $filters + ['search' => 'SKID-26']))->assertOk()->assertJsonCount(1, 'items');
+        $this->getJson(route('miri-cogs.items', array_replace($filters, ['description' => 'WINCH'])))->assertOk()->assertJsonCount(0, 'items');
+        $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'inventory_type' => 'invalid']))->assertUnprocessable();
+        MiriRentalItem::create(['branch_id' => $branch, 'description' => 'Rental item']);
+        $this->getJson(route('miri-cogs.items', array_replace($filters, ['type' => 'Rental'])))->assertOk()->assertJsonCount(1, 'items');
+    }
+
+    public function test_rental_dashboard_groups_projects_and_excludes_completed_rentals_from_alerts(): void
+    {
+        $this->staff();
+        $branch = Branch::where('code', 'MIRI')->value('id');
+        foreach ([
+            [' SBA ', 'On Hire', -1], ['SBA', 'Issued', -2], ['SBA', 'Off Hire', -3],
+            ['SBA', 'Received Backload', -4], ['SBA', 'Returned to Supplier', -5],
+            ['SKA', 'On Hire', 5], ['SKA', 'Overdue', null], ['SKA', 'Off Hire', 5],
+            ['SSB', 'Issued', 10], [null, '', -1],
+        ] as [$project, $status, $days]) {
+            MiriRentalItem::create(['branch_id' => $branch, 'project_contract' => $project, 'status' => $status, 'rental_due_date' => $days === null ? null : today()->addDays($days)]);
+        }
+        MiriRentalItem::create(['branch_id' => Branch::where('code', 'KL-IT')->value('id'), 'project_contract' => 'PRIVATE', 'status' => 'Overdue']);
+        $this->get(route('major-equipment.dashboard', ['view' => 'rentals']))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('rentalDashboard.summary.total', 10)->where('rentalDashboard.summary.overdue', 4)
+            ->where('rentalDashboard.summary.due_30_days', 2)->has('rentalDashboard.upcoming', 2)
+            ->has('rentalDashboard.projects', 4)->missing('rentalDashboard.dueTimeline')
+            ->where('rentalDashboard.projects', function ($projects) {
+                $rows = collect($projects)->keyBy('project');
+                $sba = $rows['SBA'];
+                $statuses = collect($sba['status'])->pluck('value', 'label');
+                return $sba['total'] === 5 && $sba['on_hire'] === 1 && $sba['off_hire'] === 1 && $sba['overdue'] === 2
+                    && $statuses['Returned to Supplier'] === 1 && $statuses['Received Backload'] === 1
+                    && $rows['SKA']['overdue'] === 1 && $rows['SSB']['overdue'] === 0 && $rows['Not recorded']['total'] === 1;
+            }));
+    }
+
+    public function test_rental_location_breakdown_preserves_projects_and_all_locations(): void
+    {
+        $this->staff();
+        $branch = Branch::where('code', 'MIRI')->value('id');
+        foreach ([[' SBA ', ' Site A ', 'On Hire'], ['SBA', 'Site A', 'Off Hire'], ['SBA', 'Site A', 'Received Backload'], ['SBA', 'Site A', 'Returned to Supplier'], ['SKA', 'Site A', 'Issued'], [null, null, 'Overdue']] as [$project, $location, $status]) {
+            MiriRentalItem::create(['branch_id' => $branch, 'project_contract' => $project, 'current_location' => $location, 'status' => $status, 'rental_due_date' => today()->subDay()]);
+        }
+        for ($i = 0; $i < 9; $i++) MiriRentalItem::create(['branch_id' => $branch, 'project_contract' => 'SSB', 'current_location' => 'Site '.$i, 'status' => 'On Hire']);
+        MiriRentalItem::create(['branch_id' => Branch::where('code', 'KL-IT')->value('id'), 'project_contract' => 'SBA', 'current_location' => 'Site A', 'status' => 'Overdue']);
+        $this->get(route('major-equipment.dashboard', ['view' => 'rentals']))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->has('rentalDashboard.locations', 12)
+            ->where('rentalDashboard.locations', function ($locations) {
+                $rows = collect($locations);
+                $sba = $rows->firstWhere('project', 'SBA');
+                $ska = $rows->firstWhere('project', 'SKA');
+                $missing = $rows->firstWhere('project', 'Not recorded');
+                return $rows->sum('value') === 15 && $sba['label'] === 'Site A' && $sba['value'] === 4
+                    && $sba['on_hire'] === 1 && $sba['off_hire'] === 1 && $sba['overdue'] === 1
+                    && $ska['value'] === 1 && $ska['overdue'] === 1 && $ska['on_hire'] === 0
+                    && $missing['label'] === 'Not specified' && $missing['overdue'] === 1;
+            }));
+    }
+
 }

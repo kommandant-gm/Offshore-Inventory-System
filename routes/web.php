@@ -47,6 +47,7 @@ Route::post('/asset-checkout-test-preview/sign', [PublicAssetCheckoutController:
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'system.access', 'verified'])->name('dashboard');
 
 Route::middleware(['auth', 'system.access'])->group(function () {
+    Route::patch('/miri-inventory/company-assignment', [\App\Http\Controllers\MiriCompanyController::class, 'assign'])->name('miri-company.assign');
     Route::prefix('miri-paint')->name('paint.')->controller(\App\Http\Controllers\MiriPaintController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/create', 'create')->name('create');

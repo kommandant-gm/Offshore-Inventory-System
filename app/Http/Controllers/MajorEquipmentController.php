@@ -78,35 +78,50 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri($request);
         abort_unless($request->user()?->canRead('assets'), 403);
 
-        $selection = $request->validate(['inventory_type' => ['nullable', 'in:all,machinery,cargo']]);
+        $selection = $request->validate(['company' => ['nullable', 'in:DESB,FTSB,unassigned'], 'inventory_type' => ['nullable', 'in:all,machinery,cargo']]);
+        $company = $selection['company'] ?? '';
         $type = $selection['inventory_type'] ?? 'all';
         if ($request->query('view') === 'paint') {
             return Inertia::render('MajorEquipment/Dashboard', [
-                'activeDashboard' => 'paint', 'inventoryType' => $type,
-                'paintDashboard' => app(\App\Services\PaintDashboardService::class)->data(),
+                'activeDashboard' => 'paint', 'companyFilter' => $company, 'inventoryType' => $type,
+                'paintDashboard' => app(\App\Services\PaintDashboardService::class)->data($company),
                 'canEditPaint' => $request->user()->canEdit('assets'),
             ]);
         }
         if ($request->query('view') === 'construction') {
             return Inertia::render('MajorEquipment/Dashboard', [
-                'activeDashboard' => 'construction', 'inventoryType' => $type,
-                'constructionDashboard' => app(\App\Services\ConstructionDashboardService::class)->data(),
+                'activeDashboard' => 'construction', 'companyFilter' => $company, 'inventoryType' => $type,
+                'constructionDashboard' => app(\App\Services\ConstructionDashboardService::class)->data($company),
                 'canEditConstruction' => $request->user()->canEdit('assets'),
             ]);
         }
         if ($request->query('view') === 'rentals') {
             return Inertia::render('MajorEquipment/Dashboard', [
-                'activeDashboard' => 'rentals', 'inventoryType' => $type,
-                'rentalDashboard' => $this->rentalDashboard(today()),
+                'activeDashboard' => 'rentals', 'companyFilter' => $company, 'inventoryType' => $type,
+                'rentalDashboard' => $this->rentalDashboard(today(), $company),
             ]);
         }
-        $query = MajorEquipment::query()->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type));
+        $query = MajorEquipment::query()->companyFilter($company)->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type));
         $statusRows = (clone $query)->selectRaw("COALESCE(NULLIF(TRIM(status), ''), 'Not recorded') as label, COUNT(*) as value")->groupByRaw("COALESCE(NULLIF(TRIM(status), ''), 'Not recorded')")->orderByDesc('value')->get();
+        $subcategoryExpression = "COALESCE(NULLIF(TRIM(section_2), ''), 'Not recorded')";
+        $statusExpression = "COALESCE(NULLIF(TRIM(status), ''), 'Not recorded')";
+        $categories = (clone $query)
+            ->selectRaw("{$subcategoryExpression} as category, {$statusExpression} as label, COUNT(*) as value")
+            ->groupByRaw("{$subcategoryExpression}, {$statusExpression}")
+            ->get()
+            ->groupBy('category')
+            ->map(fn ($rows, $category) => [
+                'category' => (string) $category,
+                'total' => (int) $rows->sum('value'),
+                'statuses' => $rows->map(fn ($row) => ['label' => $row->label, 'value' => (int) $row->value])->values(),
+            ])
+            ->sort(fn ($a, $b) => ($b['total'] <=> $a['total']) ?: strcmp($a['category'], $b['category']))
+            ->values();
         $today = today();
-        $certificateQuery = MajorEquipmentCertificate::query()->whereHas('equipment', fn ($q) => $q->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type)));
+        $certificateQuery = MajorEquipmentCertificate::query()->whereHas('equipment', fn ($q) => $q->companyFilter($company)->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type)));
         return Inertia::render('MajorEquipment/Dashboard', [
-            'inventoryType' => $type,
-            'typeCounts' => MajorEquipment::query()->select('inventory_type')->selectRaw('COUNT(*) as total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
+            'companyFilter' => $company, 'inventoryType' => $type,
+            'typeCounts' => MajorEquipment::query()->companyFilter($company)->select('inventory_type')->selectRaw('COUNT(*) as total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
             'statusBreakdown' => $statusRows,
             'quality' => ['duplicates' => (clone $query)->duplicateTag()->count(), 'missing' => (clone $query)->missingDetails()->count(), 'warnings' => (clone $query)->whereNotNull('import_warnings')->count()],
             'quantityRecorded' => (clone $query)->whereNotNull('quantity')->count(),
@@ -142,12 +157,7 @@ class MajorEquipmentController extends Controller
                         'description' => $certificate->equipment->description,
                     ] : null,
                 ]),
-            'categories' => (clone $query)
-                ->selectRaw($type === 'all' ? "inventory_type as category" : "COALESCE(NULLIF(TRIM(section_2), ''), 'Not recorded') as category")
-                ->selectRaw('COUNT(*) as total')
-                ->groupByRaw($type === 'all' ? 'inventory_type' : "COALESCE(NULLIF(TRIM(section_2), ''), 'Not recorded')")
-                ->orderByDesc('total')
-                ->get(),
+            'categories' => $categories,
             'locations' => (clone $query)
                 ->selectRaw("COALESCE(current_location, 'Unassigned') as label")
                 ->selectRaw('COUNT(*) as total')
@@ -162,34 +172,52 @@ class MajorEquipmentController extends Controller
         ]);
     }
 
-    private function rentalDashboard($today): array
+    private function rentalDashboard($today, ?string $company = null): array
     {
-        $query = MiriRentalItem::query();
+        $query = MiriRentalItem::query()->companyFilter($company);
         $statusCounts = (clone $query)->selectRaw("COALESCE(NULLIF(status, ''), 'Not stated') as label, COUNT(*) as total")->groupByRaw("COALESCE(NULLIF(status, ''), 'Not stated')")->pluck('total', 'label');
         $statusLabels = ['On Hire', 'Issued', 'Received Backload', 'Off Hire', 'Returned to Supplier', 'Overdue'];
         $group = fn (string $column, int $limit) => (clone $query)
             ->selectRaw("COALESCE(NULLIF(TRIM({$column}), ''), 'Not specified') as label, COUNT(*) as value")
             ->groupByRaw("COALESCE(NULLIF(TRIM({$column}), ''), 'Not specified')")
             ->orderByDesc('value')->limit($limit)->get();
-        $monthStart = $today->copy()->startOfMonth();
-        $timeline = (clone $query)->whereBetween('rental_due_date', [$monthStart, $monthStart->copy()->addMonths(5)->endOfMonth()])
-            ->selectRaw('SUBSTR(rental_due_date, 1, 7) as month_key, COUNT(*) as total')
-            ->groupByRaw('SUBSTR(rental_due_date, 1, 7)')->get()->keyBy('month_key');
+        $active = (clone $query)->where(fn ($q) => $q->whereNull('status')->orWhereNotIn('status', ['Received Backload', 'Off Hire', 'Returned to Supplier']));
+        $overdue = "CASE WHEN COALESCE(status, '') NOT IN ('Received Backload', 'Off Hire', 'Returned to Supplier') AND (status = 'Overdue' OR rental_due_date < ?) THEN 1 ELSE 0 END";
+        $projectRows = (clone $query)
+            ->selectRaw("COALESCE(NULLIF(TRIM(project_contract), ''), 'Not recorded') as project, COALESCE(NULLIF(TRIM(status), ''), 'Not stated') as label, COUNT(*) as value, SUM({$overdue}) as overdue", [$today->toDateString()])
+            ->groupByRaw("COALESCE(NULLIF(TRIM(project_contract), ''), 'Not recorded'), COALESCE(NULLIF(TRIM(status), ''), 'Not stated')")
+            ->get();
+        $projects = $projectRows->groupBy('project')->map(function ($rows, $project) use ($statusLabels) {
+            $counts = $rows->pluck('value', 'label');
+            $labels = collect($statusLabels)->merge($counts->keys())->unique();
+            return [
+                'project' => (string) $project, 'total' => (int) $rows->sum('value'),
+                'on_hire' => (int) ($counts['On Hire'] ?? 0), 'off_hire' => (int) ($counts['Off Hire'] ?? 0),
+                'overdue' => (int) $rows->sum('overdue'),
+                'status' => $labels->map(fn ($label) => ['label' => $label, 'value' => $label === 'Overdue' ? (int) $rows->sum('overdue') : (int) ($counts[$label] ?? 0)])->values(),
+            ];
+        })->sortBy('project')->values();
         return [
             'summary' => [
                 'total' => (int) $statusCounts->sum(), 'on_hire' => (int) ($statusCounts['On Hire'] ?? 0),
                 'issued' => (int) ($statusCounts['Issued'] ?? 0), 'backload' => (int) ($statusCounts['Received Backload'] ?? 0),
-                'overdue' => (clone $query)->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'Returned to Supplier'))
-                    ->where(fn ($q) => $q->where('status', 'Overdue')->orWhere('rental_due_date', '<', $today))->count(),
-                'due_30_days' => (clone $query)->whereBetween('rental_due_date', [$today, $today->copy()->addDays(30)])->count(),
+                'overdue' => (int) $projects->sum('overdue'),
+                'due_30_days' => (clone $active)->whereBetween('rental_due_date', [$today, $today->copy()->addDays(30)])->count(),
             ],
-            'status' => collect($statusLabels)->map(fn ($label) => ['label' => $label, 'value' => (int) ($statusCounts[$label] ?? 0)]),
-            'locations' => $group('current_location', 8), 'suppliers' => $group('supplier', 6),
-            'dueTimeline' => collect(range(0, 5))->map(function ($offset) use ($monthStart, $timeline) {
-                $start = $monthStart->copy()->addMonths($offset);
-                return ['label' => $start->format('M'), 'full_label' => $start->format('M Y'), 'value' => (int) ($timeline->get($start->format('Y-m'))?->total ?? 0)];
-            }),
-            'upcoming' => (clone $query)->where('rental_due_date', '>=', $today)->orderBy('rental_due_date')->orderBy('id')->limit(8)->get()->map(fn ($item) => [
+            'status' => collect($statusLabels)->merge($statusCounts->keys())->unique()->map(fn ($label) => ['label' => $label, 'value' => $label === 'Overdue' ? (int) $projects->sum('overdue') : (int) ($statusCounts[$label] ?? 0)])->values(),
+            'projects' => $projects,
+            'locations' => (clone $query)
+                ->selectRaw("COALESCE(NULLIF(TRIM(project_contract), ''), 'Not recorded') as project,
+                    COALESCE(NULLIF(TRIM(current_location), ''), 'Not specified') as label, COUNT(*) as value,
+                    SUM(CASE WHEN status = 'On Hire' THEN 1 ELSE 0 END) as on_hire,
+                    SUM(CASE WHEN status = 'Off Hire' THEN 1 ELSE 0 END) as off_hire,
+                    SUM({$overdue}) as overdue", [$today->toDateString()])
+                ->groupByRaw("COALESCE(NULLIF(TRIM(project_contract), ''), 'Not recorded'), COALESCE(NULLIF(TRIM(current_location), ''), 'Not specified')")
+                ->orderBy('project')->orderBy('label')->get()
+                ->map(fn ($row) => ['project' => $row->project, 'label' => $row->label, 'value' => (int) $row->value,
+                    'on_hire' => (int) $row->on_hire, 'off_hire' => (int) $row->off_hire, 'overdue' => (int) $row->overdue]),
+            'suppliers' => $group('supplier', 6),
+            'upcoming' => (clone $active)->where('rental_due_date', '>=', $today)->orderBy('rental_due_date')->orderBy('id')->limit(8)->get()->map(fn ($item) => [
                 'id' => $item->id, 'description' => $item->description, 'identifier' => $item->serial_tag_equipment_no,
                 'location' => $item->current_location, 'supplier' => $item->supplier, 'status' => $item->status,
                 'due_date' => $item->rental_due_date?->format('Y-m-d'), 'days_remaining' => $today->diffInDays($item->rental_due_date, false),
@@ -205,41 +233,55 @@ class MajorEquipmentController extends Controller
     {
         $this->ensureMiri($request);
         abort_unless($request->user()?->canRead('assets'), 403);
-        $filters = $request->validate([
+        $filters = $request->validate(['company' => ['nullable', 'in:DESB,FTSB,unassigned'],
             'inventory_type' => ['nullable', 'in:machinery,cargo'],
-            'search' => ['nullable', 'string', 'max:255'], 'category' => ['nullable', 'string', 'max:255'],
+            'search' => ['nullable', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:255'], 'category' => ['nullable', 'string', 'max:255'],
             'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'], 'status' => ['nullable', 'string', 'max:255'],
             'issue_out_location' => ['nullable', 'string', 'max:255'], 'quality' => ['nullable', 'in:duplicates,missing,warnings'],
         ]);
         $type = $filters['inventory_type'] ?? 'machinery';
-        $base = MajorEquipment::query()->where('inventory_type', $type);
-        $query = (clone $base)->select('miri_inventory_items.*')->withCount('certificates')->withDuplicateCount();
-        foreach (['category', 'section_1', 'section_2', 'status', 'issue_out_location'] as $column) {
-            if (filled($filters[$column] ?? null)) $query->where($column, $filters[$column]);
-        }
-        if (filled($filters['location'] ?? null)) $query->where('current_location', $filters['location']);
-        if (filled($filters['search'] ?? null)) $query->where(function ($q) use ($filters) {
+        if ($type !== 'cargo') unset($filters['description']);
+        $base = MajorEquipment::query()->companyFilter($filters['company'] ?? null)->where('inventory_type', $type);
+        $searchQuery = clone $base;
+        if (filled($filters['search'] ?? null)) $searchQuery->where(function ($q) use ($filters) {
             foreach (['tag_no', 'serial_no', 'description', 'model_brand', 'size_model', 'current_location', 'issue_out_cog_no', 'received_backload_cog_no'] as $column) $q->orWhere($column, 'like', '%'.$filters['search'].'%');
         });
-        match ($filters['quality'] ?? '') {
-            'duplicates' => $query->duplicateTag(),
-            'missing' => $query->missingDetails(),
-            'warnings' => $query->whereNotNull('import_warnings'),
-            default => null,
+        $filterColumns = ['category' => 'category', 'section_1' => 'section_1', 'section_2' => 'section_2',
+            'location' => 'current_location', 'issue_out_location' => 'issue_out_location', 'status' => 'status'];
+        if ($type === 'cargo') $filterColumns['description'] = 'description';
+        $filteredQuery = function (?string $except = null, bool $includeQuality = true) use ($searchQuery, $filterColumns, $filters) {
+            $query = clone $searchQuery;
+            foreach ($filterColumns as $key => $column) {
+                if ($column !== $except && filled($filters[$key] ?? null)) $query->where($column, $filters[$key]);
+            }
+            if ($includeQuality) {
+                match ($filters['quality'] ?? '') {
+                    'duplicates' => $query->duplicateTag(),
+                    'missing' => $query->missingDetails(),
+                    'warnings' => $query->whereNotNull('import_warnings'),
+                    default => null,
+                };
+            }
+            return $query;
         };
-        $options = fn ($column) => (clone $base)->whereNotNull($column)->where($column, '<>', '')->distinct()->orderBy($column)->pluck($column)->values();
+        $query = $filteredQuery()->select('miri_inventory_items.*')->withCount('certificates')->withDuplicateCount();
+        // Each dropdown respects the other filters but leaves its own alternatives available.
+        $options = fn ($column) => $filteredQuery($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")
+            ->distinct()->orderBy($column)->pluck($column)->values();
+        $summaryQuery = $filteredQuery(null, false);
         return Inertia::render('MajorEquipment/Index', [
             'equipment' => $query->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('id')->paginate(25)->withQueryString(),
             'tabCounts' => MajorEquipment::query()->select('inventory_type')->selectRaw('COUNT(*) AS total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
             'summary' => [
-                'total' => (clone $base)->count(), 'in_use' => (clone $base)->where('status', 'In Use')->count(),
-                'standby' => (clone $base)->where('status', 'Standby')->count(), 'under_repair' => (clone $base)->whereIn('status', ['Under Repair', 'PENDING REPAIR'])->count(),
-                'missing_details' => (clone $base)->missingDetails()->count(), 'duplicates' => (clone $base)->duplicateTag()->count(),
-                'warnings' => (clone $base)->whereNotNull('import_warnings')->count(),
-                'quantity_known' => (clone $base)->whereNotNull('quantity')->count(),
+                'total' => (clone $summaryQuery)->count(), 'in_use' => (clone $summaryQuery)->where('status', 'In Use')->count(),
+                'standby' => (clone $summaryQuery)->where('status', 'Standby')->count(), 'under_repair' => (clone $summaryQuery)->whereIn('status', ['Under Repair', 'PENDING REPAIR'])->count(),
+                'missing_details' => (clone $summaryQuery)->missingDetails()->count(), 'duplicates' => (clone $summaryQuery)->duplicateTag()->count(),
+                'warnings' => (clone $summaryQuery)->whereNotNull('import_warnings')->count(),
+                'quantity_known' => (clone $summaryQuery)->whereNotNull('quantity')->count(),
             ],
-            'filters' => array_merge(array_fill_keys(['search', 'category', 'section_1', 'section_2', 'location', 'status', 'issue_out_location', 'quality'], ''), $filters, ['inventory_type' => $type]),
+            'filters' => array_merge(array_fill_keys(['company', 'search', 'description', 'category', 'section_1', 'section_2', 'location', 'status', 'issue_out_location', 'quality'], ''), $filters, ['inventory_type' => $type]),
+            'descriptionOptions' => $type === 'cargo' ? $options('description') : [],
             'categoryOptions' => $options('category'), 'section1Options' => $options('section_1'), 'section2Options' => $options('section_2'),
             'locationOptions' => $options('current_location'), 'issueOutLocationOptions' => $options('issue_out_location'), 'statusOptions' => $options('status'),
             'canEdit' => $request->user()->canEdit('assets'),

@@ -14,6 +14,7 @@ class SaveConstructionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'company' => ['nullable', 'in:DESB,FTSB'],
             ...ConstructionFields::rules(),
             'grouping_reviewed' => ['sometimes', 'boolean'],
             'review_note' => ['nullable', 'string', 'max:5000', 'required_if:grouping_reviewed,1'],

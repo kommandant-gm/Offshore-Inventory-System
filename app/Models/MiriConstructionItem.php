@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class MiriConstructionItem extends Model
 {
+    use \App\Models\Concerns\HasInventoryCompany;
     use BelongsToBranch;
 
     protected $table = 'miri_construction_items';

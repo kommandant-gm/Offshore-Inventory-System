@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class MiriPaintItem extends Model
 {
+    use \App\Models\Concerns\HasInventoryCompany;
     use BelongsToBranch;
     protected $guarded = ['id'];
     protected $hidden = ['source_values', 'match_key'];
@@ -21,6 +22,7 @@ class MiriPaintItem extends Model
     }
     protected static function booted(): void
     {
+        static::creating(function ($item) { $item->stock_period ??= app(\App\Services\PaintStockLedger::class)->period(); });
         static::saving(function ($item) {
             $item->match_key = self::matchingKey($item->description, $item->batch_no, $item->current_location);
             $item->needs_review = count($item->reviewFlags()) > 0;

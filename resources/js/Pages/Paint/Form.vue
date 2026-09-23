@@ -1,9 +1,12 @@
 <script setup>
+import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 const props = defineProps({ record: Object, fields: Array });
 const groups = [...new Set(props.fields.filter(f => f.key !== 'original_date').map(f => f.group))];
 const form = useForm({
+    company: props.record?.company ?? '',
+    stock_token: props.record?.stock_token || null,
     ...Object.fromEntries(props.fields.filter(f => f.key !== 'original_date').map(f => [f.key, props.record?.[f.key] ?? (f.key === 'category' ? 'PAINT & GARNET' : f.key === 'section_1' ? 'PAINT' : '')])),
     manufacture_date: props.record?.manufacture_date || '', best_before_date: props.record?.best_before_date || '',
     date_status: props.record?.date_status || 'not_recorded', review_note: '',
@@ -20,7 +23,8 @@ function assignDate(field) {
     <Head :title="record ? 'Edit Paint record' : 'Register paint'" />
     <AuthenticatedLayout>
         <form class="space-y-5" @submit.prevent="submit">
-            <header class="rounded-3xl border border-[#d8e7d4] bg-white p-6"><img src="/images/dayang-logo.png" alt="Dayang" class="mb-4 h-14 w-auto" /><h1 class="text-2xl font-bold text-[#234222]">{{ record ? 'Edit Paint record #' + record.id : 'Register paint' }}</h1><p class="mt-2 text-sm text-slate-500">Miri Paint Register · Recorded quantities are snapshots. No stock or value recalculation occurs.</p></header>
+            <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
+            <header class="rounded-3xl border border-[#d8e7d4] bg-white p-6"><img src="/images/dayang-logo.png" alt="Dayang" class="mb-4 h-14 w-auto" /><h1 class="text-2xl font-bold text-[#234222]">{{ record ? 'Edit Paint record #' + record.id : 'Register paint' }}</h1><p class="mt-2 text-sm text-slate-500">Miri Paint Register · New Paint COGs update closing quantities. Manual balance corrections require a review note. Prices remain recorded values.</p></header>
             <div v-if="Object.keys(form.errors).length" role="alert" class="rounded-xl bg-red-50 p-4 text-red-700"><p v-for="(message,key) in form.errors" :key="key">{{ message }}</p></div>
             <section class="rounded-3xl border border-amber-200 bg-amber-50 p-6">
                 <h2 class="font-bold text-[#234222]">Manufacture &amp; best-before date review</h2>
@@ -32,7 +36,7 @@ function assignDate(field) {
                     <label class="text-sm">Manufacture date<input v-model="form.manufacture_date" type="date" class="mt-2 w-full rounded-xl border-slate-200" /></label>
                     <label class="text-sm">Best-before date<input v-model="form.best_before_date" type="date" class="mt-2 w-full rounded-xl border-slate-200" /></label>
                 </div>
-                <label class="mt-4 block text-sm">Review note (required when changing imported dates; also acknowledges corrected import values)<textarea v-model="form.review_note" class="mt-2 w-full rounded-xl border-slate-200" rows="2" placeholder="How was the date meaning verified?" /></label>
+                <label class="mt-4 block text-sm">Review note (required for stock adjustments or date changes)<textarea v-model="form.review_note" class="mt-2 w-full rounded-xl border-slate-200" rows="2" placeholder="How was the date meaning verified?" /></label>
                 <p v-if="record?.review_note" class="mt-2 text-xs text-slate-600">Previous note: {{ record.review_note }}</p>
             </section>
             <section v-for="group in groups" :key="group" class="rounded-3xl border border-[#d8e7d4] bg-white p-6">

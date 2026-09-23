@@ -1,4 +1,5 @@
 <script setup>
+import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -9,6 +10,7 @@ const props = defineProps({ rental: Object, categories: Array });
 const item = props.rental;
 const date = (value) => value ? String(value).slice(0, 10) : '';
 const form = useForm({
+    company: item?.company ?? '',
     category: item?.category ?? '', section_1: item?.section_1 ?? '', section_2: item?.section_2 ?? '', description: item?.description ?? '',
     serial_tag_equipment_no: item?.serial_tag_equipment_no ?? '', unit: item?.unit ?? '', supplier: item?.supplier ?? '', project_contract: item?.project_contract ?? '',
     current_location: item?.current_location ?? '', rental_due_date: date(item?.rental_due_date), issue_out_cog_no: item?.issue_out_cog_no ?? '', issue_out_cog_date: date(item?.issue_out_cog_date),
@@ -32,6 +34,7 @@ const submit = () => form[item ? 'patch' : 'post'](item ? route('miri-rental.upd
     <AuthenticatedLayout>
         <PageHeader :title="item ? 'Edit Rental' : 'Register Rental'" description="Maintain the Rental register with separate movement and supplier-return information." />
         <form class="space-y-6" @submit.prevent="submit">
+            <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
             <section v-for="group in groups" :key="group.title" class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">{{ group.title }}</h2>
                 <div class="mt-5 grid gap-4 md:grid-cols-3">

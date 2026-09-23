@@ -62,4 +62,33 @@ class MiriConstructionDashboardTest extends TestCase
                 ->where('constructionDashboard.summary.zero_balance', 0)->has('constructionDashboard.recent', 0)
                 ->where('canEditConstruction', false));
     }
+    public function test_stock_groups_separate_units_locations_and_unknown_balances(): void
+    {
+        $branch = $this->staff();
+        foreach ([
+            ['PPE', 'BTU', ' pc ', 2.5], ['PPE', 'BTU', 'PC', 3], ['PPE', 'BTU', 'PC', null],
+            ['PPE', 'BTU', 'BOX', 4], ['PPE', 'LBN', 'PC', 0], ['TEC', 'LBN', 'UNIT', null],
+            ['TEC', 'BTU', null, 50], [null, null, 'BAG', 7],
+        ] as [$category, $location, $unit, $stock]) {
+            MiriConstructionItem::create(['branch_id' => $branch, 'category' => $category, 'current_location' => $location, 'unit' => $unit, 'stock_balance' => $stock,
+                'stock_in_qty' => 100, 'issue_location_qty' => 20, 'issue_personnel_qty' => 10]);
+        }
+        MiriConstructionItem::create(['branch_id' => Branch::where('code', 'KL-IT')->value('id'), 'category' => 'PPE', 'current_location' => 'BTU', 'unit' => 'PC', 'stock_balance' => 999]);
+        $this->get(route('major-equipment.dashboard', ['view' => 'construction']))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->has('constructionDashboard.stockGroups', 6)
+            ->where('constructionDashboard.stockGroups', function ($groups) {
+                $rows = collect($groups);
+                $pc = $rows->first(fn ($r) => $r['category'] === 'PPE' && $r['location'] === 'BTU' && $r['unit'] === 'PC');
+                $zero = $rows->first(fn ($r) => $r['category'] === 'PPE' && $r['location'] === 'LBN');
+                $unknown = $rows->first(fn ($r) => $r['category'] === 'TEC' && $r['location'] === 'LBN');
+                $noUnit = $rows->first(fn ($r) => $r['unit'] === null);
+                return $pc['stock'] == 5.5 && $pc['records'] === 3 && $pc['recorded'] === 2
+                    && $zero['stock'] === 0 && $zero['recorded'] === 1
+                    && $unknown['stock'] === null && $unknown['recorded'] === 0
+                    && $noUnit['stock'] === null && $noUnit['recorded'] === 1
+                    && $rows->firstWhere('unit', 'BOX')['stock'] === 4
+                    && $rows->firstWhere('category', 'Not recorded')['location'] === 'Not recorded';
+            }));
+    }
+
 }

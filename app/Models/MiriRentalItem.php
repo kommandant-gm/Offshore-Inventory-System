@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class MiriRentalItem extends Model
 {
+    use \App\Models\Concerns\HasInventoryCompany;
     use BelongsToBranch, HasFactory;
 
     protected $table = 'miri_rental_items';
 
     protected $fillable = [
+        'company',
         'branch_id', 'category', 'section_1', 'section_2', 'description',
         'serial_tag_equipment_no', 'unit', 'supplier', 'project_contract',
         'current_location', 'rental_due_date', 'issue_out_cog_no', 'issue_out_cog_date',

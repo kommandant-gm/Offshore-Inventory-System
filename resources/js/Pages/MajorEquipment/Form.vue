@@ -1,4 +1,5 @@
 <script setup>
+import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -11,6 +12,7 @@ const props = defineProps({ equipment: Object, categories: Array, certificateTyp
 const item = props.equipment;
 const date = (value) => value ? String(value).slice(0, 10) : '';
 const form = useForm({
+    company: item?.company ?? '',
     removed_certificate_ids: [],
     inventory_type: item?.inventory_type ?? props.inventoryType ?? 'machinery',
     size_model: item?.size_model ?? '', size_ton: item?.size_ton ?? '', size_length: item?.size_length ?? '', quantity: item?.quantity ?? '',
@@ -47,6 +49,7 @@ const removeCertificate = (index) => {
     <AuthenticatedLayout>
         <PageHeader :title="item ? 'Edit Miri Equipment' : 'Register Miri Equipment'" :description="cargo ? 'Cargo dimensions, quantities and inspection certificates.' : 'Machinery details and equipment certificates.'" />
         <form class="space-y-6" @submit.prevent="submit">
+            <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
             <div v-if="Object.keys(form.errors).length" role="alert" class="rounded-xl bg-red-50 p-4 text-sm text-red-700"><p v-for="(error,key) in form.errors" :key="key">{{ error }}</p></div>
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">{{ cargo ? 'Cargo' : 'Machinery' }} classification</h2>

@@ -14,6 +14,7 @@ class SaveMiriRentalRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'company' => ['nullable', 'in:DESB,FTSB'],
             'category' => ['nullable', 'string', 'max:255'], 'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'], 'serial_tag_equipment_no' => ['nullable', 'string', 'max:255'], 'unit' => ['nullable', 'string', 'max:255'],
             'supplier' => ['nullable', 'string', 'max:255'], 'project_contract' => ['nullable', 'string', 'max:255'], 'current_location' => ['nullable', 'string', 'max:255'],

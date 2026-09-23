@@ -40,7 +40,9 @@ class MiriDashboardTest extends TestCase
                 ->where('summary.standby', 1)
                 ->where('summary.under_repair', 1)
                 ->where('summary.damaged', 0)
-                ->where('categories.0.category', 'MAJOR EQUIPMENT')
+                ->where('categories.0.category', 'Not recorded')
+                ->where('categories.0.total', 3)
+                ->has('categories.0.statuses', 3)
                 ->has('locations', 2)
                 ->has('recent', 3));
     }

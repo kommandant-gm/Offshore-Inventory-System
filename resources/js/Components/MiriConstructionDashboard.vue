@@ -1,14 +1,8 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { computed, reactive } from 'vue';
+import { computed, reactive, watch } from 'vue';
 const props = defineProps({ dashboard: Object, canEdit: Boolean });
-const pages = reactive({ categories: 1, locations: 1, sections: 1, statuses: 1 });
-const charts = [
-    { key: 'categories', title: 'Records by category', subtitle: 'REGISTER MIX', filter: 'category' },
-    { key: 'locations', title: 'Records by current location', subtitle: 'LOCATION OVERVIEW', filter: 'location' },
-    { key: 'sections', title: 'Records by section', subtitle: 'SECTION 1', filter: 'section_1' },
-    { key: 'statuses', title: 'Recorded statuses', subtitle: 'SOURCE DATA', filter: null },
-];
+const pages = reactive({ categories: 1, locations: 1 });
 const cards = computed(() => [
     { label: 'Total records', value: props.dashboard.summary.total, note: 'Source rows, not total units' },
     { label: 'Balance recorded', value: props.dashboard.summary.balance_recorded, note: 'Includes recorded zero balances' },
@@ -16,10 +10,32 @@ const cards = computed(() => [
     { label: 'Certificate dates', value: props.dashboard.summary.certificate_dates, note: 'Rows with a recorded due date' },
     { label: 'Needs review', value: props.dashboard.summary.review, note: 'Includes duplicate-tag records', filter: { quality: 'review' } },
 ]);
-const visible = key => props.dashboard[key].slice((pages[key] - 1) * 6, pages[key] * 6);
-const pageCount = key => Math.max(1, Math.ceil(props.dashboard[key].length / 6));
-const percent = value => props.dashboard.summary.total ? Math.round(Number(value) / props.dashboard.summary.total * 100) : 0;
 const number = value => Number(value).toLocaleString('en-GB', { maximumFractionDigits: 3 });
+const stockFilters = reactive({ category: '', location: '' });
+const stockCharts = [{ key: 'categories', title: 'Stock by category' }, { key: 'locations', title: 'Stock by current location' }];
+const stockRows = computed(() => {
+    const categories = new Map();
+    const locations = [];
+    for (const row of props.dashboard.stockGroups) {
+        const key = JSON.stringify([row.category, row.unit]);
+        const total = categories.get(key) ?? { category: row.category, unit: row.unit, records: 0, recorded: 0, stock: null, key };
+        total.records += row.records;
+        total.recorded += row.recorded;
+        if (row.stock !== null) total.stock = (total.stock ?? 0) + Number(row.stock);
+        categories.set(key, total);
+        if ((!stockFilters.category || row.category === stockFilters.category) && (!stockFilters.location || row.location === stockFilters.location)) {
+            locations.push({ ...row, key: JSON.stringify([row.category, row.location, row.unit]) });
+        }
+    }
+    return { categories: [...categories.values()], locations };
+});
+const stockVisible = key => stockRows.value[key].slice((pages[key] - 1) * 6, pages[key] * 6);
+const stockPageCount = key => Math.max(1, Math.ceil(stockRows.value[key].length / 6));
+watch(stockFilters, () => pages.locations = 1);
+watch(() => props.dashboard, () => {
+    Object.keys(pages).forEach(key => pages[key] = 1);
+    stockFilters.category = ''; stockFilters.location = '';
+});
 </script>
 
 <template>
@@ -47,26 +63,28 @@ const number = value => Number(value).toLocaleString('en-GB', { maximumFractionD
         </div>
         <div v-if="!dashboard.summary.total" class="rounded-2xl border border-dashed border-[#d8e7d4] bg-white p-8 text-center text-slate-600">No Construction records yet. Queued imports appear here only after processing completes.</div>
         <div class="grid gap-5 lg:grid-cols-2">
-            <section v-for="chart in charts" :key="chart.key" class="flex flex-col rounded-3xl border border-[#d8e7d4] bg-white p-6">
-                <p class="text-xs font-bold tracking-widest text-indigo-500">{{ chart.subtitle }}</p>
-                <h2 class="mt-2 text-lg font-bold text-[#234222]">{{ chart.title }}</h2>
-                <p v-if="chart.key === 'statuses'" class="mt-2 text-xs text-slate-500">Missing statuses remain “Not recorded”; no operational status is assumed.</p>
-                <div class="my-5 flex-1 space-y-5">
-                    <div v-for="row in visible(chart.key)" :key="row.label">
-                        <div class="mb-2 flex items-start justify-between gap-4 text-sm">
-                            <Link v-if="chart.filter && row.label !== 'Not recorded'" :href="route('construction.index', { [chart.filter]: row.label })" class="break-words font-semibold text-[#486746] hover:underline">{{ row.label }}</Link>
-                            <span v-else class="break-words font-semibold text-[#486746]">{{ row.label }}</span>
-                            <span class="shrink-0 font-semibold text-[#234222]">{{ number(row.total) }} <small class="font-normal text-slate-500">({{ percent(row.total) }}%)</small></span>
-                        </div>
-                        <div class="h-2.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-gradient-to-r from-blue-600 to-violet-500" :style="{ width: percent(row.total) + '%' }"></div></div>
-                    </div>
-                    <p v-if="!dashboard[chart.key].length" class="text-sm text-slate-500">No records available.</p>
+            <section v-for="chart in stockCharts" :key="chart.key" class="flex flex-col rounded-3xl border border-[#d8e7d4] bg-white p-6">
+                <h2 class="text-lg font-bold text-[#234222]">{{ chart.title }}</h2>
+                <p class="mt-2 text-xs text-slate-500">Available to issue equals recorded stock balance. COG reservations are not deducted. Quantities are grouped by unit.</p>
+                <div v-if="chart.key === 'locations'" class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <label class="text-sm text-slate-600">Category<select v-model="stockFilters.category" class="mt-1 w-full rounded-xl border-slate-200"><option value="">All categories</option><option v-for="row in dashboard.categories" :key="row.label" :value="row.label">{{ row.label }}</option></select></label>
+                    <label class="text-sm text-slate-600">Location<select v-model="stockFilters.location" class="mt-1 w-full rounded-xl border-slate-200"><option value="">All locations</option><option v-for="row in dashboard.locations" :key="row.label" :value="row.label">{{ row.label }}</option></select></label>
                 </div>
-                <nav v-if="pageCount(chart.key) > 1" class="flex items-center justify-between border-t pt-4 text-sm" :aria-label="chart.title + ' pages'">
-                    <button type="button" class="rounded-lg border px-3 py-2 disabled:opacity-40" :disabled="pages[chart.key] === 1" @click="pages[chart.key]--">Previous</button>
-                    <span>{{ pages[chart.key] }} / {{ pageCount(chart.key) }}</span>
-                    <button type="button" class="rounded-lg border px-3 py-2 disabled:opacity-40" :disabled="pages[chart.key] >= pageCount(chart.key)" @click="pages[chart.key]++">Next</button>
-                </nav>
+                <div class="my-5 flex-1 space-y-4">
+                    <div v-for="row in stockVisible(chart.key)" :key="row.key" class="rounded-xl border border-slate-100 p-3">
+                        <p class="break-words font-semibold text-[#486746]">{{ chart.key === 'locations' ? row.location : row.category }}</p>
+                        <p v-if="chart.key === 'locations'" class="mt-1 text-xs text-slate-500">{{ row.category }}</p>
+                        <p class="mt-1 text-xs text-slate-500">Unit: {{ row.unit || 'Not recorded' }}</p>
+                        <dl class="mt-3 grid grid-cols-2 gap-3">
+                            <div><dt class="text-xs text-slate-500">Stock Qty</dt><dd class="mt-1 font-bold text-blue-700">{{ row.stock === null ? 'Not recorded' : number(row.stock) }}</dd></div>
+                            <div><dt class="text-xs text-slate-500">Available to issue</dt><dd class="mt-1 font-bold text-green-700">{{ row.stock === null ? 'Not recorded' : number(row.stock) }}</dd></div>
+                        </dl>
+                        <p v-if="!row.unit" class="mt-2 text-xs text-amber-800">Quantity total unavailable until the unit is recorded.</p>
+                        <p v-else-if="row.recorded < row.records" class="mt-2 text-xs text-amber-800">{{ row.records - row.recorded }} of {{ row.records }} records have no balance. Figures include recorded balances only.</p>
+                    </div>
+                    <p v-if="!stockRows[chart.key].length" class="text-sm text-slate-500">No records match this selection.</p>
+                </div>
+                <nav v-if="stockPageCount(chart.key) > 1" class="flex items-center justify-between gap-3 border-t pt-4 text-sm" :aria-label="chart.title + ' pages'"><button type="button" class="btn btn-sm" :disabled="pages[chart.key] === 1" @click="pages[chart.key]--">Previous</button><span>{{ pages[chart.key] }} / {{ stockPageCount(chart.key) }}</span><button type="button" class="btn btn-sm" :disabled="pages[chart.key] >= stockPageCount(chart.key)" @click="pages[chart.key]++">Next</button></nav>
             </section>
         </div>
         <section class="rounded-3xl border border-[#d8e7d4] bg-white p-6">

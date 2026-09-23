@@ -2,7 +2,7 @@
 
 ## Behaviour
 
-A separate register at /miri-paint, available from the Miri sidebar to users with assets read/edit access. Existing Major Equipment, Construction, Rentals, KL and Kemaman records are not modified. A Paint tab on the Miri dashboard provides record counts, opening/closing stock and price summaries, date coverage, and paginated paint-type/location charts. Automatic stock movement posting and a new attachment system are not included.
+A separate register at /miri-paint, available from the Miri sidebar to users with assets read/edit access. Existing Major Equipment, Construction, Rentals, KL and Kemaman records are not modified. A Paint tab on the Miri dashboard provides record counts, opening/closing stock and price summaries, date coverage, and paginated paint-type/location charts. New Paint COGs post stock movements; monthly closing quantities carry forward into the next opening month. A new attachment system is not included.
 
 The original Paint CSV uses three header records and 32 meaningful columns. The importer validates the main grouped headers, Opening/Closing Stock subheaders and individual columns. Empty trailing columns and entirely empty rows are skipped; unexpected populated columns are rejected. Reference text, multiline document details, category spelling, blanks and zero values are preserved.
 
@@ -66,3 +66,26 @@ No additional database migration or import worker change is needed for this dash
 php artisan test --compact tests/Feature/MiriPaintTest.php
 
 The supplied-file test imports only into the isolated test database and skips when C:/Users/User/Desktop/Paint.csv is unavailable. Synthetic tests cover all field groups, date parsing and confirmation, expiry exclusions, permissions, repeated-batch scope, transactional failure and same-file protection.
+
+
+## Paint stock ledger (September 2026)
+
+Deploy the ledger migration before serving the updated application:
+
+```sh
+php artisan migrate --path=database/migrations/2026_09_23_000100_add_paint_stock_ledger.php --force
+npm run build
+php artisan paint:rollover
+```
+
+The migration establishes the current Malaysia calendar month as the baseline for existing Paint rows. It does not replay old COG notes or infer earlier monthly balances. CSV imports create new baseline rows; historical issue/receipt fields are never replayed.
+
+New Issue out, Transfer and Return to supplier Paint lines deduct closing stock at draft creation, not signature. Received backload restores only quantities supported by the new ledger's net outbound entries for that same record and unit. Outbound draft cancellation reverses only an actual new-ledger posting. Existing equipment allocation rules and other registers remain unchanged. Transfers deduct the selected source record; they do not create destination stock automatically.
+
+CAN and LTR are independent balances. There is no pack-size conversion. Unknown stock cannot be issued; an overdraw fails the whole COG transaction. Branch and item locks serialize stock changes. Each COG line/action/unit posts once. Backdated document dates do not rewrite closed periods: stock movements use the current posting month in Asia/Kuala_Lumpur.
+
+`paint:rollover` is safe to repeat. It archives each closed month's opening and closing CAN/LTR balances and copies closing quantities into the next opening month, preserving nulls and zero. It catches up every missed month. Laravel's scheduler should run every minute (`php artisan schedule:run`); the command is scheduled daily at 00:05 Malaysia time. Opening Paint pages or posting stock also catches up overdue periods. Without the scheduler, rollover is deferred until that next access. Original prices remain historical values and are not recalculated or carried forward.
+
+Paint View includes immutable monthly snapshots and paginated stock movement history. Editors can record receipts, legacy backloads and corrections using the closing-stock fields with a review note. Stock changes require the form's current stock token, preventing an older edit form from overwriting COG deductions or a month rollover. Metadata-only edits do not post stock. Opening-balance corrections are audited by the existing record audit; closing corrections also appear in the stock ledger.
+
+Verify with `php -d extension=pdo_sqlite -d memory_limit=512M vendor/phpunit/phpunit/phpunit --filter="PaintStockLedgerTest|MiriPaintTest|MiriPaintDashboardTest|MiriCogIssueNoteTest"` on the Windows development environment. These tests use an isolated in-memory database.
