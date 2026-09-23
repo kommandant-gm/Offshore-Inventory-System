@@ -5,6 +5,35 @@ use Illuminate\Database\Eloquent\Builder;
 
 class PaintStockSummary
 {
+    public function closingByLocation(Builder $query): array
+    {
+        $classification = app(PaintQuantitySummary::class);
+        $locations = [];
+        foreach (['BTU', 'LBN'] as $location) {
+            $locations[$location] = ['label' => $location, 'paints' => []];
+            foreach (['Hempel Paint', 'IP Paint'] as $paint) {
+                $locations[$location]['paints'][$paint] = ['label' => $paint, 'litres' => null, 'records' => 0, 'recorded' => 0];
+            }
+        }
+        $excluded = 0;
+        $groups = (clone $query)->reorder()->select('section_2', 'current_location')
+            ->selectRaw('COUNT(*) as records, COUNT(balance_litres) as recorded, SUM(balance_litres) as litres')
+            ->groupBy('section_2', 'current_location')->toBase()->get();
+        foreach ($groups as $group) {
+            $location = $classification->location($group->current_location);
+            $paint = $classification->brand($group->section_2);
+            if (! isset($locations[$location]['paints'][$paint])) { $excluded += (int) $group->records; continue; }
+            $row = &$locations[$location]['paints'][$paint];
+            $row['records'] += (int) $group->records;
+            $row['recorded'] += (int) $group->recorded;
+            if ($group->litres !== null) $row['litres'] = round(($row['litres'] ?? 0) + (float) $group->litres, 3);
+            unset($row);
+        }
+        foreach ($locations as &$location) $location['paints'] = array_values($location['paints']);
+        unset($location);
+        return ['locations' => array_values($locations), 'excluded_records' => $excluded];
+    }
+
     public function data(Builder $query): array
     {
         $stockQuery = (clone $query)->reorder()->select([])->selectRaw('COUNT(*) as records');

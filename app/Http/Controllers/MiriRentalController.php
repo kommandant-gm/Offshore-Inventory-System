@@ -18,7 +18,7 @@ class MiriRentalController extends Controller
 {
     private const STATUSES = ['On Hire', 'Issued', 'Received Backload', 'Off Hire', 'Returned to Supplier', 'Overdue'];
 
-    public function index(Request $request): Response
+    public function index(Request $request): Response|\Illuminate\Http\JsonResponse
     {
         $this->ensureMiri($request); abort_unless($request->user()?->canRead('assets'), 403);
         $filters = $request->validate(['company' => ['nullable', 'in:DESB,FTSB,unassigned'], 'search' => ['nullable', 'string', 'max:100'], 'category' => ['nullable', 'string', 'max:255'], 'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'], 'location' => ['nullable', 'string', 'max:255'], 'supplier' => ['nullable', 'string', 'max:255'], 'status' => ['nullable', 'string', 'in:'.implode(',', self::STATUSES)], 'due_status' => ['nullable', 'string', 'in:overdue,due_7,due_30,later,no_date'], 'missing_details' => ['nullable', 'in:missing']]);
@@ -40,6 +40,11 @@ class MiriRentalController extends Controller
         $active = (clone $all)->whereNotIn('status', ['Received Backload', 'Off Hire', 'Returned to Supplier']);
         $options = fn (string $column) => $filteredQuery($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")->distinct()->orderBy($column)->pluck($column)->values();
         $dueOptions = collect(['overdue', 'due_7', 'due_30', 'later', 'no_date'])->filter(fn ($due) => $filteredQuery(null, $due)->exists())->values();
+        if ($request->boolean('filter_options')) return response()->json([
+            'categoryOptions' => $options('category'), 'section1Options' => $options('section_1'), 'section2Options' => $options('section_2'),
+            'locationOptions' => $options('current_location'), 'supplierOptions' => $options('supplier'),
+            'statusOptions' => $options('status')->intersect(self::STATUSES)->values(), 'dueOptions' => $dueOptions,
+        ]);
         return Inertia::render('MiriRental/Index', ['rentals' => $query->paginate(25)->withQueryString(), 'summary' => ['total' => (clone $all)->count(), 'on_hire' => (clone $all)->where('status', 'On Hire')->count(), 'issued' => (clone $all)->where('status', 'Issued')->count(), 'backload' => (clone $all)->where('status', 'Received Backload')->count(), 'overdue' => (clone $active)->where(fn ($q) => $q->whereDate('rental_due_date', '<', $today)->orWhere('status', 'Overdue'))->count(), 'due_7' => (clone $active)->whereBetween('rental_due_date', [$today, $today->copy()->addDays(7)])->count(), 'due_30' => (clone $active)->whereBetween('rental_due_date', [$today->copy()->addDays(8), $today->copy()->addDays(30)])->count(), 'no_due_date' => (clone $active)->whereNull('rental_due_date')->count()], 'filters' => array_merge(['company' => '', 'search' => '', 'category' => '', 'section_1' => '', 'section_2' => '', 'location' => '', 'supplier' => '', 'status' => '', 'due_status' => '', 'missing_details' => ''], $filters), 'categoryOptions' => $options('category'), 'section1Options' => $options('section_1'), 'section2Options' => $options('section_2'), 'locationOptions' => $options('current_location'), 'supplierOptions' => $options('supplier'), 'statusOptions' => $options('status')->intersect(self::STATUSES)->values(), 'dueOptions' => $dueOptions, 'canEdit' => $request->user()->canEdit('assets')]);
     }
 

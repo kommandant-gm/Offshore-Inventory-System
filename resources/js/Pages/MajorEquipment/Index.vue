@@ -1,4 +1,7 @@
 <script setup>
+import { useLiveFilterOptions } from '@/Composables/useLiveFilterOptions';
+import LiveFilterNotice from '@/Components/LiveFilterNotice.vue';
+import DeleteRegisterItem from '@/Components/DeleteRegisterItem.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import BulkCompanyAssignment from '@/Components/BulkCompanyAssignment.vue';
 import { useCompanySelection } from '@/Composables/useCompanySelection';
@@ -17,14 +20,18 @@ watch(() => props.filters, value => Object.assign(form, value));
 const cargo = computed(() => props.filters.inventory_type === 'cargo');
 const typeLabel = computed(() => cargo.value ? 'Cargo' : 'Machinery');
 const applyFilters = () => router.get(route('major-equipment.index'), form, { preserveState: true, preserveScroll: true, replace: true });
-const clearFilters = () => { Object.keys(form).filter(k => k !== 'inventory_type').forEach(k => form[k] = ''); applyFilters(); };
-const qualityFilter = (value) => { form.quality = form.quality === value ? '' : value; applyFilters(); };
+const clearFilters = () => { Object.keys(form).filter(k => k !== 'inventory_type').forEach(k => form[k] = ''); };
+const qualityFilter = (value) => { form.quality = form.quality === value ? '' : value; };
 const missing = (item) => ['tag_no', 'description', 'current_location'].filter(key => !String(item[key] ?? '').trim());
+const { options: liveOptions, loading: optionsLoading, error: optionsError, retry: retryOptions } = useLiveFilterOptions(
+    () => route('major-equipment.index'), () => ({ ...form }),
+    () => ({ descriptionOptions: props.descriptionOptions, categoryOptions: props.categoryOptions, section1Options: props.section1Options, section2Options: props.section2Options, locationOptions: props.locationOptions, issueOutLocationOptions: props.issueOutLocationOptions, statusOptions: props.statusOptions, qualityCounts: props.summary }),
+);
 const selectors = computed(() => [
-    ...(cargo.value ? [['description', 'Description', props.descriptionOptions]] : []),
-    ['category', 'Category', props.categoryOptions], ['section_1', 'Section', props.section1Options],
-    ['section_2', 'Subcategory', props.section2Options], ['location', 'Current location', props.locationOptions],
-    ['issue_out_location', 'Issue-out location', props.issueOutLocationOptions], ['status', 'Status', props.statusOptions],
+    ...(cargo.value ? [['description', 'Description', liveOptions.value.descriptionOptions]] : []),
+    ['category', 'Category', liveOptions.value.categoryOptions], ['section_1', 'Section', liveOptions.value.section1Options],
+    ['section_2', 'Subcategory', liveOptions.value.section2Options], ['location', 'Current location', liveOptions.value.locationOptions],
+    ['issue_out_location', 'Issue-out location', liveOptions.value.issueOutLocationOptions], ['status', 'Status', liveOptions.value.statusOptions],
 ]);
 const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.data);
 </script>
@@ -62,16 +69,16 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                 <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="font-bold text-[#234222]">Filter {{ typeLabel }}</h2>
                     <div class="flex gap-2"><button type="button" class="btn btn-sm" @click="clearFilters">Clear filters</button><button class="btn btn-sm bg-[#4f9f4a] text-white">Apply filters</button></div>
                 </div>
-                <p class="mt-3 text-xs text-slate-500">Click Apply filters to update results and available options. Each dropdown reflects the search and other selected filters.</p>
+                <LiveFilterNotice :loading="optionsLoading" :error="optionsError" @retry="retryOptions" class="mt-3" />
                 <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <CompanyField v-model="form.company" filter /><label class="sm:col-span-2 lg:col-span-3"><span class="filter-label">Search</span><input v-model.trim="form.search" class="filter-input" type="search" placeholder="Tag, description, model, dimensions, location or COG" /></label>
                     <label v-for="[key,label,options] in selectors" :key="key"><span class="filter-label">{{ label }}</span><CustomSelect v-model="form[key]" class="filter-input"><option value="">All</option><option v-if="form[key] && !options.includes(form[key])" :value="form[key]" disabled>{{ form[key] }} (no matching records)</option><option v-for="option in options" :key="option" :value="option">{{ option }}</option></CustomSelect></label>
                 </div>
                 <div class="mt-5 border-t border-[#edf3eb] pt-4">
                     <h3 class="filter-label">Data quality</h3>
-                    <p class="mb-3 text-xs text-slate-500">Issue counts follow the applied search and dropdown filters. Duplicate tags are checked across Machinery and Cargo in Miri.</p>
+                    <p class="mb-3 text-xs text-slate-500">Issue counts follow the selections in this filter card. Duplicate tags are checked across Machinery and Cargo in Miri.</p>
                     <div class="flex flex-wrap gap-2">
-                        <button v-for="[key,label,count] in [['duplicates','Duplicate tags',summary.duplicates],['missing','Missing details',summary.missing_details],['warnings','Import warnings',summary.warnings]]"
+                        <button v-for="[key,label,count] in [['duplicates','Duplicate tags',liveOptions.qualityCounts.duplicates],['missing','Missing details',liveOptions.qualityCounts.missing_details],['warnings','Import warnings',liveOptions.qualityCounts.warnings]]"
                             :key="key" type="button" class="rounded-xl border px-4 py-2 text-sm font-semibold"
                             :aria-pressed="form.quality === key" :class="form.quality === key ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-[#d8e7d4] text-[#60745d]'"
                             @click="qualityFilter(key)">{{ label }} <span class="ml-2">{{ count }}</span></button>
@@ -102,7 +109,7 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                                 <td>{{ item.category }}<p class="text-xs text-slate-500">{{ item.section_1 || '-' }} / {{ item.section_2 || '-' }}</p></td>
                                 <template v-if="cargo"><td>{{ item.size_model || '-' }}</td><td>{{ item.size_ton || '-' }}</td></template>
                                 <td>{{ item.current_location || '-' }}</td><td>{{ item.issue_out_location || '-' }}</td><td>{{ item.status || 'Not recorded' }}</td>
-                                <td><div class="flex gap-2"><Link class="btn btn-xs" :href="route('major-equipment.show', item.id)">View</Link><Link v-if="canEdit" class="btn btn-xs" :href="route('major-equipment.edit', item.id)">Edit</Link></div></td>
+                                <td><div class="flex gap-2"><Link class="btn btn-xs" :href="route('major-equipment.show', item.id)">View</Link><Link v-if="canEdit" class="btn btn-xs" :href="route('major-equipment.edit', item.id)">Edit</Link><DeleteRegisterItem v-if="canEdit" register="major" :item="item" @deleted="id => selectedIds = selectedIds.filter(selected => selected !== id)" /></div></td>
                             </tr>
                             <tr v-if="!equipment.data.length"><td :colspan="(cargo ? 10 : 8) + (canEdit ? 1 : 0)" class="py-12 text-center text-slate-500">No {{ typeLabel }} records match these filters.</td></tr>
                         </tbody>

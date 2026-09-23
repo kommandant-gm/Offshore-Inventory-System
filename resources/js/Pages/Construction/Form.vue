@@ -1,18 +1,38 @@
 <script setup>
 import CompanyField from '@/Components/CompanyField.vue';
+import CustomSelect from '@/Components/CustomSelect.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
-const props = defineProps({ record: Object, fields: Array, attachmentSlots: Object });
-const groups = computed(() => [...new Set(props.fields.map(field => field.group))]);
+import { computed, reactive } from 'vue';
+const props = defineProps({ record: Object, fields: Array, attachmentSlots: Object, classificationOptions: { type: Array, default: () => [] } });
+const visibleFields = computed(() => props.fields.filter(field => !['unit_price', 'closing_value'].includes(field.key)));
+const groups = computed(() => [...new Set(visibleFields.value.map(field => field.group))]);
+const classificationKeys = ['category', 'section_1', 'section_2'];
+const customEntry = reactive({ category: false, section_1: false, section_2: false });
 const form = useForm({
     company: props.record?.company ?? '',
-    ...Object.fromEntries(props.fields.map(field => [field.key, props.record?.[field.key] ?? ''])),
+    ...Object.fromEntries(visibleFields.value.map(field => [field.key, props.record?.[field.key] ?? ''])),
     grouping_reviewed: props.record?.grouping_reviewed || false,
     review_note: props.record?.review_note || '',
     uploads: Object.fromEntries(Object.keys(props.attachmentSlots).map(key => [key, null])),
     remove_attachments: [],
 });
+const previousClassification = Object.fromEntries(classificationKeys.map(key => [key, form[key]]));
+function optionsFor(key) {
+    const rows = props.classificationOptions.filter(row =>
+        (key === 'category' || !form.category || row.category === form.category)
+        && (key !== 'section_2' || !form.section_1 || row.section_1 === form.section_1));
+    return [...new Set([...rows.map(row => row[key]), form[key]].filter(value => value != null && String(value).trim() !== ''))].sort((a, b) => a.localeCompare(b));
+}
+function classificationChanged(key) {
+    if (previousClassification[key] === form[key]) return;
+    previousClassification[key] = form[key];
+    for (const child of classificationKeys.slice(classificationKeys.indexOf(key) + 1)) {
+        form[child] = '';
+        previousClassification[child] = '';
+        customEntry[child] = false;
+    }
+}
 const slotsFor = group => group === 'Certificate' ? ['certificate'] : group === 'Certification' ? ['inspection', 'conformity'] : [];
 function selectFile(slot, event) {
     form.uploads[slot] = event.target.files[0] || null;
@@ -28,21 +48,29 @@ function submit() {
     <Head :title="record ? 'Edit Construction record' : 'Register Construction item'" />
     <AuthenticatedLayout>
         <form class="space-y-5" @submit.prevent="submit">
-            <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
+            <div class="rounded-2xl border bg-white p-5"><p v-if="record?.stock_initialized_at" class="text-sm">Company: <strong>{{ record.company || 'Not assigned' }}</strong></p><CompanyField v-else v-model="form.company" :error="form.errors.company" /></div>
             <header class="rounded-3xl border border-[#d8e7d4] bg-white p-6">
                 <img src="/images/dayang-logo.png" alt="Dayang" class="mb-4 h-14 w-auto object-contain" />
                 <h1 class="text-2xl font-bold text-[#234222]">{{ record ? 'Edit record #' + record.id : 'Register item' }}</h1>
                 <p class="mt-2 text-sm text-slate-600">Construction TEC, Garnet &amp; PPE Register · Miri</p>
-                <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">These are recorded balances and historical references—not new stock transactions. Changing quantities IN/OUT does not automatically recalculate stock or value.</p>
+                <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">These are recorded balances and historical references—not new stock transactions. For new receipts and write-offs, use Confirm stock movement on the item details page. Use Internal Issue Note for issues, backloads and transfers.</p>
             </header>
             <div v-if="Object.keys(form.errors).length" role="alert" class="rounded-xl bg-red-50 p-4 text-sm text-red-700"><p v-for="(message, key) in form.errors" :key="key">{{ message }}</p></div>
             <section v-for="group in groups" :key="group" class="rounded-3xl border border-[#d8e7d4] bg-white p-6">
                 <h2 class="text-lg font-bold text-[#234222]">{{ group }}</h2>
                 <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <label v-for="field in fields.filter(field => field.group === group)" :key="field.key">
+                    <label v-for="field in visibleFields.filter(field => field.group === group)" :key="field.key">
                         <span class="text-sm font-semibold">{{ field.label }}{{ field.key === 'category' ? ' *' : '' }}</span>
-                        <textarea v-if="['textarea','private'].includes(field.type)" v-model="form[field.key]" rows="3" :maxlength="10000" class="textarea textarea-bordered mt-2 w-full" />
-                        <input v-else v-model="form[field.key]" :type="field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'" :step="field.type === 'number' ? (['unit_price','closing_value'].includes(field.key) ? '0.01' : '0.001') : undefined" :min="field.type === 'number' ? 0 : undefined" :maxlength="field.type === 'text' ? 255 : undefined" class="input input-bordered mt-2 w-full" :required="field.key === 'category'" />
+                        <template v-if="classificationKeys.includes(field.key)">
+                            <CustomSelect v-if="!customEntry[field.key]" v-model="form[field.key]" class="mt-2 w-full" :aria-label="field.label" :aria-required="field.key === 'category'" @change="classificationChanged(field.key)">
+                                <option value="">{{ field.key === 'category' ? 'Select category' : 'Not recorded' }}</option>
+                                <option v-for="option in optionsFor(field.key)" :key="option" :value="option">{{ option }}</option>
+                            </CustomSelect>
+                            <input v-else v-model="form[field.key]" :readonly="!!record?.stock_initialized_at && ['stock_balance', 'unit', 'current_location'].includes(field.key)" class="input input-bordered mt-2 w-full" maxlength="255" :required="field.key === 'category'" :aria-label="field.label" @input="classificationChanged(field.key)" />
+                            <button type="button" class="mt-2 text-xs font-semibold text-green-800 underline" @click.prevent="customEntry[field.key] = !customEntry[field.key]">{{ customEntry[field.key] ? 'Choose existing value' : 'Enter a new value' }}</button>
+                        </template>
+                        <textarea v-else-if="['textarea','private'].includes(field.type)" v-model="form[field.key]" rows="3" :maxlength="10000" class="textarea textarea-bordered mt-2 w-full" />
+                        <input v-else v-model="form[field.key]" :readonly="!!record?.stock_initialized_at && ['stock_balance', 'unit', 'current_location'].includes(field.key)" :type="field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'" :step="field.type === 'number' ? (['unit_price','closing_value'].includes(field.key) ? '0.01' : '0.001') : undefined" :min="field.type === 'number' ? 0 : undefined" :maxlength="field.type === 'text' ? 255 : undefined" class="input input-bordered mt-2 w-full" :required="field.key === 'category'" />
                         <p v-if="field.type === 'private'" class="mt-1 text-xs text-slate-500">Restricted to Miri inventory editors. Encrypted at rest; excluded from general lists and audit values.</p>
                         <p v-if="field.key === 'certificate_due_date'" class="mt-1 text-xs text-slate-500">Imported as the certificate due date. Confirm its meaning with the source owner before relying on expiry alerts.</p>
                     </label>

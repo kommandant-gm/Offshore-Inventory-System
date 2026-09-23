@@ -50,3 +50,11 @@ Staff may cancel an unfulfilled, unsigned outbound draft with a mandatory reason
 ## September PDF amendments
 
 General PDF text is 10 pt, with 11 pt quantity totals. Company heading and issue-note title retain their sizes. Table widths (percent) are Item 4, QTY 5, Unit 5, Description 30, Size/Model 11, Tag 14, Serial 11, MR 12, Remarks 8. Quantity and unit values are centred. All three signatory boxes have a signature line. Larger text uses ten continuation rows per page with narrower character wrapping, including long quantities; the web preview uses the same column proportions and document rows. Legacy MIRI-COG references display as DESB/YY/NNN as well; PDF filenames safely replace slashes.
+
+## Editing Internal Issue Notes
+
+Editors can use Edit beside View in the register or on an unsigned, unconfirmed draft's detail page. Document dates, recipient/department/location information, signatory names, references, remarks and item descriptions can be corrected. Saves retain the note number and line identities, record before/after audit details and do not repost stock or reservations.
+
+Movement type, inventory selections, quantities, units, transfer target and source/batch snapshots remain fixed because other workflows can already reference or post them. Cancel an eligible unfulfilled draft and create a replacement to change those fields. Signed, stock-confirmed and cancelled documents are locked; editing does not clear signatures. Stale forms are rejected if the document or its lines changed. Permissions and branch scope are checked again on save.
+
+Validation: MiriCogEditingTest covers edits with posted paint stock, stale submissions, locked states, protected fields, permissions and branch isolation. MiriCogIssueNoteTest covers existing document/PDF flows.

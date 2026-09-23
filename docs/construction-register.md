@@ -32,3 +32,24 @@ Personnel/IC details and original CSV snapshots are encrypted in the database, v
 6. Sign in as a Miri editor, open the new sidebar register, preview Construction.csv and review the counts/warnings before importing. Check completion, source balances, duplicates and attachment access. Read-only staff must not be able to edit or see personnel/IC values.
 
 Automated CSV verification uses the isolated test database, not production. No production import is performed by deploying the code. Test with php artisan test --compact tests/Feature/MiriConstructionTest.php; the supplied-file test skips when the Desktop CSV is unavailable.
+
+## Confirmed stock workflow
+
+TEC, Garnet & PPE now has a separate stock ledger. Deploy `2026_09_24_000100_add_construction_stock_ledger.php` after the existing Miri Construction, COG, extended COG and company migrations. This migration does not replay old COGs, infer opening balances, or change imported quantities. The development database currently has those prerequisite tables pending; do not run this migration alone against a database missing them.
+
+On each item details page, an editor verifies the remaining opening quantity, unit and storage location with a reason. A zero opening quantity is valid. An old receipt of 200 TON is not proof that 200 TON remains today. Each existing/imported item requires this one-time baseline before new stock transactions.
+
+After initialization:
+
+- Receive new stock increases the balance; write-off decreases it. Reviewed correction sets the verified current balance and records the difference, reason and previous balance.
+- New Construction COGs remain drafts without posting stock. Confirm stock movement posts every Construction line atomically. Receiver signing is separate and neither required for stock confirmation nor sufficient to post it. An unsigned confirmed note can still be signed.
+- Issue out and Return to supplier deduct. Received backload adds only up to the confirmed outstanding Issue out quantity on that source record; older returns require a documented correction.
+- Transfer requires a destination Construction record in the same branch and company, with matching classification, description, model, identifiers and unit, at a different location. Register and verify that destination first (zero is valid). The COG To location must match it. Confirmation debits the source and credits the destination together.
+- Confirmed notes cannot be cancelled as unfulfilled drafts. Use a real backload, reverse transfer or reviewed correction to correct stock, retaining the original history. Pure Construction backload drafts can be cancelled without changing stock.
+- Unit, stock location, company and stock balance cannot be changed through the ordinary edit form once tracking is active. History fields stay as imported/reference information and do not post movements. Changing item description does not alter stock.
+
+The ledger records the actor, posting timestamp, quantity, before/after balances, unit, location, COG/reference and reason. Confirmations are serialized per branch and checked against live balances. COG confirmation is idempotent; manual actions use unique request keys and stale-balance tokens. Overdraws, mixed units, unverified baselines and mismatched transfers fail without partial postings. History is paginated on the item details page. Dashboards and registers read the updated stock balance automatically.
+
+This workflow applies to Construction only. Paint retains its existing posting behavior; equipment reservations retain theirs. A mixed COG explicitly confirms its Construction lines without reposting other registers.
+
+Validation: `php -d extension=pdo_sqlite -d memory_limit=512M vendor/phpunit/phpunit/phpunit --filter="ConstructionStockLedgerTest|MiriConstructionTest|MiriCogIssueNoteTest|PaintStockLedgerTest"` uses the isolated test database. Run `npm run build` for the production frontend.

@@ -19,6 +19,16 @@ class ConstructionRecordService
             $item = DB::transaction(function () use ($item, $data, $branchId, $user, $request, &$newFiles, &$obsoleteFiles) {
                 $exists = $item->exists;
                 if ($exists) $item = MiriConstructionItem::whereKey($item->id)->where('branch_id', $branchId)->lockForUpdate()->firstOrFail();
+                if ($item->stock_initialized_at) {
+                    foreach (['stock_balance', 'unit', 'current_location', 'company'] as $field) {
+                        if (! array_key_exists($field, $data)) continue;
+                        $same = $field === 'stock_balance'
+                            ? ($data[$field] !== null && (float) $data[$field] === (float) $item->$field)
+                            : trim((string) $data[$field]) === trim((string) $item->$field);
+                        if (! $same) throw ValidationException::withMessages([$field => 'Stock tracking is active. Use a confirmed stock movement or correction; the unit, company and stock location are fixed.']);
+                        unset($data[$field]);
+                    }
+                }
                 $before = $item->toArray();
                 $personnelBefore = $item->personnel_details;
                 $item->fill(collect($data)->only([...array_column(ConstructionFields::FIELDS, 'key'), 'company', 'grouping_reviewed', 'review_note'])->all());

@@ -31,6 +31,27 @@ class MiriConstructionTest extends TestCase
         return $user;
     }
 
+    public function test_form_classification_choices_are_branch_scoped_and_edit_preserves_hidden_prices(): void
+    {
+        $this->staff();
+        $branch = Branch::where('code', 'MIRI')->value('id');
+        $item = MiriConstructionItem::create(['branch_id' => $branch, 'category' => 'PPE', 'section_1' => 'CONSUMABLE',
+            'section_2' => 'MASK', 'unit_price' => 3.40, 'closing_value' => 999.60]);
+        MiriConstructionItem::create(['branch_id' => $branch, 'category' => 'PPE', 'section_1' => 'CONSUMABLE', 'section_2' => 'MASK']);
+        MiriConstructionItem::create(['branch_id' => Branch::where('code', 'KL-IT')->value('id'), 'category' => 'PRIVATE']);
+        foreach ([route('construction.create'), route('construction.edit', $item)] as $url) {
+            $this->get($url)->assertOk()->assertInertia(fn (Assert $p) => $p
+                ->has('classificationOptions', 1)->where('classificationOptions.0.category', 'PPE')
+                ->where('classificationOptions.0.section_1', 'CONSUMABLE')->where('classificationOptions.0.section_2', 'MASK'));
+        }
+        $this->patch(route('construction.update', $item), ['category' => 'PPE', 'section_1' => 'CONSUMABLE', 'section_2' => 'RESPIRATOR'])
+            ->assertSessionHasNoErrors()->assertRedirect();
+        $item->refresh();
+        $this->assertSame('RESPIRATOR', $item->section_2);
+        $this->assertEquals(3.40, $item->unit_price);
+        $this->assertEquals(999.60, $item->closing_value);
+    }
+
     private function csv(array $changes = [], int $copies = 1): UploadedFile
     {
         $top = array_fill(0, 355, '');

@@ -1,4 +1,7 @@
 <script setup>
+import { useLiveFilterOptions } from '@/Composables/useLiveFilterOptions';
+import LiveFilterNotice from '@/Components/LiveFilterNotice.vue';
+import DeleteRegisterItem from '@/Components/DeleteRegisterItem.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import BulkCompanyAssignment from '@/Components/BulkCompanyAssignment.vue';
@@ -6,11 +9,15 @@ import { useCompanySelection } from '@/Composables/useCompanySelection';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { reactive, watch } from 'vue';
+const displayValue = value => value == null || String(value).trim() === '' ? '-' : value;
 const props = defineProps({ records: Object, summary: Object, filters: Object, options: Object, qualityOptions: Array, canEdit: Boolean });
 const filters = reactive(Object.fromEntries(['company', 'search', 'category', 'section_1', 'section_2', 'location', 'quality'].map(key => [key, props.filters[key] || ''])));
 watch(() => props.filters, value => Object.keys(filters).forEach(key => filters[key] = value[key] || ''));
+const { options: liveOptions, loading: optionsLoading, error: optionsError, retry: retryOptions } = useLiveFilterOptions(
+    () => route('construction.index'), () => ({ ...filters }), () => ({ options: props.options, qualityOptions: props.qualityOptions }),
+);
 const apply = () => router.get(route('construction.index'), filters, { preserveState: true, preserveScroll: true });
-const clear = () => { Object.keys(filters).forEach(key => filters[key] = ''); apply(); };
+const clear = () => { Object.keys(filters).forEach(key => filters[key] = ''); };
 const { selectedIds, allSelected } = useCompanySelection(() => props.records.data);
 </script>
 
@@ -33,11 +40,11 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.records.dat
                 </div>
             </div>
             <form class="grid gap-3 rounded-3xl border border-[#d8e7d4] bg-white p-5 md:grid-cols-3" @submit.prevent="apply">
-                <p class="text-xs text-slate-500 md:col-span-3">Apply filters to update results and available options. Options follow the search and other selected filters.</p>
+                <LiveFilterNotice :loading="optionsLoading" :error="optionsError" @retry="retryOptions" class="md:col-span-3" />
                 <CompanyField v-model="filters.company" filter /><label class="md:col-span-2"><span class="text-xs font-semibold">Search</span><input v-model="filters.search" class="input input-bordered mt-1 w-full" placeholder="Description, tag, model, location or rack" /></label>
-                <label><span class="text-xs font-semibold">Data quality</span><CustomSelect v-model="filters.quality" class="select select-bordered mt-1 w-full"><option value="">All records</option><option v-if="qualityOptions.includes('review') || filters.quality === 'review'" :disabled="!qualityOptions.includes('review')" value="review">Needs review</option><option v-if="qualityOptions.includes('duplicates') || filters.quality === 'duplicates'" :disabled="!qualityOptions.includes('duplicates')" value="duplicates">Duplicate tags</option></CustomSelect></label>
+                <label><span class="text-xs font-semibold">Data quality</span><CustomSelect v-model="filters.quality" class="select select-bordered mt-1 w-full"><option value="">All records</option><option v-if="liveOptions.qualityOptions.includes('review') || filters.quality === 'review'" :disabled="!liveOptions.qualityOptions.includes('review')" value="review">Needs review</option><option v-if="liveOptions.qualityOptions.includes('duplicates') || filters.quality === 'duplicates'" :disabled="!liveOptions.qualityOptions.includes('duplicates')" value="duplicates">Duplicate tags</option></CustomSelect></label>
                 <label v-for="[key,label] in [['category','Category'],['section_1','Section 1'],['section_2','Section 2'],['location','Current location']]" :key="key">
-                    <span class="text-xs font-semibold">{{ label }}</span><CustomSelect v-model="filters[key]" class="select select-bordered mt-1 w-full"><option value="">All</option><option v-if="filters[key] && !options[key].includes(filters[key])" :value="filters[key]" disabled>{{ filters[key] }} (no matching records)</option><option v-for="value in options[key]" :key="value">{{ value }}</option></CustomSelect>
+                    <span class="text-xs font-semibold">{{ label }}</span><CustomSelect v-model="filters[key]" class="select select-bordered mt-1 w-full"><option value="">All</option><option v-if="filters[key] && !liveOptions.options[key].includes(filters[key])" :value="filters[key]" disabled>{{ filters[key] }} (no matching records)</option><option v-for="value in liveOptions.options[key]" :key="value">{{ value }}</option></CustomSelect>
                 </label>
                 <div class="flex items-end gap-2"><button class="btn bg-[#4f9f4a] text-white">Apply filters</button><button type="button" class="btn" @click="clear">Clear</button></div>
             </form>
@@ -46,14 +53,14 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.records.dat
                 <p class="border-b px-5 py-4 text-sm">Showing {{ records.from || 0 }}–{{ records.to || 0 }} of {{ records.total }} records. Quantities use their own units; no mixed-unit total.</p>
                 <div class="overflow-x-auto"><table class="table">
                     <thead><tr><th v-if="canEdit"><input v-model="allSelected" type="checkbox" aria-label="Select all items on this page" /></th><th>Company</th><th>Item / Tag</th><th>Classification</th><th>Recorded balance</th><th>Location / Rack</th><th>Certificate due date</th><th>Review</th><th>Actions</th></tr></thead>
-                    <tbody><tr v-for="item in records.data" :key="item.id"><td v-if="canEdit"><input v-model="selectedIds" type="checkbox" :value="item.id" :aria-label="'Select record #' + item.id" /></td><td>{{ item.company || 'Not assigned' }}</td>
-                        <td><Link :href="route('construction.show', item.id)" class="font-bold text-green-800">{{ item.description || 'Description not recorded' }}</Link><p class="text-xs text-slate-500">#{{ item.id }} · {{ item.tag_no || 'No tag recorded' }}</p></td>
-                        <td>{{ item.category }}<p class="text-xs text-slate-500">{{ [item.section_1, item.section_2].filter(Boolean).join(' / ') }}</p></td>
-                        <td>{{ item.stock_balance ?? 'Not recorded' }}<p class="text-xs text-slate-500">{{ item.unit || 'Unit not recorded' }}</p></td>
-                        <td>{{ item.current_location || 'Not recorded' }}<p class="text-xs text-slate-500">{{ item.storage_rack || 'Rack not recorded' }}</p></td>
-                        <td>{{ item.certificate_due_date || 'Not recorded' }}</td>
-                        <td><p v-if="item.duplicate_count > 1" class="text-xs font-semibold text-amber-700">Duplicate tag ({{ item.duplicate_count }})</p><p v-if="item.needs_review" class="text-xs text-amber-700">Details need review</p><span v-if="!item.needs_review && item.duplicate_count <= 1">—</span></td>
-                        <td><div class="flex gap-2"><Link :href="route('construction.show', item.id)" class="btn btn-xs">View</Link><Link v-if="canEdit" :href="route('construction.edit', item.id)" class="btn btn-xs">Edit</Link></div></td>
+                    <tbody><tr v-for="item in records.data" :key="item.id"><td v-if="canEdit"><input v-model="selectedIds" type="checkbox" :value="item.id" :aria-label="'Select record #' + item.id" /></td><td>{{ displayValue(item.company) }}</td>
+                        <td><Link :href="route('construction.show', item.id)" class="font-bold text-green-800">{{ displayValue(item.description) }}</Link><p class="text-xs text-slate-500">#{{ item.id }} · {{ displayValue(item.tag_no) }}</p></td>
+                        <td>{{ displayValue(item.category) }}<p class="text-xs text-slate-500">{{ displayValue([item.section_1, item.section_2].filter(value => value != null && String(value).trim() !== '').join(' / ')) }}</p></td>
+                        <td>{{ displayValue(item.stock_balance) }}<p class="text-xs text-slate-500">{{ displayValue(item.unit) }}</p></td>
+                        <td>{{ displayValue(item.current_location) }}<p class="text-xs text-slate-500">{{ displayValue(item.storage_rack) }}</p></td>
+                        <td>{{ displayValue(item.certificate_due_date) }}</td>
+                        <td><p v-if="item.duplicate_count > 1" class="text-xs font-semibold text-amber-700">Duplicate tag ({{ item.duplicate_count }})</p><p v-if="item.needs_review" class="text-xs text-amber-700">Details need review</p><span v-if="!item.needs_review && item.duplicate_count <= 1">-</span></td>
+                        <td><div class="flex gap-2"><Link :href="route('construction.show', item.id)" class="btn btn-xs">View</Link><Link v-if="canEdit" :href="route('construction.edit', item.id)" class="btn btn-xs">Edit</Link><DeleteRegisterItem v-if="canEdit" register="construction" :item="item" @deleted="id => selectedIds = selectedIds.filter(selected => selected !== id)" /></div></td>
                     </tr><tr v-if="!records.data.length"><td :colspan="8 + (canEdit ? 1 : 0)" class="py-10 text-center text-slate-500">No matching records.</td></tr></tbody>
                 </table></div>
                 <nav class="flex items-center justify-between gap-3 border-t p-4" aria-label="Construction register pages">

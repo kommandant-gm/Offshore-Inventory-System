@@ -74,6 +74,7 @@ class MiriCogController extends Controller
             'items'=>['required','array','min:1','max:100'],
             'items.*.item_type'=>['required',\Illuminate\Validation\Rule::in($sources::TYPES)],
             'items.*.item_id'=>['required','integer'], 'items.*.quantity'=>['required','numeric','min:0.001','max:999999999.999','decimal:0,3'],
+            'items.*.construction_destination_id' => ['nullable', 'integer'],
         ];
         foreach (['from_location','to_location','receiver_name','issued_by_name','consignee_name','consignee_department','from_department','copy_to','destination','issued_designation','verified_by_name','verified_designation','receiver_designation'] as $key) $rules[$key] = [$key === 'issued_by_name' ? 'required' : 'nullable','string','max:255'];
         foreach (['issued_date','verified_date','received_date'] as $key) $rules[$key] = ['nullable','date_format:Y-m-d'];
@@ -93,7 +94,8 @@ class MiriCogController extends Controller
                     return ctype_digit($suffix) ? (int) $suffix : 0;
                 })->max() ?? 0;
             $cog = MiriCog::create([...collect($data)->except('items')->all(), 'branch_id'=>$branch,
-                'cog_no'=>$prefix.str_pad((string)($last+1),3,'0',STR_PAD_LEFT), 'status'=>'draft', 'created_by'=>$request->user()->id]);
+                'cog_no'=>$prefix.str_pad((string)($last+1),3,'0',STR_PAD_LEFT), 'status'=>'draft', 'created_by'=>$request->user()->id,
+                'construction_stock_workflow' => collect($data['items'])->contains('item_type', 'Construction')]);
             foreach ($data['items'] as $i=>$line) {
                 $model = $sources->query($line['item_type'],$branch)->findOrFail($line['item_id']);
                 $snapshot = $sources->snapshot($model,$line['item_type']);
@@ -104,7 +106,12 @@ class MiriCogController extends Controller
                     if (! in_array($snapshot['unit'],['CAN','LTR'])) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.unit"=>'Choose CAN or LTR for Paint.']);
                 }
                 if (blank($snapshot['unit'])) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.unit"=>'Enter the issue unit; it is missing from the source record.']);
-                $savedLine = $cog->items()->create([...$snapshot,'branch_id'=>$branch,'item_type'=>$line['item_type'],'item_id'=>$model->id,'quantity'=>$line['quantity']]);
+                $destination = null;
+                if ($line['item_type'] === 'Construction' && $data['movement_type'] === 'Transfer') {
+                    $destination = \App\Models\MiriConstructionItem::where('branch_id', $branch)->find($line['construction_destination_id'] ?? null);
+                    if (! $destination || $destination->id === $model->id) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.construction_destination_id" => 'Choose a different destination stock record in Miri.']);
+                }
+                $savedLine = $cog->items()->create([...$snapshot,'branch_id'=>$branch,'item_type'=>$line['item_type'],'item_id'=>$model->id,'quantity'=>$line['quantity'], 'construction_destination_id' => $destination?->id]);
                 app(\App\Services\PaintStockLedger::class)->post($savedLine, $request->user()->id);
             }
             $auditLogger->record('miri_cogs','created',"Created Miri COG {$cog->cog_no}. Paint stock posted; other registers retain their existing reservation rules.",$cog,after:$cog->toArray(),user:$request->user(),request:$request);
@@ -125,6 +132,19 @@ class MiriCogController extends Controller
         $cog->load(['items','creator']);
         return Inertia::render('MiriCog/Show',['cog'=>$cog,'document'=>app(\App\Services\MiriCogDocument::class)->data($cog),'canEdit'=>$request->user()->canEdit('cogs')]);
     }
+    public function edit(Request $request, MiriCog $cog, \App\Services\MiriCogEditing $editing): Response
+    {
+        $this->authorizeDocument($request, $cog, true);
+        abort_unless($editing->editable($cog), 409, 'Only unsigned, unconfirmed draft notes can be edited.');
+        return Inertia::render('MiriCog/Edit', ['cog' => $cog->load('items'), 'editToken' => $editing->token($cog),
+            'groups' => $editing::GROUPS, 'lineFields' => $editing::LINE_FIELDS]);
+    }
+    public function update(Request $request, MiriCog $cog, \App\Services\MiriCogEditing $editing): RedirectResponse
+    {
+        $this->authorizeDocument($request, $cog, true);
+        $editing->update($cog, $request);
+        return redirect()->route('miri-cogs.show', $cog)->with('success', 'Internal Issue Note updated.');
+    }
     public function sign(Request $request, MiriCog $cog, AuditLogger $auditLogger): RedirectResponse
     {
         $this->authorizeDocument($request,$cog,true);
@@ -135,7 +155,7 @@ class MiriCogController extends Controller
         if (! $info || $info[2] !== IMAGETYPE_PNG || $info[0]>2000 || $info[1]>1000) throw \Illuminate\Validation\ValidationException::withMessages(['signature'=>'Use a valid PNG signature drawn below.']);
         \Illuminate\Support\Facades\DB::transaction(function () use ($cog,$request,$data,$auditLogger) {
             $locked = MiriCog::whereKey($cog->id)->lockForUpdate()->firstOrFail();
-            abort_if($locked->signature || $locked->status !== 'draft',409,'Only an unsigned draft COG can be signed.');
+            abort_if($locked->signature || ! in_array($locked->status, ['draft', 'confirmed']),409,'Only an unsigned active COG can be signed.');
             $locked->update(['signature'=>$data['signature'],'signed_at'=>now(),'signed_ip'=>$request->ip(),'status'=>'signed','updated_by'=>$request->user()->id]);
             $auditLogger->record('miri_cogs','signed',"Signed Miri COG {$locked->cog_no}.",$locked,after:['status'=>'signed','signed_at'=>$locked->signed_at?->toIso8601String()],user:$request->user(),request:$request);
         });
@@ -148,8 +168,12 @@ class MiriCogController extends Controller
         \Illuminate\Support\Facades\DB::transaction(function () use ($cog, $request, $auditLogger, $data) {
             \App\Models\Branch::whereKey($cog->branch_id)->lockForUpdate()->firstOrFail();
             $locked = MiriCog::whereKey($cog->id)->lockForUpdate()->firstOrFail();
-            abort_unless($locked->status === 'draft' && ! $locked->signature && in_array($locked->movement_type, \App\Services\MiriCogAvailability::OUTBOUND, true), 409, 'Only an unfulfilled draft outbound note can be cancelled.');
+            $constructionOnly = $locked->construction_stock_workflow && ! $locked->construction_stock_confirmed_at
+                && $locked->items->isNotEmpty() && $locked->items->every(fn ($line) => $line->item_type === 'Construction');
+            abort_unless($locked->status === 'draft' && ! $locked->signature
+                && (in_array($locked->movement_type, \App\Services\MiriCogAvailability::OUTBOUND, true) || $constructionOnly), 409, 'Only an unfulfilled draft note can be cancelled.');
             foreach ($locked->items as $item) {
+                if ($item->item_type === 'Construction' && $locked->construction_stock_workflow) continue;
                 $laterReturn = \App\Models\MiriCogItem::where('branch_id', $locked->branch_id)
                     ->where('item_type', $item->item_type)->where('item_id', $item->item_id)
                     ->where('miri_cog_id', '>', $locked->id)
@@ -161,6 +185,14 @@ class MiriCogController extends Controller
             $auditLogger->record('miri_cogs', 'cancelled', "Cancelled unfulfilled Miri COG {$locked->cog_no}.", $locked, after: ['status' => 'cancelled', 'reason' => $data['reason']], user: $request->user(), request: $request);
         });
         return back()->with('success', 'Unfulfilled issue note cancelled; equipment reservations released.');
+    }
+
+    public function confirmStock(Request $request, MiriCog $cog, \App\Services\ConstructionStockLedger $ledger): RedirectResponse
+    {
+        $this->authorizeDocument($request, $cog, true);
+        $request->validate(['confirmed' => ['required', 'accepted']]);
+        $ledger->confirm($cog, $request->user()->id);
+        return back()->with('success', 'TEC, Garnet & PPE stock movement confirmed.');
     }
 
     public function pdf(Request $request, MiriCog $cog)
@@ -178,6 +210,6 @@ class MiriCogController extends Controller
             'Cache-Control'=>'private, no-store',
         ]);
     }
-    private function summary(MiriCog $cog): array { return ['id' => $cog->id, 'cog_no' => $cog->display_cog_no, 'movement_type' => $cog->movement_type, 'document_date' => $cog->document_date?->format('Y-m-d'), 'from_location' => $cog->from_location, 'to_location' => $cog->to_location, 'status' => $cog->status, 'items_count' => $cog->items_count, 'created_by' => $cog->creator?->name ?: 'System', 'created_at' => $cog->created_at?->format('d M Y, H:i')]; }
+    private function summary(MiriCog $cog): array { return ['editable' => app(\App\Services\MiriCogEditing::class)->editable($cog), 'id' => $cog->id, 'cog_no' => $cog->display_cog_no, 'movement_type' => $cog->movement_type, 'document_date' => $cog->document_date?->format('Y-m-d'), 'from_location' => $cog->from_location, 'to_location' => $cog->to_location, 'status' => $cog->status, 'items_count' => $cog->items_count, 'created_by' => $cog->creator?->name ?: 'System', 'created_at' => $cog->created_at?->format('d M Y, H:i')]; }
     private function ensureMiri(Request $request): void { abort_unless(app(BranchContext::class)->branch($request->user())?->code === 'MIRI', 404); }
 }

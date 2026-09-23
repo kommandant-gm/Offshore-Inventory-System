@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 
 class PaintQuantitySummary
 {
-    private function location(?string $value): ?string
+    public function location(?string $value): ?string
     {
         $value = strtoupper(trim($value ?? ''));
         foreach (['SKA' => 'SKA', 'SBA' => 'SBA', 'BTU|BINTULU' => 'BTU', 'LBN|LABUAN' => 'LBN'] as $pattern => $label) {
@@ -15,7 +15,7 @@ class PaintQuantitySummary
         return null;
     }
 
-    private function brand(?string $value): string
+    public function brand(?string $value): string
     {
         return match (strtoupper(trim($value ?? ''))) {
             'IP', 'IP PAINT', 'INTERNATION', 'INTERNATION PAINT', 'INTERNATIONAL', 'INTERNATIONAL PAINT' => 'IP Paint',

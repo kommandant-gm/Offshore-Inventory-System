@@ -229,7 +229,7 @@ class MajorEquipmentController extends Controller
         ];
     }
 
-    public function index(Request $request): Response
+    public function index(Request $request): Response|\Illuminate\Http\JsonResponse
     {
         $this->ensureMiri($request);
         abort_unless($request->user()?->canRead('assets'), 403);
@@ -270,6 +270,12 @@ class MajorEquipmentController extends Controller
         $options = fn ($column) => $filteredQuery($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")
             ->distinct()->orderBy($column)->pluck($column)->values();
         $summaryQuery = $filteredQuery(null, false);
+        if ($request->boolean('filter_options')) return response()->json([
+            'descriptionOptions' => $type === 'cargo' ? $options('description') : [],
+            'categoryOptions' => $options('category'), 'section1Options' => $options('section_1'), 'section2Options' => $options('section_2'),
+            'locationOptions' => $options('current_location'), 'issueOutLocationOptions' => $options('issue_out_location'), 'statusOptions' => $options('status'),
+            'qualityCounts' => ['duplicates' => (clone $summaryQuery)->duplicateTag()->count(), 'missing_details' => (clone $summaryQuery)->missingDetails()->count(), 'warnings' => (clone $summaryQuery)->whereNotNull('import_warnings')->count()],
+        ]);
         return Inertia::render('MajorEquipment/Index', [
             'equipment' => $query->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('id')->paginate(25)->withQueryString(),
             'tabCounts' => MajorEquipment::query()->select('inventory_type')->selectRaw('COUNT(*) AS total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),

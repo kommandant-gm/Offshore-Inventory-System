@@ -20,7 +20,7 @@ class MiriPaintController extends Controller
         $branch = app(BranchContext::class)->branch($request->user());
         abort_unless($branch?->code === 'MIRI', 404);
         abort_unless($edit ? $request->user()?->canEdit('assets') : $request->user()?->canRead('assets'), 403);
-        app(\App\Services\PaintStockLedger::class)->rollover($branch->id);
+        if (! ($request->routeIs('paint.index') && $request->boolean('filter_options'))) app(\App\Services\PaintStockLedger::class)->rollover($branch->id);
         return $branch->id;
     }
 
@@ -67,9 +67,14 @@ class MiriPaintController extends Controller
         $options = fn ($column) => $filteredQuery($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")->distinct()->orderBy($column)->pluck($column)->values();
         $summaryQuery = $filteredQuery(null, '');
         $qualityOptions = collect(['review', 'duplicates', 'unconfirmed', 'expired', 'due_30_days'])->filter(fn ($quality) => $filteredQuery(null, $quality)->exists())->values();
+        if ($request->boolean('filter_options')) return response()->json([
+            'options' => ['category' => $options('category'), 'section_1' => $options('section_1'), 'section_2' => $options('section_2'), 'location' => $options('current_location')],
+            'qualityOptions' => $qualityOptions,
+        ]);
         $stockSummary = app(\App\Services\PaintStockSummary::class)->data($query);
         return Inertia::render('Paint/Index', [
             'stockSummary' => $stockSummary,
+            'closingStockSummary' => app(\App\Services\PaintStockSummary::class)->closingByLocation($filteredQuery()),
             'records' => $query->orderBy('category')->orderBy('description')->orderBy('miri_paint_items.id')->paginate(25)->withQueryString(),
             'qualityOptions' => $qualityOptions,
             'filters' => $filters, 'canEdit' => $request->user()->canEdit('assets'),

@@ -28,9 +28,16 @@ class MiriConstructionController extends Controller
         return ['fields' => ConstructionFields::FIELDS, 'attachmentSlots' => ConstructionFields::ATTACHMENTS];
     }
 
+    private function classificationOptions(): array
+    {
+        return MiriConstructionItem::query()->select('category', 'section_1', 'section_2')
+            ->distinct()->orderBy('category')->orderBy('section_1')->orderBy('section_2')->get()->toArray();
+    }
+
     private function record(MiriConstructionItem $item, bool $private): array
     {
         $data = $item->toArray();
+        $data['stock_token'] = app(\App\Services\ConstructionStockLedger::class)->token($item);
         $data['review_flags'] = $item->reviewFlags();
         $data['attachments'] = collect($item->attachments ?? [])->map(fn ($file) => collect($file)->except('path')->all())->all();
         if ($private) {
@@ -63,6 +70,10 @@ class MiriConstructionController extends Controller
         $options = fn ($column) => $filteredQuery($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")->distinct()->orderBy($column)->pluck($column)->values();
         $summaryQuery = $filteredQuery(null, '');
         $qualityOptions = collect(['review', 'duplicates'])->filter(fn ($quality) => $filteredQuery(null, $quality)->exists())->values();
+        if ($request->boolean('filter_options')) return response()->json([
+            'options' => ['category' => $options('category'), 'section_1' => $options('section_1'), 'section_2' => $options('section_2'), 'location' => $options('current_location')],
+            'qualityOptions' => $qualityOptions,
+        ]);
         return Inertia::render('Construction/Index', [
             'records' => $query->orderBy('category')->orderBy('description')->orderBy('miri_construction_items.id')->paginate(25)->withQueryString(),
             'qualityOptions' => $qualityOptions,
@@ -77,7 +88,7 @@ class MiriConstructionController extends Controller
     public function create(Request $request)
     {
         $this->authorizePage($request, true);
-        return Inertia::render('Construction/Form', ['record' => null, ...$this->schema()]);
+        return Inertia::render('Construction/Form', ['record' => null, 'classificationOptions' => $this->classificationOptions(), ...$this->schema()]);
     }
 
     public function store(SaveConstructionRequest $request, ConstructionRecordService $service)
@@ -93,6 +104,7 @@ class MiriConstructionController extends Controller
         abort_unless($construction->branch_id === $branchId, 404);
         $duplicates = filled($construction->normalized_tag) ? MiriConstructionItem::query()->where('normalized_tag', $construction->normalized_tag)->where('id', '<>', $construction->id)->get(['id', 'description', 'tag_no', 'current_location']) : [];
         return Inertia::render('Construction/Show', ['record' => $this->record($construction, $request->user()->canEdit('assets')),
+            'stockMovements' => DB::table('miri_construction_stock_movements')->where('construction_item_id', $construction->id)->where('branch_id', $branchId)->orderByDesc('id')->paginate(20)->withQueryString(),
             'canEdit' => $request->user()->canEdit('assets'), 'duplicates' => $duplicates, ...$this->schema()]);
     }
 
@@ -100,7 +112,7 @@ class MiriConstructionController extends Controller
     {
         $branchId = $this->authorizePage($request, true);
         abort_unless($construction->branch_id === $branchId, 404);
-        return Inertia::render('Construction/Form', ['record' => $this->record($construction, true), ...$this->schema()]);
+        return Inertia::render('Construction/Form', ['record' => $this->record($construction, true), 'classificationOptions' => $this->classificationOptions(), ...$this->schema()]);
     }
 
     public function update(SaveConstructionRequest $request, MiriConstructionItem $construction, ConstructionRecordService $service)
@@ -109,6 +121,23 @@ class MiriConstructionController extends Controller
         abort_unless($construction->branch_id === $branchId, 404);
         $service->save($construction, $request->validated(), $branchId, $request->user(), $request);
         return redirect()->route('construction.show', $construction)->with('success', 'Record updated. Historical quantities were not replayed.');
+    }
+
+    public function stock(Request $request, MiriConstructionItem $construction, \App\Services\ConstructionStockLedger $ledger)
+    {
+        $branch = $this->authorizePage($request, true);
+        abort_unless($construction->branch_id === $branch, 404);
+        $data = $request->validate([
+            'kind' => ['required', 'in:opening,receipt,writeoff,correction'],
+            'quantity' => ['required', 'numeric', 'min:0', 'max:999999999.999', 'decimal:0,3'],
+            'unit' => ['nullable', 'string', 'max:20'], 'location' => ['nullable', 'string', 'max:255'],
+            'reference' => ['nullable', 'string', 'max:255'], 'note' => ['required', 'string', 'max:1000'],
+            'request_key' => ['required', 'uuid'], 'stock_token' => ['required', 'string', 'size:64'],
+            'confirmed' => ['required', 'accepted'],
+        ]);
+        if (in_array($data['kind'], ['receipt', 'writeoff']) && (float) $data['quantity'] <= 0) throw ValidationException::withMessages(['quantity' => 'Enter a quantity greater than zero.']);
+        $ledger->manual($construction->id, $branch, $data, $request->user()->id);
+        return back()->with('success', 'Stock movement confirmed and balance updated.');
     }
 
     public function attachment(Request $request, MiriConstructionItem $construction, string $slot)

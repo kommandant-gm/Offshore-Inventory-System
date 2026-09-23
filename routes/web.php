@@ -48,6 +48,8 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'syste
 
 Route::middleware(['auth', 'system.access'])->group(function () {
     Route::patch('/miri-inventory/company-assignment', [\App\Http\Controllers\MiriCompanyController::class, 'assign'])->name('miri-company.assign');
+    Route::delete('/miri-register/{register}/{item}', [\App\Http\Controllers\MiriRegisterDeletionController::class, 'destroy'])
+        ->whereIn('register', ['major', 'rental', 'construction', 'paint'])->whereNumber('item')->name('miri-register.destroy');
     Route::prefix('miri-paint')->name('paint.')->controller(\App\Http\Controllers\MiriPaintController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/create', 'create')->name('create');
@@ -71,6 +73,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
         Route::get('/{construction}', 'show')->whereNumber('construction')->name('show');
         Route::get('/{construction}/edit', 'edit')->whereNumber('construction')->name('edit');
         Route::patch('/{construction}', 'update')->whereNumber('construction')->name('update');
+        Route::post('/{construction}/stock', 'stock')->whereNumber('construction')->name('stock');
         Route::get('/{construction}/attachments/{slot}', 'attachment')->whereNumber('construction')->name('attachment');
     });
     Route::patch('/active-branch', [BranchContextController::class, 'update'])->name('branches.activate');
@@ -154,6 +157,9 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::post('/miri-cogs', [MiriCogController::class, 'store'])->name('miri-cogs.store');
     Route::post('/miri-cogs/{cog}/cancel', [MiriCogController::class, 'cancel'])->name('miri-cogs.cancel');
     Route::post('/miri-cogs/{cog}/sign', [MiriCogController::class, 'sign'])->name('miri-cogs.sign');
+    Route::get('/miri-cogs/{cog}/edit', [MiriCogController::class, 'edit'])->name('miri-cogs.edit');
+    Route::patch('/miri-cogs/{cog}', [MiriCogController::class, 'update'])->name('miri-cogs.update');
+    Route::post('/miri-cogs/{cog}/confirm-stock', [MiriCogController::class, 'confirmStock'])->name('miri-cogs.confirm-stock');
     Route::get('/miri-cogs/{cog}/pdf', [MiriCogController::class, 'pdf'])->name('miri-cogs.pdf');
     Route::get('/miri-cogs/{cog}', [MiriCogController::class, 'show'])->name('miri-cogs.show');
     Route::get('/miri-inventory/create', [MajorEquipmentController::class, 'create'])->name('major-equipment.create');

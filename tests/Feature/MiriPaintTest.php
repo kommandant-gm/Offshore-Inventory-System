@@ -78,6 +78,34 @@ class MiriPaintTest extends TestCase
             ->where('stockSummary.opening_total_price_count', 0));
     }
 
+    public function test_register_closing_stock_is_split_by_location_and_brand_across_filtered_pages(): void
+    {
+        $branch = $this->staff();
+        foreach (range(1, 26) as $i) MiriPaintItem::create(['branch_id' => $branch, 'company' => 'DESB', 'category' => 'PAINT',
+            'description' => 'Included', 'section_2' => 'HEMPEL PAINT', 'current_location' => 'BINTULU PAINT STORE - RACK 4C',
+            'opening_litres' => 100, 'balance_litres' => 0.5]);
+        foreach ([['BTU', 'IP', 0], ['LBN PAINT STORE', 'HEMPEL', null], ['LABUAN STORE', 'INTERNATION PAINT', 4], ['Unknown', 'HEMPEL', 99]] as [$location, $brand, $balance]) {
+            MiriPaintItem::create(['branch_id' => $branch, 'company' => 'DESB', 'category' => 'PAINT', 'description' => 'Included',
+                'current_location' => $location, 'section_2' => $brand, 'balance_litres' => $balance]);
+        }
+        foreach ([['FTSB', $branch], ['DESB', Branch::where('code', 'KL-IT')->value('id')]] as [$company, $branchId]) {
+            MiriPaintItem::create(['branch_id' => $branchId, 'company' => $company, 'section_2' => 'HEMPEL', 'current_location' => 'BTU', 'balance_litres' => 999]);
+        }
+        foreach ([1, 2] as $page) $this->get(route('paint.index', ['company' => 'DESB', 'search' => 'Included', 'page' => $page]))->assertOk()
+            ->assertInertia(fn (Assert $p) => $p
+                ->where('closingStockSummary.locations.0.label', 'BTU')
+                ->where('closingStockSummary.locations.0.paints.0.label', 'Hempel Paint')
+                ->where('closingStockSummary.locations.0.paints.0.litres', fn ($v) => (float) $v === 13.0)
+                ->where('closingStockSummary.locations.0.paints.0.records', 26)
+                ->where('closingStockSummary.locations.0.paints.1.litres', fn ($v) => $v !== null && (float) $v === 0.0)
+                ->where('closingStockSummary.locations.1.paints.0.litres', null)
+                ->where('closingStockSummary.locations.1.paints.1.litres', fn ($v) => (float) $v === 4.0)
+                ->where('closingStockSummary.excluded_records', 1));
+        $this->get(route('paint.index', ['search' => 'no matching stock']))->assertInertia(fn (Assert $p) => $p
+            ->where('closingStockSummary.locations.0.paints.0.litres', null)
+            ->where('closingStockSummary.locations.0.paints.0.records', 0));
+    }
+
     public function test_dates_are_split_only_when_unambiguous_and_single_dates_never_assumed(): void
     {
         $service = app(PaintCsvService::class);
