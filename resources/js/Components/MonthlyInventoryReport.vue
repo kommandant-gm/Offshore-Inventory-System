@@ -4,7 +4,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 
-const props = defineProps({ filters: Object, report: Object, columns: Object, options: Object, title: String, description: String, scope: String, previewRoute: String, exportRoute: String });
+const props = defineProps({ filters: Object, report: Object, columns: Object, options: Object, title: String, description: String, scope: String, previewRoute: String, exportRoute: String, headerGroups: Array });
 const form = useForm({ ...props.filters });
 const page = ref(1);
 const coveragePage = ref(1);
@@ -63,10 +63,18 @@ const display = value => value === null || value === '' ? '—' : typeof value =
                         </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left text-sm">
-                                <thead class="bg-green-50"><tr><th v-for="(label, key) in columns" :key="key" class="whitespace-nowrap p-3">{{ label }}</th></tr></thead>
+                                <thead class="bg-green-50">
+                                    <template v-if="headerGroups">
+                                        <tr>
+                                            <th v-for="group in headerGroups" :key="group.label" :colspan="group.keys.length" :rowspan="group.keys.length === 1 ? 2 : 1" class="border p-3 text-center">{{ group.label }}</th>
+                                        </tr>
+                                        <tr><template v-for="group in headerGroups" :key="group.label"><template v-if="group.keys.length > 1"><th v-for="key in group.keys" :key="key" class="whitespace-nowrap border p-3">{{ columns[key] }}</th></template></template></tr>
+                                    </template>
+                                    <tr v-else><th v-for="(label, key) in columns" :key="key" class="whitespace-nowrap p-3">{{ label }}</th></tr>
+                                </thead>
                                 <tbody>
                                     <tr v-for="row in rows" :key="`${row.id}-${row.unit}`" class="border-t align-top">
-                                        <td v-for="(label, key) in columns" :key="key" class="p-3" :class="['description', 'remarks', 'location'].includes(key) ? 'min-w-52' : 'whitespace-nowrap'">{{ display(row[key]) }}</td>
+                                        <td v-for="(label, key) in columns" :key="key" class="p-3" :class="headerGroups ? ['whitespace-pre-line', ['description', 'remarks'].includes(key) ? 'min-w-52' : 'min-w-28'] : (['description', 'remarks', 'location'].includes(key) ? 'min-w-52' : 'whitespace-nowrap')">{{ display(row[key]) }}</td>
                                     </tr>
                                     <tr v-if="!rows.length"><td :colspan="Object.keys(columns).length" class="p-6 text-center text-slate-500">No records match this report and month.</td></tr>
                                 </tbody>

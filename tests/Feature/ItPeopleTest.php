@@ -79,7 +79,7 @@ class ItPeopleTest extends TestCase
                 ->where('person.name', 'Alex Holder')
                 ->where('person.employee_id', 'EMP-100')
                 ->where('person.email', $holder->email)
-                ->where('person.department', 'IT')
+                ->where('person.department', $holder->department)
                 ->where('summary.current_assets', 1)
                 ->where('summary.licences', 1)
                 ->where('summary.history_events', 3)
@@ -94,7 +94,8 @@ class ItPeopleTest extends TestCase
         $permissions = AccessMatrix::permissionsForRole('viewer');
         $permissions['it_assets'] = AccessMatrix::NONE;
         $user = User::factory()->create([
-            'role' => 'viewer',
+            'role' => 'technician',
+            'directory_active' => true,
             'permissions' => $permissions,
         ]);
         $user->branches()->attach($branch, ['access_level' => 'read', 'is_default' => true]);
@@ -102,13 +103,80 @@ class ItPeopleTest extends TestCase
         $this->actingAs($user)->get(route('it-people.index'))->assertForbidden();
     }
 
+    public function test_ad_profile_does_not_offer_manual_linking_and_handles_a_stale_submission(): void
+    {
+        $branch = Branch::where('code', 'KL-IT')->firstOrFail();
+        $editor = $this->branchUser($branch, 'IT Editor', 'editor', 'edit');
+        $editor->update(['permissions' => AccessMatrix::permissionsForRole('it')]);
+        $holder = $this->branchUser($branch, 'AD Holder', 'ad.holder', 'read');
+        $holder->update(['directory_active' => true]);
+        $token = rtrim(strtr(base64_encode("u:{$holder->id}"), '+/', '-_'), '=');
+
+        $this->actingAs($editor)->get(route('it-people.show', $token))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ItPeople/Show')
+                ->where('canLink', false)
+                ->has('linkOptions', 0));
+
+        $this->post(route('it-people.link-ad', $token), ['user_id' => $holder->id])
+            ->assertRedirect(route('it-people.show', $token))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('it_person_links', 0);
+    }
+
+    public function test_manual_profile_can_still_be_linked_to_an_active_ad_user(): void
+    {
+        $branch = Branch::where('code', 'KL-IT')->firstOrFail();
+        $editor = $this->branchUser($branch, 'IT Editor', 'editor', 'edit');
+        $editor->update(['permissions' => AccessMatrix::permissionsForRole('it')]);
+        $holder = $this->branchUser($branch, 'AD Holder', 'ad.holder', 'read');
+        $holder->update(['directory_active' => true]);
+        ItLicense::withoutGlobalScopes()->create([
+            'branch_id' => $branch->id,
+            'license_code' => 'LIC-MANUAL',
+            'software_name' => 'Manual licence',
+            'license_type' => 'subscription',
+            'seats_total' => 1,
+            'seats_assigned' => 1,
+            'assigned_to' => 'Manual Holder',
+            'active' => true,
+        ]);
+        $token = rtrim(strtr(base64_encode('n:manual holder'), '+/', '-_'), '=');
+        $url = route('it-people.show', $token);
+
+        $this->actingAs($editor)->get($url)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ItPeople/Show')
+                ->where('canLink', true));
+
+        $this->from($url)->post(route('it-people.link-ad', $token), ['user_id' => $holder->id])
+            ->assertRedirect($url)
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('it_person_links', [
+            'manual_identity' => 'manual holder',
+            'user_id' => $holder->id,
+        ]);
+        $this->get($url)->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ItPeople/Show')
+                ->where('canLink', true)
+                ->where('person.linked_user_id', $holder->id)
+                ->where('person.name', $holder->name)
+                ->where('summary.licences', 1));
+    }
+
     private function branchUser(Branch $branch, string $name, string $username, string $accessLevel): User
     {
         $user = User::factory()->create([
             'name' => $name,
             'username' => $username,
-            'role' => 'viewer',
-            'permissions' => AccessMatrix::permissionsForRole('viewer'),
+            'role' => 'technician',
+            'directory_active' => true,
+            'permissions' => array_replace(AccessMatrix::permissionsForRole('viewer'), ['it_assets' => AccessMatrix::READ]),
         ]);
         $user->branches()->attach($branch, ['access_level' => $accessLevel, 'is_default' => true]);
 

@@ -9,6 +9,8 @@ use App\Services\ConsumableInventoryReport;
 use App\Services\ConsumableReportWorkbook;
 use App\Services\LabuanConsumableInventoryReport;
 use App\Services\LabuanConsumableReportWorkbook;
+use App\Services\LabuanPaintInventoryReport;
+use App\Services\LabuanPaintReportWorkbook;
 use App\Services\PaintInventoryReport;
 use App\Services\PaintReportWorkbook;
 use App\Services\PpeInventoryReport;
@@ -138,6 +140,29 @@ class MiriReportsController extends Controller
         $path = app(LabuanConsumableReportWorkbook::class)->create($report, $filters);
 
         return response()->download($path, "labuan-warehouse-general-store-consumable-inventory-report-{$filters['month']}.xlsx", [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'private, no-store',
+        ])->deleteFileAfterSend(true);
+    }
+
+    public function labuanPaint(Request $request): Response
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->filters($request, 'LBN');
+        $report = $request->boolean('preview') ? app(LabuanPaintInventoryReport::class)->generate($branch, $filters) : null;
+
+        return Inertia::render('MiriReports/LabuanPaint', ['filters' => $filters, 'report' => $report, 'columns' => LabuanPaintInventoryReport::COLUMNS]);
+    }
+
+    public function exportLabuanPaint(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->filters($request, 'LBN');
+        $report = app(LabuanPaintInventoryReport::class)->generate($branch, $filters);
+        abort_if($report['unavailable'] !== null, 422, $report['unavailable'] ?? 'Report unavailable.');
+        $path = app(LabuanPaintReportWorkbook::class)->create($report, $filters);
+
+        return response()->download($path, "labuan-warehouse-paint-inventory-report-{$filters['month']}.xlsx", [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'private, no-store',
         ])->deleteFileAfterSend(true);

@@ -119,11 +119,13 @@ class ItPeopleController extends Controller
             ->sortByDesc('date')
             ->values();
 
+        $canLink = $request->user()->canEdit('it_assets') && str_starts_with($identity, 'n:');
+
         return Inertia::render('ItPeople/Show', [
             'person' => $profile,
             'personToken' => $person,
-            'canLink' => $request->user()->canEdit('it_assets'),
-            'linkOptions' => $request->user()->canEdit('it_assets')
+            'canLink' => $canLink,
+            'linkOptions' => $canLink
                 ? User::query()->where('directory_active', true)->orderBy('name')->get(['id', 'name', 'username', 'email', 'department', 'job_title'])
                 : [],
             'summary' => [
@@ -150,6 +152,13 @@ class ItPeopleController extends Controller
         abort_unless($request->user()?->canEdit('it_assets'), 403);
 
         $identity = $this->decodeIdentity($person);
+        if (str_starts_with($identity, 'u:')) {
+            $this->resolvePerson($identity, $branches->id($request->user()));
+
+            return to_route('it-people.show', $person)
+                ->with('error', 'This profile is already matched to an AD user. Manual linking is only available for manual people.');
+        }
+
         abort_unless(str_starts_with($identity, 'n:'), 404);
 
         $data = $request->validate([
