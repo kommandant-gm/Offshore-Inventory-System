@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AssetAssignmentController;
-use App\Http\Controllers\PublicAssetCheckinController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetQrCodeController;
 use App\Http\Controllers\AssetRepairController;
@@ -16,17 +15,18 @@ use App\Http\Controllers\ItAssetImportController;
 use App\Http\Controllers\ItAssetSectionController;
 use App\Http\Controllers\ItLicenseController;
 use App\Http\Controllers\ItLicenseImportController;
-use App\Http\Controllers\ItPeopleController;
 use App\Http\Controllers\ItMovementRecordController;
+use App\Http\Controllers\ItPeopleController;
 use App\Http\Controllers\KemamanInventoryController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MajorEquipmentController;
-use App\Http\Controllers\MiriLogController;
 use App\Http\Controllers\MiriCogController;
+use App\Http\Controllers\MiriLogController;
 use App\Http\Controllers\MiriRentalController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\PublicAssetController;
+use App\Http\Controllers\PublicAssetCheckinController;
 use App\Http\Controllers\PublicAssetCheckoutController;
+use App\Http\Controllers\PublicAssetController;
 use App\Http\Controllers\QuickSearchController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
@@ -95,6 +95,8 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::patch('/it-assets/bulk-update', [AssetController::class, 'bulkUpdate'])->name('it-assets.bulk-update');
     Route::get('/it-assets/bulk-edit', [AssetController::class, 'bulkEdit'])->name('it-assets.bulk-edit');
     Route::resource('it-assets', AssetController::class)->parameters(['it-assets' => 'asset'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+    Route::get('/kaspersky-licenses', [\App\Http\Controllers\KasperskyLicenseController::class, 'index'])->name('kaspersky-licenses.index');
+    Route::post('/kaspersky-licenses/import', [\App\Http\Controllers\KasperskyLicenseController::class, 'store'])->name('kaspersky-licenses.import');
     Route::resource('it-licenses', ItLicenseController::class)->parameters(['it-licenses' => 'it_license'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::post('/it-assets/{asset}/checkout', [AssetAssignmentController::class, 'store'])->name('it-assets.checkout');
     Route::post('/it-assets/{asset}/checkout/resend', [AssetAssignmentController::class, 'resend'])->name('it-assets.checkout.resend');

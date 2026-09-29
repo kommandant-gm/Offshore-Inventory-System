@@ -113,6 +113,7 @@ class ItAssetSectionController extends Controller
                 'purchaseYear' => $asset->purchase_year ? (string) $asset->purchase_year : null,
             ])->values(),
             'licenseDashboard' => $this->licenseDashboard($licenses),
+            'kasperskyOverview' => collect(\App\Models\KasperskyImport::overview())->except('rows')->all(),
         ]);
     }
 

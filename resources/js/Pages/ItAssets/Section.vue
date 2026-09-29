@@ -2,6 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import AssetRepairModal from '@/Components/AssetRepairModal.vue';
 import ItLicenseDashboard from '@/Components/ItLicenseDashboard.vue';
+import KasperskySummary from '@/Components/KasperskySummary.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
 
@@ -13,6 +14,7 @@ const props = defineProps({
   charts: { type: Object, default: null },
   dashboardAssets: { type: Array, default: () => [] },
   licenseDashboard: { type: Object, default: null },
+  kasperskyOverview: { type: Object, default: null },
   repairMode: { type: Boolean, default: false },
   repairableAssets: { type: Array, default: () => [] },
 });
@@ -237,6 +239,7 @@ const pie = computed(() => {
       <div v-else class="p-10 text-center text-sm text-slate-500">No assets match the current selection.</div>
     </article>
   </div>
+  <KasperskySummary v-if="charts && activeDashboard === 'licenses' && kasperskyOverview" :overview="kasperskyOverview" />
   <ItLicenseDashboard v-if="charts && activeDashboard === 'licenses' && licenseDashboard" :dashboard="licenseDashboard" />
   <div v-if="rowItems.length" class="overflow-hidden rounded-[1.5rem] border border-[#d8e7d4] bg-white">
     <div v-if="repairMode" class="overflow-x-auto"><table class="table"><thead><tr><th>Asset</th><th>Sent on</th><th>Vendor / technician</th><th>Fault / reference</th><th v-if="canEdit" class="text-right">Action</th></tr></thead><tbody><tr v-for="row in rowItems" :key="row.asset_tag"><td><Link class="font-bold text-[#2f7d32]" :href="route('it-assets.show',row.asset_id)">{{row.asset_tag}}</Link><span class="mt-1 block text-xs text-slate-500">{{row.detail||'—'}}</span></td><td>{{row.repair_date||'—'}}</td><td>{{row.handled_by||'Not recorded'}}</td><td><span class="block max-w-md">{{row.remarks||'No details recorded'}}</span><span v-if="row.reference_no" class="mt-1 block text-xs font-semibold text-slate-500">Ref: {{row.reference_no}}</span></td><td v-if="canEdit" class="text-right"><button type="button" class="btn btn-sm border-emerald-300 bg-emerald-50 text-emerald-800" @click="returnFromRepair(row)">Return to service</button></td></tr></tbody></table></div>
