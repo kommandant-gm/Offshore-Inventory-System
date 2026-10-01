@@ -13,7 +13,7 @@ class MiriRentalItem extends Model
 
     protected $table = 'miri_rental_items';
 
-    public const ATTACHMENTS = ['lcn' => 'LCN', 'bcn' => 'BCN', 'offhire' => 'Off-hire certificate'];
+    public const ATTACHMENTS = ['lcn' => 'LCN', 'bcn' => 'BCN', 'offhire' => 'Off-hire certificate', 'onhire' => 'On-hire certificate'];
 
     protected $hidden = ['attachments'];
 

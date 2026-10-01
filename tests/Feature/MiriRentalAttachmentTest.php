@@ -32,11 +32,10 @@ class MiriRentalAttachmentTest extends TestCase
 
     private function pdf(string $name = 'document.pdf'): UploadedFile
     {
-        $file = UploadedFile::fake()->createWithContent($name, "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF");
-        return new UploadedFile($file->getPathname(), $name, null, null, true);
+        return UploadedFile::fake()->createWithContent($name, "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF");
     }
 
-    public function test_create_stores_all_three_pdfs_and_exposes_only_safe_metadata(): void
+    public function test_create_stores_all_four_pdfs_and_exposes_only_safe_metadata(): void
     {
         $this->staff();
         $uploads = [];
@@ -44,7 +43,7 @@ class MiriRentalAttachmentTest extends TestCase
         $this->post(route('miri-rental.store'), ['description' => 'Rental compressor', 'status' => 'On Hire', 'uploads' => $uploads])
             ->assertRedirect()->assertSessionHasNoErrors();
         $item = MiriRentalItem::firstOrFail();
-        $this->assertCount(3, $item->attachments);
+        $this->assertCount(4, $item->attachments);
         foreach ($item->attachments as $slot => $file) {
             Storage::disk('rental')->assertExists($file['path']);
             $url = route('miri-rental.attachment', ['rental' => $item->id, 'slot' => $slot]);
@@ -53,7 +52,7 @@ class MiriRentalAttachmentTest extends TestCase
         }
         foreach (['miri-rental.show', 'miri-rental.edit'] as $route) {
             $this->get(route($route, $item))->assertOk()->assertInertia(fn (Assert $p) => $p
-                ->has('rental.attachments', 3)->where('rental.attachments.lcn.name', 'lcn.pdf')->missing('rental.attachments.lcn.path'));
+                ->has('rental.attachments', 4)->where('rental.attachments.lcn.name', 'lcn.pdf')->missing('rental.attachments.lcn.path'));
         }
     }
 
@@ -108,5 +107,22 @@ class MiriRentalAttachmentTest extends TestCase
         $this->get(route('miri-rental.attachment', ['rental' => $other->id, 'slot' => 'lcn']))->assertNotFound();
         auth()->user()->update(['permissions' => array_fill_keys(array_keys(AccessMatrix::modules()), 'none')]);
         $this->get(route('miri-rental.attachment', ['rental' => $item->id, 'slot' => 'lcn']))->assertForbidden();
+    }
+
+    public function test_failed_save_keeps_original_pdf_and_cleans_up_the_new_upload(): void
+    {
+        $this->staff();
+        $this->post(route('miri-rental.store'), ['status' => 'On Hire', 'uploads' => ['lcn' => $this->pdf('original.pdf')]])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $item = MiriRentalItem::firstOrFail();
+        $original = $item->attachments;
+        $this->mock(\App\Services\AuditLogger::class, function ($mock) {
+            $mock->shouldReceive('record')->once()->andThrow(new \RuntimeException('Simulated failed save'));
+        });
+        $this->post(route('miri-rental.update', $item), ['_method' => 'patch', 'status' => 'Off Hire', 'uploads' => ['lcn' => $this->pdf('replacement.pdf')]])
+            ->assertStatus(500);
+        $this->assertSame($original, $item->fresh()->attachments);
+        $this->assertSame('On Hire', $item->fresh()->status);
+        $this->assertSame([$original['lcn']['path']], Storage::disk('rental')->allFiles());
     }
 }

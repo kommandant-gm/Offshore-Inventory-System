@@ -1,4 +1,5 @@
 <script setup>
+import RentalAttachmentUpload from '@/Components/RentalAttachmentUpload.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -12,7 +13,7 @@ const item = props.rental;
 const date = (value) => value ? String(value).slice(0, 10) : '';
 const form = useForm({
     company: item?.company ?? '',
-    uploads: { lcn: null, bcn: null, offhire: null },
+    uploads: { lcn: null, bcn: null, offhire: null, onhire: null },
     category: item?.category ?? '', section_1: item?.section_1 ?? '', section_2: item?.section_2 ?? '', description: item?.description ?? '',
     serial_tag_equipment_no: item?.serial_tag_equipment_no ?? '', unit: item?.unit ?? '', supplier: item?.supplier ?? '', project_contract: item?.project_contract ?? '',
     current_location: item?.current_location ?? '', rental_due_date: date(item?.rental_due_date), issue_out_cog_no: item?.issue_out_cog_no ?? '', issue_out_cog_date: date(item?.issue_out_cog_date),
@@ -27,7 +28,7 @@ const groups = [
     { title: 'Issue out to location', attachment: 'lcn', attachmentLabel: 'LCN', fields: [['issue_out_cog_no','Issue-out COG No.'],['issue_out_cog_date','Issue-out COG Date']] },
     { title: 'Received backload', attachment: 'bcn', attachmentLabel: 'BCN', fields: [['received_backload_from_location','From Location'],['received_backload_cog_no','Received-backload COG No.'],['received_backload_cog_date','Received-backload COG Date']] },
     { title: 'Return to supplier', attachment: 'offhire', attachmentLabel: 'Off-hire certificate', paired: true, fields: [['offhire_certificate_no','Offhire Certificate No.'],['offhire_certificate_date','Offhire Certificate Date'],['return_cog_no','Return COG No.'],['return_cog_date','Return COG Date']] },
-    { title: 'Documents', fields: [['mr_no','MR No.'],['mr_date','MR Date'],['po_or_sr_no','PO / SR No.'],['po_or_sr_date','PO / SR Date'],['do_no','DO No.'],['do_date','DO Date'],['onhire_certificate_no','Onhire Certificate No.'],['onhire_certificate_date','Onhire Certificate Date']] },
+    { title: 'Documents', documents: true, fields: [['mr_no','MR No.'],['mr_date','MR Date'],['po_or_sr_no','PO / SR No.'],['po_or_sr_date','PO / SR Date'],['do_no','DO No.'],['do_date','DO Date']] },
 ];
 const submit = () => form.transform(data => item ? { ...data, _method: 'patch' } : data)
     .post(item ? route('miri-rental.update', item.id) : route('miri-rental.store'), { forceFormData: true });
@@ -40,7 +41,7 @@ const submit = () => form.transform(data => item ? { ...data, _method: 'patch' }
             <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
             <section v-for="group in groups" :key="group.title" class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">{{ group.title }}</h2>
-                <div class="mt-5 grid gap-4" :class="group.paired ? 'md:grid-cols-2 md:grid-rows-2 md:grid-flow-col' : 'md:grid-cols-3'">
+                <div class="mt-5 grid gap-4" :class="group.paired ? 'md:grid-cols-2 md:grid-rows-2 md:grid-flow-col' : group.documents ? 'md:grid-cols-3 md:grid-rows-2 md:grid-flow-col' : 'md:grid-cols-3'">
                     <div v-for="[key, label] in group.fields" :key="key">
                         <label class="label-text">{{ label }}</label>
                         <CustomSelect v-if="key === 'category'" v-model="form[key]" class="select select-bordered mt-2 w-full"><option value="">Select category</option><option v-for="category in categories" :key="category" :value="category">{{ category }}</option></CustomSelect>
@@ -50,16 +51,22 @@ const submit = () => form.transform(data => item ? { ...data, _method: 'patch' }
                         <InputError :message="form.errors[key]" />
                     </div>
                 </div>
-                <div v-if="group.attachment" class="mt-5 rounded-xl border border-[#d8e7d4] bg-[#f5f9f3] p-4">
-                    <label :for="`upload-${group.attachment}`" class="block text-sm font-semibold">Upload {{ group.attachmentLabel }} (PDF)</label>
-                    <div v-if="item?.attachments?.[group.attachment]" class="mt-2 flex flex-wrap gap-3 text-sm">
-                        <a :href="route('miri-rental.attachment', { rental: item.id, slot: group.attachment })" target="_blank" rel="noopener" class="break-all text-green-800 underline">Open {{ item.attachments[group.attachment].name }}</a>
-                        <a :href="route('miri-rental.attachment', { rental: item.id, slot: group.attachment, download: 1 })" class="text-green-800 underline">Download</a>
+                <div v-if="group.documents" class="mt-6 grid items-start gap-5 border-t border-[#d8e7d4] pt-5 md:grid-cols-3">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="onhire_certificate_no" class="label-text">Onhire Certificate No.</label>
+                            <TextInput id="onhire_certificate_no" v-model="form.onhire_certificate_no" class="mt-2 w-full" />
+                            <InputError :message="form.errors.onhire_certificate_no" />
+                        </div>
+                        <div>
+                            <label for="onhire_certificate_date" class="label-text">Onhire Certificate Date</label>
+                            <input id="onhire_certificate_date" v-model="form.onhire_certificate_date" type="date" class="input input-bordered mt-2 w-full" />
+                            <InputError :message="form.errors.onhire_certificate_date" />
+                        </div>
                     </div>
-                    <input :id="`upload-${group.attachment}`" type="file" accept="application/pdf,.pdf" class="mt-3 block w-full text-sm" :disabled="form.processing" @change="form.uploads[group.attachment] = $event.target.files[0] || null" />
-                    <p class="mt-2 text-xs text-slate-500">One PDF, up to 5 MB. Selecting a new file replaces the saved attachment when you save.</p>
-                    <InputError :message="form.errors[`uploads.${group.attachment}`]" />
+                    <RentalAttachmentUpload v-model="form.uploads.onhire" slot-key="onhire" label="On-hire certificate" :rental="item" :disabled="form.processing" :error="form.errors['uploads.onhire']" class="md:col-span-2" />
                 </div>
+                <RentalAttachmentUpload v-if="group.attachment" v-model="form.uploads[group.attachment]" :slot-key="group.attachment" :label="group.attachmentLabel" :rental="item" :disabled="form.processing" :error="form.errors[`uploads.${group.attachment}`]" class="mt-5" />
             </section>
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm"><label class="label-text">Status</label><CustomSelect v-model="form.status" class="select select-bordered mt-2 w-full md:w-1/3"><option v-for="status in statuses" :key="status">{{ status }}</option></CustomSelect><label class="label-text mt-5 block">Remarks</label><textarea v-model="form.remarks" class="textarea textarea-bordered mt-2 w-full" rows="4" /></section>
             <InputError :message="form.errors.uploads" />
