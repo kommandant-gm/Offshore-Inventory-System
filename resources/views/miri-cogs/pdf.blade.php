@@ -7,8 +7,8 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{vertical-alig
 .head{border:1px solid #000}.brand{text-align:center;font-weight:bold;color:#328024;font-size:20px}.company{font-size:10pt;color:#000}
 .title{font-size:23px;color:#000;font-weight:bold}.logo-window{width:52px;height:54px;overflow:hidden}.logo{width:260px;margin-left:-17px;margin-top:-9px}
 .header-details td{padding:2pt 4pt;font-size:10pt}.number{color:red;font-size:15pt;font-weight:bold;white-space:nowrap}.line{border-bottom:1px solid #000;min-height:12pt}
-.header-reference{text-align:right;padding:4pt 6pt 0 0}.document-meta{margin-top:6pt;text-align:left;font-size:10pt;line-height:14pt}
-.party-fields{line-height:14pt}.party-fields .field-row{position:relative;padding-left:64pt;min-height:14pt}.party-fields .field-label{position:absolute;left:0;top:0;width:64pt;white-space:nowrap}.party-fields .field-continuation{border-bottom:1px solid #000}
+.header-reference{text-align:right;padding:4pt 6pt 0 0}.reference-block{display:inline-block;text-align:left;vertical-align:top}.document-meta{margin-top:6pt;text-align:left;font-size:10pt;line-height:14pt}
+.party-fields{line-height:14pt}.party-fields .field-row{position:relative;padding-left:64pt;min-height:14pt}.party-fields .field-label{position:absolute;left:0;top:0;width:64pt;white-space:nowrap}.header-details td.aligned-field{padding:0 4pt;border-bottom:1px solid #000}.routing-label,.routing-value{min-height:14pt;line-height:14pt}
 .items th,.items td{border:1px solid #000}.items th{font-size:10pt;vertical-align:middle;height:32pt;text-align:center}
 .items td{height:14pt;line-height:14pt;padding:0 2pt;font-size:10pt;font-family:DejaVu Sans Mono,monospace;white-space:nowrap}
 .items .center{text-align:center}.footer td{border:1px solid #000;padding:3pt;font-size:10pt}.footer strong{display:block;min-height:24pt}
@@ -19,15 +19,18 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{vertical-alig
 <div class="sheet">
 <div class="code">DE-F-07E</div>
 <div class="head">
-<table><tr><td style="width:10%;padding:5px"><div class="logo-window"><img class="logo" src="{{ $logoPath }}"></div></td><td style="width:60%;text-align:center"><div class="brand">DAYANG ENTERPRISE SDN. BHD.</div><div class="company">NO. SYARIKAT: 198001007721 (61505-V)</div><div class="title">Internal Issue Note</div></td><td style="width:30%" class="header-reference">No. <span class="number">{{ $cog->display_cog_no }}</span><div class="document-meta">DATE: {{ $cog->document_date?->format('d/m/Y') }}<br>PAGE: {{ $pageIndex+1 }} OF {{ count($document['pages']) }}</div></td></tr></table>
-<table class="header-details"><tr><td style="width:45%">
-<div class="party-fields">
-<div class="field-row"><span class="field-label">CONSIGNEE:</span>{{ $document['header']['consignee_name'] ?: $document['header']['receiver_name'] }}</div>
-<div class="field-row field-continuation">{{ $document['header']['consignee_department'] ?: ' ' }}</div>
-<div class="field-row"><span class="field-label">FROM:</span>{{ $document['header']['from_department'] }}</div>
-<div class="field-row field-continuation">{{ $document['header']['from_location'] ?: ' ' }}</div>
-</div>
-</td><td style="width:25%">TO: <div class="line">{{ $document['header']['to_location'] }}</div>COPY: <div class="line">{{ $document['header']['copy_to'] }}</div></td><td style="width:30%;vertical-align:bottom">DESTINATION: <div class="line">{{ $document['header']['destination'] ?: $document['header']['to_location'] }}</div></td></tr></table>
+<table><tr><td style="width:10%;padding:5px"><div class="logo-window"><img class="logo" src="{{ $logoPath }}"></div></td><td style="width:60%;text-align:center"><div class="brand">DAYANG ENTERPRISE SDN. BHD.</div><div class="company">NO. SYARIKAT: 198001007721 (61505-V)</div><div class="title">Internal Issue Note</div></td><td style="width:30%" class="header-reference">No. <div class="reference-block"><div class="number">{{ $cog->display_cog_no }}</div><div class="document-meta">DATE: {{ $cog->document_date?->format('d/m/Y') }}<br>PAGE: {{ $pageIndex+1 }} OF {{ count($document['pages']) }}</div></div></td></tr></table>
+<table class="header-details">
+<tr>
+<td class="aligned-field" style="width:45%"><div class="party-fields"><div class="field-row"><span class="field-label">CONSIGNEE:</span>{{ $document['header']['consignee_name'] ?: $document['header']['receiver_name'] }}</div><div class="field-row">{{ $document['header']['consignee_department'] ?: ' ' }}</div></div></td>
+<td class="aligned-field" style="width:25%"><div class="routing-label">TO:</div><div class="routing-value">{{ $document['header']['to_location'] ?: ' ' }}</div></td>
+<td rowspan="2" style="width:30%;vertical-align:bottom">DESTINATION: <div class="line">{{ $document['header']['destination'] ?: $document['header']['to_location'] }}</div></td>
+</tr>
+<tr>
+<td class="aligned-field"><div class="party-fields"><div class="field-row"><span class="field-label">FROM:</span>{{ $document['header']['from_department'] }}</div><div class="field-row">{{ $document['header']['from_location'] ?: ' ' }}</div></div></td>
+<td class="aligned-field"><div class="routing-label">COPY:</div><div class="routing-value">{{ $document['header']['copy_to'] ?: ' ' }}</div></td>
+</tr>
+</table>
 </div>
 <table class="items"><colgroup><col style="width:4%"><col style="width:5%"><col style="width:5%"><col style="width:30%"><col style="width:11%"><col style="width:14%"><col style="width:11%"><col style="width:12%"><col style="width:8%"></colgroup><thead><tr><th style="width:4%">ITEM</th><th style="width:5%">QTY</th><th style="width:5%">UNIT</th><th style="width:30%">FULL DESCRIPTION</th><th style="width:11%">SIZE / MODEL</th><th style="width:14%">TAGGING NO.</th><th style="width:11%">SERIAL NO.</th><th style="width:12%">MR #</th><th style="width:8%">REMARKS</th></tr></thead><tbody>
 @foreach($rows as $row)<tr>@foreach(['item','quantity','unit','description','size_model','identifier','serial_no','mr_reference','remarks'] as $key)<td class="{{ in_array($key, ['quantity','unit']) ? 'center' : '' }}">{{ $row[$key] ?? '' }}</td>@endforeach</tr>@endforeach
