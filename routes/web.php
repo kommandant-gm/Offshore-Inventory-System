@@ -165,6 +165,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::patch('/miri-rental/{rental}', [MiriRentalController::class, 'update'])->name('miri-rental.update');
     Route::resource('locations', LocationController::class)->only(['index', 'store', 'update']);
     Route::get('/miri-inventory', [MajorEquipmentController::class, 'index'])->name('major-equipment.index');
+    Route::patch('/miri-inventory/spreadsheet', [\App\Http\Controllers\EquipmentSheetController::class, 'update'])->name('major-equipment.spreadsheet.update');
     Route::get('/miri-inventory/dashboard', [MajorEquipmentController::class, 'dashboard'])->name('major-equipment.dashboard');
     Route::get('/miri-inventory/import-status/{task}', [MajorEquipmentController::class, 'importStatus'])->whereUuid('task')->name('major-equipment.import.status');
     Route::get('/miri-inventory/movement', [MajorEquipmentController::class, 'movement'])->name('major-equipment.movement');

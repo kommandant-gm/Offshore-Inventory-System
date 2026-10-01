@@ -1,4 +1,5 @@
 <script setup>
+import EquipmentSpreadsheet from '@/Components/EquipmentSpreadsheet.vue';
 import { useLiveFilterOptions } from '@/Composables/useLiveFilterOptions';
 import LiveFilterNotice from '@/Components/LiveFilterNotice.vue';
 import DeleteRegisterItem from '@/Components/DeleteRegisterItem.vue';
@@ -8,13 +9,20 @@ import { useCompanySelection } from '@/Composables/useCompanySelection';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
-    equipment: Object, summary: Object, tabCounts: Object, filters: Object,
+    equipment: Object, sheetColumns: Array, summary: Object, tabCounts: Object, filters: Object,
     descriptionOptions: Array, categoryOptions: Array, section1Options: Array, section2Options: Array,
     locationOptions: Array, issueOutLocationOptions: Array, statusOptions: Array, canEdit: Boolean,
 });
+const excelView = ref(false);
+const spreadsheet = ref(null);
+function toggleView() {
+    if (excelView.value && !spreadsheet.value?.requestClose()) return;
+    selectedIds.value = [];
+    excelView.value = !excelView.value;
+}
 const form = reactive({ ...props.filters });
 watch(() => props.filters, value => Object.assign(form, value));
 const cargo = computed(() => props.filters.inventory_type === 'cargo');
@@ -52,7 +60,7 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                 </div>
             </header>
             <nav aria-label="Equipment type" class="flex w-fit gap-2 rounded-2xl border border-[#d8e7d4] bg-white p-2">
-                <Link v-for="tab in ['machinery', 'cargo']" :key="tab" :href="route('major-equipment.index', { inventory_type: tab })"
+                <Link v-for="tab in ['machinery', 'cargo']" :key="tab" preserve-state :href="route('major-equipment.index', { inventory_type: tab })"
                     :aria-current="filters.inventory_type === tab ? 'page' : undefined"
                     class="rounded-xl px-6 py-3 font-bold capitalize"
                     :class="filters.inventory_type === tab ? 'bg-[#234222] text-white' : 'text-[#60745d] hover:bg-green-50'">
@@ -85,10 +93,11 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                     </div>
                 </div>
             </form>
-            <BulkCompanyAssignment v-if="canEdit" :ids="selectedIds" :register="filters.inventory_type" @assigned="selectedIds = []" />
+            <BulkCompanyAssignment v-if="canEdit && !excelView" :ids="selectedIds" :register="filters.inventory_type" @assigned="selectedIds = []" />
             <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
-                <div class="border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><strong>{{ equipment.total }}</strong> {{ typeLabel }} records found <span v-if="equipment.total">· Showing {{ equipment.from }}–{{ equipment.to }}</span></div>
-                <div class="overflow-x-auto">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><p><strong>{{ equipment.total }}</strong> {{ typeLabel }} records found <span v-if="equipment.total">· Showing {{ equipment.from }}–{{ equipment.to }}</span></p><button type="button" class="btn btn-sm border-[#4f9f4a] text-[#2f7d32]" :aria-pressed="excelView" @click="toggleView">{{ excelView ? 'Table view' : 'Excel view' }}</button></div>
+                <EquipmentSpreadsheet v-if="excelView" ref="spreadsheet" :records="equipment.data" :columns="sheetColumns" :can-edit="canEdit" :inventory-type="filters.inventory_type" :first-row="equipment.from" />
+                <div v-else class="overflow-x-auto">
                     <table class="table">
                         <thead><tr><th v-if="canEdit"><input v-model="allSelected" type="checkbox" aria-label="Select all items on this page" /></th><th>Company</th><th>Tag No.</th><th>Description</th><th>Category / Subcategory</th>
                             <template v-if="cargo"><th>Dimensions / Model</th><th>Tonnage</th></template>
@@ -116,7 +125,7 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                     </table>
                 </div>
             </div>
-            <div class="flex flex-wrap gap-2"><Link v-for="link in equipment.links" :key="link.label" :href="link.url || '#'" class="btn btn-sm" :class="{ 'btn-disabled': !link.url, 'bg-[#234222] text-white': link.active }" v-html="link.label" /></div>
+            <div class="flex flex-wrap gap-2"><Link v-for="link in equipment.links" :key="link.label" :href="link.url || '#'" preserve-state preserve-scroll class="btn btn-sm" :class="{ 'btn-disabled': !link.url, 'bg-[#234222] text-white': link.active }" v-html="link.label" /></div>
         </section>
     </AuthenticatedLayout>
 </template>

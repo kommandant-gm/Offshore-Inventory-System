@@ -277,6 +277,7 @@ class MajorEquipmentController extends Controller
             'qualityCounts' => ['duplicates' => (clone $summaryQuery)->duplicateTag()->count(), 'missing_details' => (clone $summaryQuery)->missingDetails()->count(), 'warnings' => (clone $summaryQuery)->whereNotNull('import_warnings')->count()],
         ]);
         return Inertia::render('MajorEquipment/Index', [
+            'sheetColumns' => \App\Support\EquipmentSheet::columns($type),
             'equipment' => $query->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('id')->paginate(25)->withQueryString(),
             'tabCounts' => MajorEquipment::query()->select('inventory_type')->selectRaw('COUNT(*) AS total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
             'summary' => [
