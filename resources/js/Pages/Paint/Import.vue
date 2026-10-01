@@ -32,7 +32,7 @@ const submit = () => form.post(route('paint.import.store'), { forceFormData: tru
                 <button class="btn bg-[#234222] text-white" :disabled="!form.file || previewing || form.processing">{{ previewing ? 'Checking all rows…' : 'Preview CSV' }}</button>
                 <section v-if="report" class="space-y-4 border-t pt-5">
                     <h2 class="font-bold">Import preview</h2>
-                    <p class="text-sm">{{ report.paired_dates }} valid date pairs mapped as manufacture / best before; {{ report.missing_dates }} rows have no dates.</p>
+                    <p class="text-sm">{{ report.paired_dates }} valid date pairs mapped as manufacture / expiry; {{ report.missing_dates }} rows have no dates.</p>
                     <div v-if="report.conversions.length" class="rounded-xl bg-amber-50 p-3 text-sm text-amber-900"><p class="font-bold">Numeric warnings / proposed conversions (first 10)</p><p v-for="(warning,i) in report.conversions" :key="i">Row {{ warning.row }}: {{ warning.message }}</p></div>
                     <details v-if="report.date_reviews.length" class="text-sm"><summary>Unconfirmed source dates (first 10)</summary><p v-for="row in report.date_reviews" :key="row.row">Row {{ row.row }}: {{ row.value }}</p></details>
                     <p class="text-sm text-slate-600">The imports worker must be running on the server. Confirming queues this file; it does not import immediately.</p>
@@ -40,7 +40,7 @@ const submit = () => form.post(route('paint.import.store'), { forceFormData: tru
                     <div class="flex flex-wrap gap-2"><span v-for="(count, category) in report.categories" :key="category" class="rounded-full bg-green-50 px-3 py-1 text-xs">{{ category }}: {{ count }}</span></div>
                     <p v-if="report.already_imported" role="alert" class="text-amber-800">This file is already queued or imported. Open its progress page above.</p>
                     <p class="text-xs text-slate-500">First five rows shown; the entire file has been checked. Review and duplicate counts can overlap.</p>
-                    <div class="overflow-x-auto"><table class="table"><thead><tr><th>CSV record</th><th>Description / Batch</th><th>Original date / meaning</th><th>Review</th></tr></thead><tbody><tr v-for="row in report.samples" :key="row.source_row"><td>{{ row.source_row }}</td><td>{{ row.description || 'Not recorded' }}<p class="text-xs">{{ row.batch_no || 'No batch' }}</p></td><td>{{ row.original_date || 'Not recorded' }} · {{ row.date_status }}</td><td><p v-for="flag in row.flags" :key="flag" class="text-xs text-amber-800">{{ flag }}</p></td></tr></tbody></table></div>
+                    <div class="overflow-x-auto"><table class="table"><thead><tr><th>CSV record</th><th>Description / Batch</th><th>Original date / meaning</th><th>Review</th></tr></thead><tbody><tr v-for="row in report.samples" :key="row.source_row"><td>{{ row.source_row }}</td><td>{{ row.description || '-' }}<p class="text-xs">{{ row.batch_no || '-' }}</p></td><td>{{ row.original_date || '-' }} · {{ row.date_status }}</td><td><p v-for="flag in row.flags" :key="flag" class="text-xs text-amber-800">{{ flag }}</p></td></tr></tbody></table></div>
                     <button type="button" class="btn bg-[#4f9f4a] text-white" :disabled="report.already_imported || form.processing || previewing" @click="submit">{{ form.processing ? 'Queuing…' : 'Confirm background import' }}</button>
                 </section>
             </form>

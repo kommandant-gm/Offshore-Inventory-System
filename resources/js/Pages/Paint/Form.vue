@@ -28,14 +28,14 @@ function assignDate(field) {
             <header class="rounded-3xl border border-[#d8e7d4] bg-white p-6"><img src="/images/dayang-logo.png" alt="Dayang" class="mb-4 h-14 w-auto" /><h1 class="text-2xl font-bold text-[#234222]">{{ record ? 'Edit Paint record #' + record.id : 'Register paint' }}</h1><p class="mt-2 text-sm text-slate-500">Miri Paint Register · New Paint COGs update closing quantities. Manual balance corrections require a review note. Prices remain recorded values.</p></header>
             <div v-if="Object.keys(form.errors).length" role="alert" class="rounded-xl bg-red-50 p-4 text-red-700"><p v-for="(message,key) in form.errors" :key="key">{{ message }}</p></div>
             <section class="rounded-3xl border border-amber-200 bg-amber-50 p-6">
-                <h2 class="font-bold text-[#234222]">Manufacture &amp; best-before date review</h2>
-                <p class="mt-2 whitespace-pre-wrap text-sm">Original CSV date: {{ record?.original_date || 'Not recorded' }}</p>
-                <p class="mt-2 text-sm text-amber-900">Single dates must be identified by staff. Confirmed date pairs follow the source heading: manufacture → best before. Unconfirmed dates are excluded from expiry alerts.</p>
-                <div v-if="record?.unconfirmed_date" class="mt-3 flex flex-wrap gap-2"><button type="button" class="btn btn-sm" @click="assignDate('manufacture_date')">Use single date as manufacture</button><button type="button" class="btn btn-sm" @click="assignDate('best_before_date')">Use single date as best before</button></div>
+                <h2 class="font-bold text-[#234222]">Manufacture &amp; expiry date review</h2>
+                <p class="mt-2 whitespace-pre-wrap text-sm">Original CSV date: {{ record?.original_date || '-' }}</p>
+                <p class="mt-2 text-sm text-amber-900">Single dates must be identified by staff. Confirmed date pairs follow the source heading: manufacture → expiry. Unconfirmed dates are excluded from expiry alerts.</p>
+                <div v-if="record?.unconfirmed_date" class="mt-3 flex flex-wrap gap-2"><button type="button" class="btn btn-sm" @click="assignDate('manufacture_date')">Use single date as manufacture</button><button type="button" class="btn btn-sm" @click="assignDate('best_before_date')">Use single date as expiry</button></div>
                 <div class="mt-4 grid gap-4 md:grid-cols-3">
                     <label class="text-sm">Date meaning<CustomSelect v-model="form.date_status" class="mt-2 w-full rounded-xl border-slate-200"><option value="not_recorded" :disabled="!!record?.original_date">Not recorded</option><option value="unconfirmed">Unconfirmed — needs review</option><option value="confirmed">Confirmed meaning</option></CustomSelect></label>
                     <label class="text-sm">Manufacture date<input v-model="form.manufacture_date" type="date" class="mt-2 w-full rounded-xl border-slate-200" /></label>
-                    <label class="text-sm">Best-before date<input v-model="form.best_before_date" type="date" class="mt-2 w-full rounded-xl border-slate-200" /></label>
+                    <label class="text-sm">Expiry Date<input v-model="form.best_before_date" type="date" class="mt-2 w-full rounded-xl border-slate-200" /></label>
                 </div>
                 <label class="mt-4 block text-sm">Review note (required for stock adjustments or date changes)<textarea v-model="form.review_note" class="mt-2 w-full rounded-xl border-slate-200" rows="2" placeholder="How was the date meaning verified?" /></label>
                 <p v-if="record?.review_note" class="mt-2 text-xs text-slate-600">Previous note: {{ record.review_note }}</p>
