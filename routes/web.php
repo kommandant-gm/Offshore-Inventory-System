@@ -160,6 +160,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::post('/miri-rental/import', [MiriRentalController::class, 'storeImport'])->name('miri-rental.import.store');
     Route::get('/miri-rental/{rental}', [MiriRentalController::class, 'show'])->name('miri-rental.show');
     Route::get('/miri-rental/{rental}/pdf', [MiriRentalController::class, 'pdf'])->name('miri-rental.pdf');
+    Route::get('/miri-rental/{rental}/attachments/{slot}', [MiriRentalController::class, 'attachment'])->name('miri-rental.attachment');
     Route::get('/miri-rental/{rental}/edit', [MiriRentalController::class, 'edit'])->name('miri-rental.edit');
     Route::patch('/miri-rental/{rental}', [MiriRentalController::class, 'update'])->name('miri-rental.update');
     Route::resource('locations', LocationController::class)->only(['index', 'store', 'update']);

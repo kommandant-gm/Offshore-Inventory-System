@@ -14,6 +14,8 @@ class SaveMiriRentalRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'uploads' => ['sometimes', 'array:lcn,bcn,offhire'],
+            'uploads.*' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:5120'],
             'company' => ['nullable', 'in:DESB,FTSB'],
             'category' => ['nullable', 'string', 'max:255'], 'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'], 'serial_tag_equipment_no' => ['nullable', 'string', 'max:255'], 'unit' => ['nullable', 'string', 'max:255'],

@@ -32,6 +32,14 @@ const overview = [['company', 'Company'], ['status', 'Rental Status'], ['project
                             <dd class="min-w-0 whitespace-pre-wrap break-words text-sm text-slate-800">{{ rentalDetailValue(key, rental[key]) }}</dd>
                         </div>
                     </dl>
+                    <div v-if="group.attachment" class="border-t border-slate-100 px-5 py-4 text-sm">
+                        <p class="font-semibold text-[#60745d]">{{ group.attachmentLabel }} attachment</p>
+                        <div v-if="rental.attachments?.[group.attachment]" class="mt-2 flex flex-wrap gap-3">
+                            <a :href="route('miri-rental.attachment', { rental: rental.id, slot: group.attachment })" target="_blank" rel="noopener" class="break-all text-green-800 underline">Open {{ rental.attachments[group.attachment].name }}</a>
+                            <a :href="route('miri-rental.attachment', { rental: rental.id, slot: group.attachment, download: 1 })" class="text-green-800 underline">Download</a>
+                        </div>
+                        <p v-else class="mt-2 text-slate-500">-</p>
+                    </div>
                 </section>
             </div>
             <div class="flex flex-wrap gap-3 rounded-2xl border border-[#d8e7d4] bg-white p-5">

@@ -48,6 +48,9 @@ class MiriRegisterDeletionController extends Controller
             if ($register === 'construction') {
                 foreach ($record->attachments ?? [] as $attachment) if (! empty($attachment['path'])) $files[] = ['construction', $attachment['path']];
             }
+            if ($register === 'rental') {
+                foreach ($record->attachments ?? [] as $attachment) if (! empty($attachment['path'])) $files[] = ['rental', $attachment['path']];
+            }
             // Do not copy private personnel fields or original imports into the audit log.
             $audit->record('miri_inventory', 'deleted', "Deleted {$type} register item #{$item}.", $record,
                 before: $record->only(['id', 'company', 'description', 'category', 'current_location']),

@@ -8,6 +8,8 @@ use App\Models\MiriRentalItem;
 use App\Services\BranchContext;
 use App\Services\MiriRentalImportService;
 use App\Services\AuditLogger;
+use App\Services\RentalRecordService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -49,11 +51,40 @@ class MiriRentalController extends Controller
     }
 
     public function create(Request $request): Response { $this->ensureMiri($request); abort_unless($request->user()?->canEdit('assets'), 403); return Inertia::render('MiriRental/Form', ['rental' => null, 'categories' => $this->categories()]); }
-    public function store(SaveMiriRentalRequest $request, AuditLogger $auditLogger): RedirectResponse { $this->ensureMiri($request); $rental = MiriRentalItem::create([...$request->validated(), 'branch_id' => app(BranchContext::class)->id($request->user())]); $auditLogger->record('miri_rentals', 'created', "Added Miri rental record {$rental->description}.", $rental, after: $rental->toArray(), user: $request->user(), request: $request); return redirect()->route('miri-rental.show', $rental)->with('success', 'Rental record registered.'); }
-    public function show(Request $request, MiriRentalItem $rental): Response { $this->ensureMiri($request); abort_unless($request->user()?->canRead('assets'), 403); return Inertia::render('MiriRental/Show', ['rental' => $rental]); }
+    public function store(SaveMiriRentalRequest $request, RentalRecordService $service): RedirectResponse
+    {
+        $this->ensureMiri($request);
+        $rental = $service->save(new MiriRentalItem, $request);
+        return redirect()->route('miri-rental.show', $rental)->with('success', 'Rental record registered.');
+    }
+    public function show(Request $request, MiriRentalItem $rental): Response { $this->ensureMiri($request); abort_unless($request->user()?->canRead('assets'), 403); return Inertia::render('MiriRental/Show', ['rental' => $this->rentalData($rental)]); }
     public function pdf(Request $request, MiriRentalItem $rental) { $this->ensureMiri($request); abort_unless($request->user()?->canRead('assets'), 403); return Pdf::loadView('miri-rentals.registration-pdf', ['rental' => $rental, 'logoPath' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('images/dayang-logo.png'))),])->download('miri-rental-registration-'.$rental->id.'.pdf'); }
-    public function edit(Request $request, MiriRentalItem $rental): Response { $this->ensureMiri($request); abort_unless($request->user()?->canEdit('assets'), 403); return Inertia::render('MiriRental/Form', ['rental' => $rental, 'categories' => $this->categories()]); }
-    public function update(SaveMiriRentalRequest $request, MiriRentalItem $rental, AuditLogger $auditLogger): RedirectResponse { $this->ensureMiri($request); $before = $rental->toArray(); $rental->update($request->validated()); $auditLogger->record('miri_rentals', 'updated', "Updated Miri rental record {$rental->description}.", $rental, before: $before, after: $rental->fresh()->toArray(), user: $request->user(), request: $request); return redirect()->route('miri-rental.show', $rental)->with('success', 'Rental record updated.'); }
+    public function edit(Request $request, MiriRentalItem $rental): Response { $this->ensureMiri($request); abort_unless($request->user()?->canEdit('assets'), 403); return Inertia::render('MiriRental/Form', ['rental' => $this->rentalData($rental), 'categories' => $this->categories()]); }
+    public function update(SaveMiriRentalRequest $request, MiriRentalItem $rental, RentalRecordService $service): RedirectResponse
+    {
+        $this->ensureMiri($request);
+        $rental = $service->save($rental, $request);
+        return redirect()->route('miri-rental.show', $rental)->with('success', 'Rental record updated.');
+    }
+
+    private function rentalData(MiriRentalItem $rental): array
+    {
+        return [...$rental->toArray(), 'attachments' => collect($rental->attachments ?? [])
+            ->map(fn ($file) => collect($file)->only(['name', 'size'])->all())->all()];
+    }
+
+    public function attachment(Request $request, MiriRentalItem $rental, string $slot)
+    {
+        $this->ensureMiri($request);
+        abort_unless($request->user()?->canRead('assets'), 403);
+        abort_unless($rental->branch_id === app(BranchContext::class)->id($request->user()), 404);
+        abort_unless(array_key_exists($slot, MiriRentalItem::ATTACHMENTS), 404);
+        $file = ($rental->attachments ?? [])[$slot] ?? null;
+        abort_unless($file && Storage::disk('rental')->exists($file['path']), 404);
+        return Storage::disk('rental')->response($file['path'], 'rental-'.$rental->id.'-'.$slot.'.pdf',
+            ['Content-Type' => 'application/pdf', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'Content-Security-Policy' => "default-src 'none'; sandbox"],
+            $request->boolean('download') ? 'attachment' : 'inline');
+    }
     public function import(Request $request): Response { $this->ensureMiri($request); abort_unless($request->user()?->canEdit('assets'), 403); return Inertia::render('MiriRental/Import'); }
     public function storeImport(StoreMiriRentalImportRequest $request, MiriRentalImportService $service, AuditLogger $auditLogger): RedirectResponse { $this->ensureMiri($request); $summary = $service->import($request->file('file')); $auditLogger->record('miri_rentals', 'imported', "Imported Miri rental file: {$summary['created']} records created.", user: $request->user(), request: $request); return redirect()->route('miri-rental.index')->with('success', "Rental import complete. {$summary['created']} records created."); }
     private function categories(): array { return \App\Models\MiriInventoryCategory::query()->where('active', true)->orderBy('name')->pluck('name')->values()->all(); }

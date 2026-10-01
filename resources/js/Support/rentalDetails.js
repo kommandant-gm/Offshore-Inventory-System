@@ -32,9 +32,9 @@ export function rentalDetailValue(key, value) {
 export function rentalDetailGroups(rental) {
     return [
         { title: 'Item information', fields: [['description', 'Description'], ['category', 'Category'], ['section_1', 'Subcategory 1'], ['section_2', 'Subcategory 2'], ['serial_tag_equipment_no', 'Serial / Tag / Equipment No.'], ['unit', 'Unit'], ['supplier', 'Supplier'], ...(isGasCylinder(rental) ? [['rental_due_date', 'Rental Due Date']] : [])] },
-        { title: 'Issue out', fields: [['issue_out_cog_no', 'Issue-out COG No.'], ['issue_out_cog_date', 'Issue-out COG Date'], ['onhire_certificate_no', 'On-hire Certificate No.'], ['onhire_certificate_date', 'On-hire Certificate Date']] },
-        { title: 'Received backload', fields: [['received_backload_from_location', 'From Location'], ['received_backload_cog_no', 'Backload COG No.'], ['received_backload_cog_date', 'Backload COG Date']] },
-        { title: 'Off hire and return to supplier', fields: [['offhire_certificate_no', 'Off-hire Certificate No.'], ['offhire_certificate_date', 'Off-hire Certificate Date'], ['return_cog_no', 'Return COG No.'], ['return_cog_date', 'Return COG Date']] },
+        { title: 'Issue out', attachment: 'lcn', attachmentLabel: 'LCN', fields: [['issue_out_cog_no', 'Issue-out COG No.'], ['issue_out_cog_date', 'Issue-out COG Date'], ['onhire_certificate_no', 'On-hire Certificate No.'], ['onhire_certificate_date', 'On-hire Certificate Date']] },
+        { title: 'Received backload', attachment: 'bcn', attachmentLabel: 'BCN', fields: [['received_backload_from_location', 'From Location'], ['received_backload_cog_no', 'Backload COG No.'], ['received_backload_cog_date', 'Backload COG Date']] },
+        { title: 'Off hire and return to supplier', attachment: 'offhire', attachmentLabel: 'Off-hire certificate', fields: [['offhire_certificate_no', 'Off-hire Certificate No.'], ['offhire_certificate_date', 'Off-hire Certificate Date'], ['return_cog_no', 'Return COG No.'], ['return_cog_date', 'Return COG Date']] },
         { title: 'Purchase documents', fields: [['mr_no', 'MR No.'], ['mr_date', 'MR Date'], ['po_or_sr_no', 'PO / SR No.'], ['po_or_sr_date', 'PO / SR Date'], ['do_no', 'DO No.'], ['do_date', 'DO Date']] },
         { title: 'Remarks and record information', fields: [['remarks', 'Remarks'], ['active', 'Record Status'], ['created_at', 'Created Date'], ['updated_at', 'Updated Date']] },
     ];

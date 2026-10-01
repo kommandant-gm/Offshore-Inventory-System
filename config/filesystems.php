@@ -29,6 +29,13 @@ return [
     */
 
     'disks' => [
+        'rental' => [
+            'driver' => 'local',
+            'root' => env('RENTAL_STORAGE_ROOT', storage_path('app/private/miri/rental')),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+        ],
         'paint' => [
             'driver' => 'local',
             'root' => env('PAINT_STORAGE_ROOT', storage_path('app/private/miri/paint')),

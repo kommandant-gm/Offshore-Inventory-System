@@ -13,6 +13,10 @@ class MiriRentalItem extends Model
 
     protected $table = 'miri_rental_items';
 
+    public const ATTACHMENTS = ['lcn' => 'LCN', 'bcn' => 'BCN', 'offhire' => 'Off-hire certificate'];
+
+    protected $hidden = ['attachments'];
+
     protected $fillable = [
         'company',
         'branch_id', 'category', 'section_1', 'section_2', 'description',
@@ -27,6 +31,7 @@ class MiriRentalItem extends Model
     protected function casts(): array
     {
         return [
+            'attachments' => 'array',
             'rental_due_date' => 'date', 'issue_out_cog_date' => 'date',
             'received_backload_cog_date' => 'date', 'offhire_certificate_date' => 'date',
             'return_cog_date' => 'date', 'mr_date' => 'date', 'po_or_sr_date' => 'date',
