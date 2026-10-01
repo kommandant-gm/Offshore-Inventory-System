@@ -6,10 +6,13 @@ import { cellValue, columnLetter, pasteCells, sheetChanges, sheetRows } from '@/
 
 const props = defineProps({ records: Array, columns: Array, canEdit: Boolean, inventoryType: String, firstRow: Number });
 const rows = ref([]), originals = ref([]), errors = ref({}), notice = ref(''), saving = ref(false), table = ref(null);
+const editing = ref(false);
+const editable = computed(() => props.canEdit && editing.value && !saving.value);
 let internalReload = false;
 const changes = computed(() => sheetChanges(rows.value, originals.value, props.columns));
 const dirty = computed(() => changes.value.length > 0);
 function reset() {
+    editing.value = false;
     originals.value = sheetRows(props.records, props.columns);
     rows.value = originals.value.map(row => ({ ...row }));
     errors.value = {};
@@ -17,12 +20,13 @@ function reset() {
 watch(() => [props.records, props.columns], reset, { immediate: true });
 const changed = (index, key) => rows.value[index][key] !== originals.value[index][key];
 function edit(index, column, value) {
+    if (!editable.value) return;
     rows.value[index][column.key] = cellValue(value, column.type);
     delete errors.value[`${rows.value[index].id}.${column.key}`];
     notice.value = '';
 }
 function paste(event, row, column) {
-    if (!props.canEdit || saving.value) return;
+    if (!editable.value) { event.preventDefault(); return; }
     const text = event.clipboardData.getData('text/plain');
     if (!/[\t\r\n]/.test(text)) return;
     event.preventDefault();
@@ -48,12 +52,13 @@ function discard() {
 }
 defineExpose({ requestClose: discard });
 async function save() {
-    if (!props.canEdit || saving.value || !dirty.value) return;
+    if (!editable.value || !dirty.value) return;
     const payload = changes.value;
     saving.value = true; errors.value = {}; notice.value = '';
     try {
         const response = await axios.patch(route('major-equipment.spreadsheet.update'), { inventory_type: props.inventoryType, rows: payload });
         originals.value = rows.value.map(row => ({ ...row }));
+        editing.value = false;
         notice.value = response.data.message;
         internalReload = true;
         router.reload({ onFinish: () => { saving.value = false; internalReload = false; } });
@@ -83,12 +88,15 @@ onBeforeUnmount(() => { removeNavigationGuard(); window.removeEventListener('bef
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e7d4] bg-[#f5f9f3] px-5 py-4">
             <div>
                 <p class="font-semibold text-[#234222]">Excel view <span v-if="dirty" class="ml-2 text-sm text-amber-800">{{ changes.length }} changed records</span></p>
-                <p class="mt-1 text-xs text-slate-600">{{ canEdit ? 'Edit cells, use Tab or Enter to move, or paste cells from Excel. Save before changing pages or filters.' : 'Read-only spreadsheet view.' }} Dates: YYYY-MM-DD. Blank cells mean no recorded value.</p>
+                <p class="mt-1 text-xs text-slate-600">{{ canEdit && editing ? 'Edit cells, use Tab or Enter to move, or paste cells from Excel. Save before changing pages or filters.' : canEdit ? 'Read-only spreadsheet view. Click Edit to make changes.' : 'Read-only spreadsheet view.' }} Dates: YYYY-MM-DD. Blank cells mean no recorded value.</p>
                 <p class="mt-1 text-xs text-slate-500">Showing this page of records. Open a record to manage its certificates.</p>
             </div>
             <div v-if="canEdit" class="flex gap-2">
-                <button type="button" class="btn btn-sm" :disabled="!dirty || saving" @click="discard">Discard changes</button>
-                <button type="button" class="btn btn-sm bg-[#4f9f4a] text-white" :disabled="!dirty || saving" @click="save">{{ saving ? 'Saving…' : 'Save changes' }}</button>
+                <button v-if="!editing" type="button" class="btn btn-sm bg-[#4f9f4a] text-white" :disabled="saving" @click="editing = true; notice = ''">Edit</button>
+                <template v-else>
+                    <button type="button" class="btn btn-sm" :disabled="saving" @click="discard">{{ dirty ? 'Discard changes' : 'Cancel' }}</button>
+                    <button type="button" class="btn btn-sm bg-[#4f9f4a] text-white" :disabled="!dirty || saving" @click="save">{{ saving ? 'Saving…' : 'Save changes' }}</button>
+                </template>
             </div>
         </div>
         <div v-if="notice || Object.keys(errors).length" class="border-b px-5 py-3 text-sm" role="status" aria-live="polite">
@@ -96,7 +104,7 @@ onBeforeUnmount(() => { removeNavigationGuard(); window.removeEventListener('bef
             <ul v-if="Object.keys(errors).length" class="mt-2 list-disc pl-5 text-red-700"><li v-for="(error, key) in errors" :key="key">{{ /^\d+\./.test(key) ? `Record #${key.split('.')[0]}: ` : '' }}{{ error }}</li></ul>
         </div>
         <div ref="table" class="max-h-[70vh] overflow-auto">
-            <table class="sheet-table w-max min-w-full border-separate border-spacing-0 text-sm" aria-label="Editable equipment spreadsheet">
+            <table class="sheet-table w-max min-w-full border-separate border-spacing-0 text-sm" :aria-label="editable ? 'Editable equipment spreadsheet' : 'Read-only equipment spreadsheet'">
                 <thead class="sticky top-0 z-20">
                     <tr>
                         <th class="sticky left-0 z-30 min-w-28 border-b border-r border-[#cfe0cb] bg-[#eaf2e7] px-3 py-2">Record</th>
@@ -111,7 +119,7 @@ onBeforeUnmount(() => { removeNavigationGuard(); window.removeEventListener('bef
                             <span class="mr-2 text-slate-400">{{ (firstRow || 1) + rowIndex }}</span><a :href="route('major-equipment.show', row.id)" target="_blank" rel="noopener" class="font-semibold text-green-800 underline" :aria-label="`Open record ${row.id} in a new tab`">#{{ row.id }}</a>
                         </th>
                         <td v-for="(column, columnIndex) in columns" :key="column.key" class="border-b border-r border-[#d8e7d4] p-0" :class="errors[`${row.id}.${column.key}`] ? 'bg-red-50' : changed(rowIndex, column.key) ? 'bg-amber-50' : 'bg-white'">
-                            <input :value="row[column.key]" type="text" :data-cell="`${rowIndex}-${columnIndex}`" :readonly="!canEdit || saving" :aria-label="`Record ${row.id}, ${column.label}`" :aria-invalid="!!errors[`${row.id}.${column.key}`]" :title="errors[`${row.id}.${column.key}`] || row[column.key]" :list="column.key === 'company' ? 'equipment-sheet-companies' : undefined" class="block h-10 w-full min-w-48 border-0 bg-transparent px-3 text-sm focus:relative focus:z-10 focus:ring-2 focus:ring-inset focus:ring-green-600" @input="edit(rowIndex, column, $event.target.value)" @keydown="move($event, rowIndex, columnIndex)" @paste="paste($event, rowIndex, columnIndex)" />
+                            <input :value="row[column.key]" type="text" :data-cell="`${rowIndex}-${columnIndex}`" :readonly="!editable" :aria-label="`Record ${row.id}, ${column.label}`" :aria-invalid="!!errors[`${row.id}.${column.key}`]" :title="errors[`${row.id}.${column.key}`] || row[column.key]" :list="editable && column.key === 'company' ? 'equipment-sheet-companies' : undefined" class="block h-10 w-full min-w-48 border-0 bg-transparent px-3 text-sm focus:relative focus:z-10 focus:ring-2 focus:ring-inset focus:ring-green-600" @input="edit(rowIndex, column, $event.target.value)" @keydown="move($event, rowIndex, columnIndex)" @paste="paste($event, rowIndex, columnIndex)" />
                         </td>
                     </tr>
                     <tr v-if="!rows.length"><td :colspan="columns.length + 1" class="p-8 text-center text-slate-500">No records match these filters.</td></tr>
