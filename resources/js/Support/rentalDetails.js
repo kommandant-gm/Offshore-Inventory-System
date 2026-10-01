@@ -1,3 +1,14 @@
+export function rentalDaysRemaining(value, today = new Date()) {
+    const parts = typeof value === 'string' && value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T|\s|$)/);
+    if (!parts) return null;
+    const [, year, month, day] = parts.map(Number);
+    const due = new Date(Date.UTC(year, month - 1, day));
+    if (due.getUTCFullYear() !== year || due.getUTCMonth() !== month - 1 || due.getUTCDate() !== day) return null;
+    // Compare calendar days without locale parsing or daylight-saving offsets.
+    const current = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    return Number.isFinite(current) ? (due.getTime() - current) / 86400000 : null;
+}
+
 export function isGasCylinder(rental) {
     const classification = [rental.category, rental.section_1, rental.section_2].filter(Boolean).join(' ');
     const description = rental.description ?? '';

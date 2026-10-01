@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isGasCylinder, rentalDetailGroups, rentalDetailValue } from '../../resources/js/Support/rentalDetails.js';
+import { isGasCylinder, rentalDetailGroups, rentalDetailValue, rentalDaysRemaining } from '../../resources/js/Support/rentalDetails.js';
+
+test('rental due countdown accepts serialized timestamps and calendar dates', () => {
+    const today = new Date(2026, 9, 1, 23, 45);
+    assert.equal(rentalDaysRemaining('2026-08-10T00:00:00.000000Z', today), -52);
+    assert.equal(rentalDetailValue('rental_due_date', '2026-08-10T00:00:00.000000Z'), '10/08/2026');
+    for (const suffix of ['', 'T00:00:00.000000Z']) {
+        assert.equal(rentalDaysRemaining(`2026-10-01${suffix}`, today), 0);
+        assert.equal(rentalDaysRemaining(`2026-10-08${suffix}`, today), 7);
+        assert.equal(rentalDaysRemaining(`2026-09-30${suffix}`, today), -1);
+    }
+    for (const value of [null, undefined, '', 'invalid', '2026-02-30', '2026-13-01']) {
+        assert.equal(rentalDaysRemaining(value, today), null);
+    }
+    assert.equal(rentalDaysRemaining('2026-03-09', new Date(2026, 2, 8, 23)), 1);
+});
 
 test('details show due dates for gas cylinders but not ordinary rental equipment', () => {
     const fields = rental => rentalDetailGroups(rental).flatMap(group => group.fields.map(([key]) => key));
