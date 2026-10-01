@@ -308,6 +308,21 @@ class AssetController extends Controller
         return redirect()->route('it-assets.show', $asset)->with('success', 'IT asset updated.');
     }
 
+    public function destroy(Request $request, Asset $asset, \App\Services\AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+        $request->validate(['confirmed' => ['required', 'accepted']]);
+
+        DB::transaction(function () use ($request, $asset, $audit) {
+            $audit->record('it_assets', 'deleted', "Deleted IT asset {$asset->asset_tag_no}.", $asset,
+                before: $asset->only(['asset_tag_no', 'description']),
+                user: $request->user(), request: $request);
+            $asset->delete();
+        });
+
+        return back()->with('success', 'IT asset deleted.');
+    }
+
     public function bulkEdit(Request $request): Response
     {
         abort_unless($request->user()?->canEdit('it_assets'), 403);

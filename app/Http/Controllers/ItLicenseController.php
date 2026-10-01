@@ -18,6 +18,21 @@ use Inertia\Response;
 
 class ItLicenseController extends Controller
 {
+    public function destroy(Request $request, ItLicense $itLicense, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()?->canEdit('it_assets'), 403);
+        $request->validate(['confirmed' => ['required', 'accepted']]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $itLicense, $audit) {
+            $audit->record('it_assets', 'deleted', "Deleted IT licence {$itLicense->license_code}.", $itLicense,
+                before: $itLicense->only(['license_code', 'software_name']),
+                user: $request->user(), request: $request);
+            $itLicense->delete();
+        });
+
+        return back()->with('success', 'IT licence deleted.');
+    }
+
     public function index(Request $request): Response
     {
         abort_unless($request->user()?->canRead('it_assets'), 403);

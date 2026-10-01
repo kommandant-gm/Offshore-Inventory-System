@@ -1,5 +1,6 @@
 ﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import DeleteItRegisterItem from '@/Components/DeleteItRegisterItem.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import AssetAssignmentModal from '@/Components/AssetAssignmentModal.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
@@ -237,6 +238,7 @@ const barClass = (status) => statusBarClass[status] ?? 'bg-slate-500';
             </td>
             <td v-if="canEdit"><div class="flex flex-wrap gap-2">
               <Link class="btn btn-xs border-[#cfe6c8] bg-white" :href="route('it-assets.edit', asset.id)">Edit</Link>
+              <DeleteItRegisterItem register="it-assets" :item="asset" @deleted="id => selectedIds = selectedIds.filter(selected => selected !== id)" />
               <Link class="btn btn-xs border-[#b8cde0] bg-[#f3f8fc] text-[#194568]" :href="route('it-assets.qr-code.show', asset.id)">{{ asset.has_qr_code ? 'QR code' : 'Generate QR' }}</Link>
               <button v-if="asset.is_assigned" type="button" class="btn btn-xs border-[#d9a74d] bg-[#fff8e8] text-[#805d17]" @click="checkIn(asset)">Check in</button>
               <button v-else-if="asset.status === 'available'" type="button" class="btn btn-xs bg-[#4f9f4a] text-white" @click="selectedAsset = asset">Checkout</button>

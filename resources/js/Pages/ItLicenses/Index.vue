@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import DeleteItRegisterItem from '@/Components/DeleteItRegisterItem.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
@@ -123,7 +124,7 @@ const formatDate = (date) => date ? new Intl.DateTimeFormat('en-MY', { day: '2-d
               <td><p v-if="license.assigned_to" class="max-w-64 font-semibold text-[#234222]">{{ license.assigned_to }}</p><span v-else class="text-sm text-slate-500">{{ license.seats_assigned ? 'Assignee not recorded' : 'Available / Unassigned' }}</span></td>
               <td>{{ formatDate(license.expiry_date) }}</td>
               <td><span class="inline-flex whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold" :class="statusStyles[license.status]">{{ label(license.status) }}</span></td>
-              <td><div class="flex gap-2"><Link class="btn btn-xs border-[#b8cde0] bg-[#f3f8fc] text-[#194568]" :href="route('it-licenses.show', license.id)">View</Link><Link v-if="canEdit" class="btn btn-xs border-[#cfe6c8] bg-white" :href="route('it-licenses.edit', license.id)">Edit</Link></div></td>
+              <td><div class="flex gap-2"><Link class="btn btn-xs border-[#b8cde0] bg-[#f3f8fc] text-[#194568]" :href="route('it-licenses.show', license.id)">View</Link><Link v-if="canEdit" class="btn btn-xs border-[#cfe6c8] bg-white" :href="route('it-licenses.edit', license.id)">Edit</Link><DeleteItRegisterItem v-if="canEdit" register="it-licenses" :item="license" /></div></td>
             </tr>
             <tr v-if="!licenses.data.length"><td colspan="7" class="py-12 text-center text-slate-500">No IT licences match the selected filters.</td></tr>
           </tbody>

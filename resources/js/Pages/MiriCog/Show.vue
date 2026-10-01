@@ -40,9 +40,19 @@ const sign = () => { signatureForm.signature = signature.value; signatureForm.po
 <div class="overflow-x-auto">
 <article v-for="(rows,p) in document.pages" :key="p" class="issue-sheet mb-5 min-w-[1050px] bg-white p-6 text-black">
 <p class="text-right text-xs">DE-F-07E</p>
-<div class="border border-black p-3"><div class="flex items-start justify-between gap-4"><div class="cog-logo"><img src="/images/dayang-logo.png" alt="Dayang" /></div><div class="text-center"><p class="text-xl font-bold text-green-700">DAYANG ENTERPRISE SDN. BHD.</p><p class="text-xs font-bold">NO. SYARIKAT: 198001007721 (61505-V)</p><h2 class="text-3xl font-bold">Internal Issue Note</h2></div><p class="text-sm">No. <strong class="text-xl text-red-600">{{ cog.display_cog_no }}</strong></p></div>
-<div class="mt-4 grid grid-cols-3 gap-8 text-xs"><div><p>CONSIGNEE: {{ cog.consignee_name || cog.receiver_name }}</p><p class="border-b border-black">{{ cog.consignee_department || ' ' }}</p><p class="mt-2">FROM: {{ cog.from_department }}</p><p class="border-b border-black">{{ cog.from_location || ' ' }}</p></div><div><p>TO: {{ cog.to_location }}</p><p class="mt-3 border-b border-black">COPY: {{ cog.copy_to }}</p></div><div><p>DATE: {{ cog.document_date }}</p><p class="mt-2">PAGE: {{ p+1 }} OF {{ document.pages.length }}</p><p class="mt-2 border-b border-black">DESTINATION: {{ cog.destination || cog.to_location }}</p></div></div></div>
-<table class="issue-table"><colgroup><col v-for="width in [4,5,5,30,11,14,11,12,8]" :style="{ width: width + '%' }" /></colgroup><thead><tr><th>ITEM</th><th>QTY</th><th>UNIT</th><th>FULL DESCRIPTION</th><th>SIZE / MODEL</th><th>TAGGING NO.</th><th>SERIAL NO.</th><th>MATERIAL<br>REQUISITION NO.</th><th>REMARKS</th></tr></thead><tbody><tr v-for="(row,i) in rows" :key="i"><td v-for="key in ['item','quantity','unit','description','size_model','identifier','serial_no','mr_reference','remarks']" :key="key" :class="{ 'text-center': ['quantity','unit'].includes(key) }">{{ row[key] || '' }}</td></tr></tbody></table>
+<div class="border border-black p-3">
+  <div class="issue-header">
+    <div class="cog-logo"><img src="/images/dayang-logo.png" alt="Dayang" /></div>
+    <div class="text-center"><p class="issue-brand font-bold text-green-700">DAYANG ENTERPRISE SDN. BHD.</p><p class="text-xs font-bold">NO. SYARIKAT: 198001007721 (61505-V)</p><h2 class="text-3xl font-bold">Internal Issue Note</h2></div>
+    <div class="text-right"><p class="text-sm">No. <strong class="issue-number text-red-600">{{ cog.display_cog_no }}</strong></p><div class="mt-2 text-left text-xs leading-5"><p>DATE: {{ cog.document_date }}</p><p>PAGE: {{ p+1 }} OF {{ document.pages.length }}</p></div></div>
+  </div>
+  <div class="issue-details mt-2 text-xs">
+    <div class="party-fields"><span>CONSIGNEE:</span><span>{{ cog.consignee_name || cog.receiver_name }}</span><span class="border-b border-black"></span><span class="border-b border-black">{{ cog.consignee_department || ' ' }}</span><span>FROM:</span><span>{{ cog.from_department }}</span><span class="border-b border-black"></span><span class="border-b border-black">{{ cog.from_location || ' ' }}</span></div>
+    <div><p>TO: {{ cog.to_location }}</p><p class="mt-3 border-b border-black">COPY: {{ cog.copy_to }}</p></div>
+    <div class="self-end"><p class="border-b border-black">DESTINATION: {{ cog.destination || cog.to_location }}</p></div>
+  </div>
+</div>
+<table class="issue-table"><colgroup><col v-for="width in [4,5,5,30,11,14,11,12,8]" :style="{ width: width + '%' }" /></colgroup><thead><tr><th>ITEM</th><th>QTY</th><th>UNIT</th><th>FULL DESCRIPTION</th><th>SIZE / MODEL</th><th>TAGGING NO.</th><th>SERIAL NO.</th><th>MR #</th><th>REMARKS</th></tr></thead><tbody><tr v-for="(row,i) in rows" :key="i"><td v-for="key in ['item','quantity','unit','description','size_model','identifier','serial_no','mr_reference','remarks']" :key="key" :class="{ 'text-center': ['quantity','unit'].includes(key) }">{{ row[key] || '' }}</td></tr></tbody></table>
 <div class="grid grid-cols-[16%,28%,28%,28%] border-x border-b border-black"><div class="border-r border-black p-2 text-xs"><strong>TOTAL QTY BY UNIT</strong><p class="mt-6 text-lg">{{ p===document.pages.length-1 ? document.totals.join(' · ') : 'Continued' }}</p></div><div class="col-span-3"><p class="border-b border-black p-1 text-center text-xs font-bold">WE HEREBY CERTIFY THIS INFORMATION TO BE TRUE AND CORRECT</p><div class="grid grid-cols-3"><div v-for="s in [{title:'Issued & Checked By:',name:'issued_by_name',designation:'issued_designation',date:'issued_date'},{title:'Verified By: HOD / SUPERVISOR',name:'verified_by_name',designation:'verified_designation',date:'verified_date'},{title:'Received By:',name:'receiver_name',designation:'receiver_designation',date:'received_date'}]" :key="s.name" class="border-r border-black p-2 text-xs last:border-r-0"><strong>{{ s.title }}</strong><div class="my-2 h-10 border-b border-black"><img v-if="s.name==='receiver_name' && cog.signature && p===document.pages.length-1" :src="cog.signature" alt="Receiver signature" class="max-h-10 max-w-full" /></div><p>NAME: {{ cog[s.name] }}</p><p>DESIGNATION: {{ cog[s.designation] }}</p><p>DATE: {{ cog[s.date] || (s.name==='receiver_name' ? cog.signed_at?.slice(0,10) : '') }}</p></div></div></div></div>
 <p class="mt-2 text-[10px] font-bold">**IMPORTANT** COPY OF THIS ISSUE NOTE MUST BE RETURNED BACK UPON ACKNOWLEDGED RECEIPT TO ORIGINATOR</p><p class="mt-2 text-xs">REV.0</p>
 </article></div>
@@ -51,6 +61,10 @@ const sign = () => { signatureForm.signature = signature.value; signatureForm.po
 </AuthenticatedLayout>
 </template>
 <style scoped>
+.issue-header{display:grid;grid-template-columns:10% 60% 30%;align-items:start}
+.issue-brand{font-size:25px;line-height:1.2}.issue-number{font-size:20pt;white-space:nowrap}
+.issue-details{display:grid;grid-template-columns:45% 25% 30%}.issue-details>div{padding-right:8px}
+.party-fields{display:grid;grid-template-columns:92px minmax(0,1fr);line-height:19px}.party-fields>span{min-height:19px;overflow-wrap:anywhere}.party-fields>span:nth-child(even){padding-left:3px}
 .cog-logo{width:65px;height:66px;overflow:hidden;flex-shrink:0}.cog-logo img{width:325px;max-width:none;margin-left:-21px;margin-top:-11px}
 .issue-sheet{font-size:10pt}.issue-sheet .text-xs,.issue-sheet .text-sm{font-size:10pt;line-height:1.15}
 .issue-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10pt}

@@ -94,10 +94,10 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::patch('/active-branch', [BranchContextController::class, 'update'])->name('branches.activate');
     Route::patch('/it-assets/bulk-update', [AssetController::class, 'bulkUpdate'])->name('it-assets.bulk-update');
     Route::get('/it-assets/bulk-edit', [AssetController::class, 'bulkEdit'])->name('it-assets.bulk-edit');
-    Route::resource('it-assets', AssetController::class)->parameters(['it-assets' => 'asset'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+    Route::resource('it-assets', AssetController::class)->parameters(['it-assets' => 'asset'])->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::get('/kaspersky-licenses', [\App\Http\Controllers\KasperskyLicenseController::class, 'index'])->name('kaspersky-licenses.index');
     Route::post('/kaspersky-licenses/import', [\App\Http\Controllers\KasperskyLicenseController::class, 'store'])->name('kaspersky-licenses.import');
-    Route::resource('it-licenses', ItLicenseController::class)->parameters(['it-licenses' => 'it_license'])->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+    Route::resource('it-licenses', ItLicenseController::class)->parameters(['it-licenses' => 'it_license'])->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('/it-assets/{asset}/checkout', [AssetAssignmentController::class, 'store'])->name('it-assets.checkout');
     Route::post('/it-assets/{asset}/checkout/resend', [AssetAssignmentController::class, 'resend'])->name('it-assets.checkout.resend');
     Route::post('/it-assets/{asset}/checkout/reopen', [AssetAssignmentController::class, 'reopen'])->name('it-assets.checkout.reopen');
