@@ -64,7 +64,7 @@ const sign = () => { signatureForm.signature = signature.value; signatureForm.po
 .issue-header{display:grid;grid-template-columns:10% 60% 30%;align-items:start}
 .issue-brand{font-size:25px;line-height:1.2}.issue-number{font-size:20pt;white-space:nowrap}
 .issue-details{display:grid;grid-template-columns:45% 25% 30%}.issue-details>div{padding-right:8px}
-.party-fields{display:grid;grid-template-columns:92px minmax(0,1fr);line-height:19px}.party-fields>span{min-height:19px;overflow-wrap:anywhere}.party-fields>span:nth-child(even){padding-left:3px}
+.party-fields{display:grid;grid-template-columns:64pt minmax(0,1fr);line-height:14pt}.party-fields>span{min-height:14pt;overflow-wrap:anywhere}.party-fields>span:nth-child(odd){white-space:nowrap}
 .cog-logo{width:65px;height:66px;overflow:hidden;flex-shrink:0}.cog-logo img{width:325px;max-width:none;margin-left:-21px;margin-top:-11px}
 .issue-sheet{font-size:10pt}.issue-sheet .text-xs,.issue-sheet .text-sm{font-size:10pt;line-height:1.15}
 .issue-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10pt}
