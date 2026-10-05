@@ -37,3 +37,13 @@ test('rectangular paste changes the intended cells and rejects overflow without 
     assert.equal(columnLetter(25), 'Z');
     assert.equal(columnLetter(26), 'AA');
 });
+
+
+test('paste preserves protected stock and date cells while editing adjacent fields', () => {
+    const fields = [{ key: 'description' }, { key: 'balance_cans', readonly: true }, { key: 'batch_no' }];
+    const original = sheetRows([{ id: 1, description: 'Paint', balance_cans: '5.000', batch_no: '001' }], fields);
+    const pasted = pasteCells(original, fields, 0, 0, 'New paint\t99\t002');
+    assert.equal(pasted[0].balance_cans, '5.000');
+    assert.deepEqual(sheetChanges(pasted, original, fields), [{ id: 1, changes: { description: 'New paint', batch_no: '002' }, original: { description: 'Paint', batch_no: '001' } }]);
+    assert.deepEqual(sheetChanges([{ ...original[0], balance_cans: '99' }], original, fields), []);
+});

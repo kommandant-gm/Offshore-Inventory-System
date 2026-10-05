@@ -153,6 +153,7 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::post('/miri-inventory/categories', [CategoryController::class, 'storeMiri'])->name('miri-categories.store');
     Route::patch('/miri-inventory/categories/{category}', [CategoryController::class, 'updateMiri'])->name('miri-categories.update');
     Route::delete('/miri-inventory/categories/{category}', [CategoryController::class, 'destroyMiri'])->name('miri-categories.destroy');
+    Route::patch('/miri-registers/{register}/spreadsheet', [\App\Http\Controllers\RegisterSheetController::class, 'update'])->whereIn('register', ['rental', 'construction', 'paint'])->name('register.spreadsheet.update');
     Route::get('/miri-rental', [MiriRentalController::class, 'index'])->name('miri-rental.index');
     Route::get('/miri-rental/create', [MiriRentalController::class, 'create'])->name('miri-rental.create');
     Route::post('/miri-rental', [MiriRentalController::class, 'store'])->name('miri-rental.store');

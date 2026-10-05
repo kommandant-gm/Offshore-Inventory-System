@@ -74,7 +74,7 @@ class MiriConstructionController extends Controller
             'options' => ['category' => $options('category'), 'section_1' => $options('section_1'), 'section_2' => $options('section_2'), 'location' => $options('current_location')],
             'qualityOptions' => $qualityOptions,
         ]);
-        return Inertia::render('Construction/Index', [
+        return Inertia::render('Construction/Index', ['sheetColumns' => \App\Support\RegisterSheet::columns('construction'),
             'records' => $query->orderBy('category')->orderBy('description')->orderBy('miri_construction_items.id')->paginate(25)->withQueryString(),
             'qualityOptions' => $qualityOptions,
             'filters' => $filters, 'canEdit' => $request->user()->canEdit('assets'),

@@ -72,7 +72,7 @@ class MiriPaintController extends Controller
             'qualityOptions' => $qualityOptions,
         ]);
         $stockSummary = app(\App\Services\PaintStockSummary::class)->data($query);
-        return Inertia::render('Paint/Index', [
+        return Inertia::render('Paint/Index', ['sheetColumns' => \App\Support\RegisterSheet::columns('paint'),
             'stockSummary' => $stockSummary,
             'closingStockSummary' => app(\App\Services\PaintStockSummary::class)->closingByLocation($filteredQuery()),
             'records' => $query->orderBy('category')->orderBy('description')->orderBy('miri_paint_items.id')->paginate(25)->withQueryString(),

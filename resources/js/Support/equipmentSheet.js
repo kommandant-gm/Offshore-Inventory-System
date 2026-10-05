@@ -16,7 +16,7 @@ export function sheetRows(records, columns) {
 
 export function sheetChanges(rows, originals, columns) {
     return rows.flatMap((row, index) => {
-        const keys = columns.map(column => column.key).filter(key => row[key] !== originals[index][key]);
+        const keys = columns.filter(column => !column.readonly).map(column => column.key).filter(key => row[key] !== originals[index][key]);
         return keys.length ? [{ id: row.id, changes: Object.fromEntries(keys.map(key => [key, row[key]])), original: Object.fromEntries(keys.map(key => [key, originals[index][key]])) }] : [];
     });
 }
@@ -50,6 +50,7 @@ export function pasteCells(rows, columns, rowIndex, columnIndex, text) {
     const next = rows.map(row => ({ ...row }));
     cells.forEach((row, y) => row.forEach((value, x) => {
         const column = columns[columnIndex + x];
+        if (column.readonly) return;
         next[rowIndex + y][column.key] = cellValue(value, column.type);
     }));
     return next;

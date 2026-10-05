@@ -1,4 +1,6 @@
 <script setup>
+import EquipmentSpreadsheet from '@/Components/EquipmentSpreadsheet.vue';
+import { ref } from 'vue';
 import { useLiveFilterOptions } from '@/Composables/useLiveFilterOptions';
 import LiveFilterNotice from '@/Components/LiveFilterNotice.vue';
 import DeleteRegisterItem from '@/Components/DeleteRegisterItem.vue';
@@ -10,7 +12,7 @@ import { watch } from 'vue';
 import PaintClosingStockSummary from '@/Components/PaintClosingStockSummary.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-const props = defineProps({ records: Object, filters: Object, summary: Object, stockSummary: Object, closingStockSummary: Object, options: Object, qualityOptions: Array, canEdit: Boolean });
+const props = defineProps({ records: Object, filters: Object, summary: Object, stockSummary: Object, closingStockSummary: Object, options: Object, qualityOptions: Array, sheetColumns: Array, canEdit: Boolean });
 const form = useForm({ company: props.filters.company || '', category: props.filters.category || '', section_1: props.filters.section_1 || '', search: props.filters.search || '', section_2: props.filters.section_2 || '', location: props.filters.location || '', quality: props.filters.quality || '' });
 watch(() => props.filters, value => Object.keys(form.data()).forEach(key => form[key] = value[key] || ''));
 const { options: liveOptions, loading: optionsLoading, error: optionsError, retry: retryOptions } = useLiveFilterOptions(
@@ -21,6 +23,13 @@ const clear = () => Object.keys(form.data()).forEach(key => form[key] = '');
 const qty = value => value == null || value === '' ? '-' : Number(value).toLocaleString('en-GB', { maximumFractionDigits: 3 });
 const cards = [['total','Records',''], ['unconfirmed_dates','Unconfirmed dates','unconfirmed'], ['expired','Expired','expired'], ['due_30_days','Expire in 30 days','due_30_days'], ['duplicates','Possible repeat rows','duplicates'], ['review','Needs review','review']];
 const { selectedIds, allSelected } = useCompanySelection(() => props.records.data);
+const excelView = ref(false);
+const spreadsheet = ref(null);
+function toggleView() {
+    if (excelView.value && !spreadsheet.value?.requestClose()) return;
+    selectedIds.value = [];
+    excelView.value = !excelView.value;
+}
 </script>
 <template>
     <Head title="Miri Paint Register" />
@@ -43,10 +52,11 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.records.dat
                 <div class="flex items-end gap-2"><button class="btn bg-[#4f9f4a] text-white" :disabled="form.processing">Apply</button><button type="button" class="btn" @click="clear">Clear</button></div>
             </form>
             <PaintClosingStockSummary :summary="closingStockSummary" />
-            <BulkCompanyAssignment v-if="canEdit" :ids="selectedIds" register="paint" @assigned="selectedIds = []" />
+            <BulkCompanyAssignment v-if="canEdit && !excelView" :ids="selectedIds" register="paint" @assigned="selectedIds = []" />
             <div class="overflow-hidden rounded-3xl border border-[#d8e7d4] bg-white">
-                <p class="p-5 text-sm text-slate-600">{{ records.total }} records · Showing {{ records.from || 0 }}–{{ records.to || 0 }}</p>
-                <div class="overflow-x-auto"><table class="table"><thead><tr><th v-if="canEdit"><input v-model="allSelected" type="checkbox" aria-label="Select all items on this page" /></th><th>Company</th><th>Description / Type</th><th>Batch</th><th>Location</th><th>Balance CAN</th><th>Balance LTR</th><th>Expiry Date</th><th>Review</th><th>Actions</th></tr></thead><tbody>
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><p><strong>{{ records.total }}</strong> records found <span v-if="records.total">&middot; Showing {{ records.from }}&ndash;{{ records.to }}</span></p><button type="button" class="btn btn-sm border-[#4f9f4a] text-[#2f7d32]" :aria-pressed="excelView" @click="toggleView">{{ excelView ? 'Table view' : 'Excel view' }}</button></div>
+                <EquipmentSpreadsheet v-if="excelView" ref="spreadsheet" :records="records.data" :columns="sheetColumns" :can-edit="canEdit" :first-row="records.from" :update-url="route('register.spreadsheet.update', { register: 'paint' })" show-route="paint.show" label="Paint" help="Showing this page of records. Open a record to adjust stock or verify dates. Stock quantities and date fields are read-only here." />
+                <div v-else class="overflow-x-auto"><table class="table"><thead><tr><th v-if="canEdit"><input v-model="allSelected" type="checkbox" aria-label="Select all items on this page" /></th><th>Company</th><th>Description / Type</th><th>Batch</th><th>Location</th><th>Balance CAN</th><th>Balance LTR</th><th>Expiry Date</th><th>Review</th><th>Actions</th></tr></thead><tbody>
                     <tr v-for="item in records.data" :key="item.id"><td v-if="canEdit"><input v-model="selectedIds" type="checkbox" :value="item.id" :aria-label="'Select record #' + item.id" /></td><td>{{ item.company || '-' }}</td><td><Link :href="route('paint.show',item.id)" class="font-semibold text-green-800">{{ item.description || '-' }}</Link><p class="text-xs text-slate-500">{{ item.section_2 || '-' }}</p></td><td>{{ item.batch_no || '-' }}</td><td>{{ item.current_location || '-' }}</td><td>{{ qty(item.balance_cans) }}</td><td>{{ qty(item.balance_litres) }}</td><td>{{ item.date_status === 'unconfirmed' ? '-' : item.best_before_date || '-' }}</td><td><p v-if="item.duplicate_count > 1" class="text-xs text-amber-700">Possible repeat</p><p v-if="item.needs_review" class="text-xs text-amber-700">Review details</p><span v-if="!item.needs_review && item.duplicate_count <= 1">—</span></td><td><div class="flex gap-3"><Link :href="route('paint.show',item.id)">View</Link><Link v-if="canEdit" :href="route('paint.edit',item.id)" class="text-green-700">Edit</Link><DeleteRegisterItem v-if="canEdit" register="paint" :item="item" @deleted="id => selectedIds = selectedIds.filter(selected => selected !== id)" /></div></td></tr>
                     <tr v-if="!records.data.length"><td :colspan="9 + (canEdit ? 1 : 0)" class="p-8 text-center text-slate-500">No matching paint records. Queued imports appear after processing completes.</td></tr>
                 </tbody></table></div>

@@ -1,4 +1,6 @@
 <script setup>
+import EquipmentSpreadsheet from '@/Components/EquipmentSpreadsheet.vue';
+import { ref } from 'vue';
 import { useLiveFilterOptions } from '@/Composables/useLiveFilterOptions';
 import LiveFilterNotice from '@/Components/LiveFilterNotice.vue';
 import DeleteRegisterItem from '@/Components/DeleteRegisterItem.vue';
@@ -10,7 +12,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { reactive, watch } from 'vue';
 const displayValue = value => value == null || String(value).trim() === '' ? '-' : value;
-const props = defineProps({ records: Object, summary: Object, filters: Object, options: Object, qualityOptions: Array, canEdit: Boolean });
+const props = defineProps({ records: Object, summary: Object, filters: Object, options: Object, qualityOptions: Array, sheetColumns: Array, canEdit: Boolean });
 const filters = reactive(Object.fromEntries(['company', 'search', 'category', 'section_1', 'section_2', 'location', 'quality'].map(key => [key, props.filters[key] || ''])));
 watch(() => props.filters, value => Object.keys(filters).forEach(key => filters[key] = value[key] || ''));
 const { options: liveOptions, loading: optionsLoading, error: optionsError, retry: retryOptions } = useLiveFilterOptions(
@@ -19,6 +21,13 @@ const { options: liveOptions, loading: optionsLoading, error: optionsError, retr
 const apply = () => router.get(route('construction.index'), filters, { preserveState: true, preserveScroll: true });
 const clear = () => { Object.keys(filters).forEach(key => filters[key] = ''); };
 const { selectedIds, allSelected } = useCompanySelection(() => props.records.data);
+const excelView = ref(false);
+const spreadsheet = ref(null);
+function toggleView() {
+    if (excelView.value && !spreadsheet.value?.requestClose()) return;
+    selectedIds.value = [];
+    excelView.value = !excelView.value;
+}
 </script>
 
 <template>
@@ -48,10 +57,11 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.records.dat
                 </label>
                 <div class="flex items-end gap-2"><button class="btn bg-[#4f9f4a] text-white">Apply filters</button><button type="button" class="btn" @click="clear">Clear</button></div>
             </form>
-            <BulkCompanyAssignment v-if="canEdit" :ids="selectedIds" register="construction" @assigned="selectedIds = []" />
+            <BulkCompanyAssignment v-if="canEdit && !excelView" :ids="selectedIds" register="construction" @assigned="selectedIds = []" />
             <div class="overflow-hidden rounded-3xl border border-[#d8e7d4] bg-white">
-                <p class="border-b px-5 py-4 text-sm">Showing {{ records.from || 0 }}–{{ records.to || 0 }} of {{ records.total }} records. Quantities use their own units; no mixed-unit total.</p>
-                <div class="overflow-x-auto"><table class="table">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><p><strong>{{ records.total }}</strong> records found <span v-if="records.total">&middot; Showing {{ records.from }}&ndash;{{ records.to }}</span></p><button type="button" class="btn btn-sm border-[#4f9f4a] text-[#2f7d32]" :aria-pressed="excelView" @click="toggleView">{{ excelView ? 'Table view' : 'Excel view' }}</button></div>
+                <EquipmentSpreadsheet v-if="excelView" ref="spreadsheet" :records="records.data" :columns="sheetColumns" :can-edit="canEdit" :first-row="records.from" :update-url="route('register.spreadsheet.update', { register: 'construction' })" show-route="construction.show" label="Construction" help="Showing this page of records. Open a record for personnel details, certificates and stock movements. Stock-tracked balances, units, companies and locations require the stock workflow." />
+                <div v-else class="overflow-x-auto"><table class="table">
                     <thead><tr><th v-if="canEdit"><input v-model="allSelected" type="checkbox" aria-label="Select all items on this page" /></th><th>Company</th><th>Item / Tag</th><th>Classification</th><th>Recorded balance</th><th>Location / Rack</th><th>Certificate due date</th><th>Review</th><th>Actions</th></tr></thead>
                     <tbody><tr v-for="item in records.data" :key="item.id"><td v-if="canEdit"><input v-model="selectedIds" type="checkbox" :value="item.id" :aria-label="'Select record #' + item.id" /></td><td>{{ displayValue(item.company) }}</td>
                         <td><Link :href="route('construction.show', item.id)" class="font-bold text-green-800">{{ displayValue(item.description) }}</Link><p class="text-xs text-slate-500">#{{ item.id }} · {{ displayValue(item.tag_no) }}</p></td>

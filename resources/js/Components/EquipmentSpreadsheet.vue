@@ -4,7 +4,11 @@ import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { cellValue, columnLetter, pasteCells, sheetChanges, sheetRows } from '@/Support/equipmentSheet';
 
-const props = defineProps({ records: Array, columns: Array, canEdit: Boolean, inventoryType: String, firstRow: Number });
+const props = defineProps({ records: Array, columns: Array, canEdit: Boolean, inventoryType: String, firstRow: Number,
+    updateUrl: String, showRoute: { type: String, default: 'major-equipment.show' },
+    label: { type: String, default: 'Equipment' },
+    help: { type: String, default: 'Showing this page of records. Open a record to manage its certificates.' },
+});
 const rows = ref([]), originals = ref([]), errors = ref({}), notice = ref(''), saving = ref(false), table = ref(null);
 const editing = ref(false);
 const editable = computed(() => props.canEdit && editing.value && !saving.value);
@@ -20,7 +24,7 @@ function reset() {
 watch(() => [props.records, props.columns], reset, { immediate: true });
 const changed = (index, key) => rows.value[index][key] !== originals.value[index][key];
 function edit(index, column, value) {
-    if (!editable.value) return;
+    if (!editable.value || column.readonly) return;
     rows.value[index][column.key] = cellValue(value, column.type);
     delete errors.value[`${rows.value[index].id}.${column.key}`];
     notice.value = '';
@@ -56,7 +60,7 @@ async function save() {
     const payload = changes.value;
     saving.value = true; errors.value = {}; notice.value = '';
     try {
-        const response = await axios.patch(route('major-equipment.spreadsheet.update'), { inventory_type: props.inventoryType, rows: payload });
+        const response = await axios.patch(props.updateUrl || route('major-equipment.spreadsheet.update'), { inventory_type: props.inventoryType, rows: payload });
         originals.value = rows.value.map(row => ({ ...row }));
         editing.value = false;
         notice.value = response.data.message;
@@ -84,12 +88,12 @@ onBeforeUnmount(() => { removeNavigationGuard(); window.removeEventListener('bef
 </script>
 
 <template>
-    <section aria-label="Equipment Excel view">
+    <section :aria-label="`${label} Excel view`">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e7d4] bg-[#f5f9f3] px-5 py-4">
             <div>
                 <p class="font-semibold text-[#234222]">Excel view <span v-if="dirty" class="ml-2 text-sm text-amber-800">{{ changes.length }} changed records</span></p>
                 <p class="mt-1 text-xs text-slate-600">{{ canEdit && editing ? 'Edit cells, use Tab or Enter to move, or paste cells from Excel. Save before changing pages or filters.' : canEdit ? 'Read-only spreadsheet view. Click Edit to make changes.' : 'Read-only spreadsheet view.' }} Dates: YYYY-MM-DD. Blank cells mean no recorded value.</p>
-                <p class="mt-1 text-xs text-slate-500">Showing this page of records. Open a record to manage its certificates.</p>
+                <p class="mt-1 text-xs text-slate-500">{{ help }}</p>
             </div>
             <div v-if="canEdit" class="flex gap-2">
                 <button v-if="!editing" type="button" class="btn btn-sm bg-[#4f9f4a] text-white" :disabled="saving" @click="editing = true; notice = ''">Edit</button>
@@ -104,22 +108,22 @@ onBeforeUnmount(() => { removeNavigationGuard(); window.removeEventListener('bef
             <ul v-if="Object.keys(errors).length" class="mt-2 list-disc pl-5 text-red-700"><li v-for="(error, key) in errors" :key="key">{{ /^\d+\./.test(key) ? `Record #${key.split('.')[0]}: ` : '' }}{{ error }}</li></ul>
         </div>
         <div ref="table" class="max-h-[70vh] overflow-auto">
-            <table class="sheet-table w-max min-w-full border-separate border-spacing-0 text-sm" :aria-label="editable ? 'Editable equipment spreadsheet' : 'Read-only equipment spreadsheet'">
+            <table class="sheet-table w-max min-w-full border-separate border-spacing-0 text-sm" :aria-label="`${editable ? 'Editable' : 'Read-only'} ${label} spreadsheet`">
                 <thead class="sticky top-0 z-20">
                     <tr>
                         <th class="sticky left-0 z-30 min-w-28 border-b border-r border-[#cfe0cb] bg-[#eaf2e7] px-3 py-2">Record</th>
                         <th v-for="(column, index) in columns" :key="column.key" class="min-w-48 border-b border-r border-[#cfe0cb] bg-[#eaf2e7] px-3 py-2 text-left">
-                            <span class="block text-[10px] font-normal text-slate-500">{{ columnLetter(index) }}</span>{{ column.label }}
+                            <span class="block text-[10px] font-normal text-slate-500">{{ columnLetter(index) }}</span>{{ column.label }}<span v-if="column.readonly" class="block text-xs font-normal text-slate-500">Read-only</span>
                         </th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr v-for="(row, rowIndex) in rows" :key="row.id">
                         <th class="sticky left-0 z-10 border-b border-r border-[#d8e7d4] bg-[#f5f9f3] px-3 text-left text-xs font-normal">
-                            <span class="mr-2 text-slate-400">{{ (firstRow || 1) + rowIndex }}</span><a :href="route('major-equipment.show', row.id)" target="_blank" rel="noopener" class="font-semibold text-green-800 underline" :aria-label="`Open record ${row.id} in a new tab`">#{{ row.id }}</a>
+                            <span class="mr-2 text-slate-400">{{ (firstRow || 1) + rowIndex }}</span><a :href="route(showRoute, row.id)" target="_blank" rel="noopener" class="font-semibold text-green-800 underline" :aria-label="`Open record ${row.id} in a new tab`">#{{ row.id }}</a>
                         </th>
                         <td v-for="(column, columnIndex) in columns" :key="column.key" class="border-b border-r border-[#d8e7d4] p-0" :class="errors[`${row.id}.${column.key}`] ? 'bg-red-50' : changed(rowIndex, column.key) ? 'bg-amber-50' : 'bg-white'">
-                            <input :value="row[column.key]" type="text" :data-cell="`${rowIndex}-${columnIndex}`" :readonly="!editable" :aria-label="`Record ${row.id}, ${column.label}`" :aria-invalid="!!errors[`${row.id}.${column.key}`]" :title="errors[`${row.id}.${column.key}`] || row[column.key]" :list="editable && column.key === 'company' ? 'equipment-sheet-companies' : undefined" class="block h-10 w-full min-w-48 border-0 bg-transparent px-3 text-sm focus:relative focus:z-10 focus:ring-2 focus:ring-inset focus:ring-green-600" @input="edit(rowIndex, column, $event.target.value)" @keydown="move($event, rowIndex, columnIndex)" @paste="paste($event, rowIndex, columnIndex)" />
+                            <input :value="row[column.key]" type="text" :data-cell="`${rowIndex}-${columnIndex}`" :readonly="!editable || column.readonly" :aria-label="`Record ${row.id}, ${column.label}`" :aria-invalid="!!errors[`${row.id}.${column.key}`]" :title="errors[`${row.id}.${column.key}`] || row[column.key]" :list="editable && column.key === 'company' ? 'equipment-sheet-companies' : undefined" class="block h-10 w-full min-w-48 border-0 bg-transparent px-3 text-sm focus:relative focus:z-10 focus:ring-2 focus:ring-inset focus:ring-green-600" @input="edit(rowIndex, column, $event.target.value)" @keydown="move($event, rowIndex, columnIndex)" @paste="paste($event, rowIndex, columnIndex)" />
                         </td>
                     </tr>
                     <tr v-if="!rows.length"><td :colspan="columns.length + 1" class="p-8 text-center text-slate-500">No records match these filters.</td></tr>
