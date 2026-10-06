@@ -53,13 +53,18 @@ class CategoryController extends Controller
     public function storeMiri(Request $request, AuditLogger $auditLogger): RedirectResponse
     {
         $this->ensureMiri($request);
+        abort_unless($request->user()?->canEdit('assets'), 403);
         $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
+        $name = trim($data['name']);
         $branchId = app(BranchContext::class)->id($request->user());
+        if (MiriInventoryCategory::query()->where('name', $name)->exists()) {
+            return back()->with('success', 'That Miri category already exists.');
+        }
         $next = ((int) MiriInventoryCategory::withoutGlobalScopes()->where('branch_id', $branchId)->max('id')) + 1;
         $category = MiriInventoryCategory::create([
             'branch_id' => $branchId,
             'code' => 'MIRI-'.str_pad((string) $next, 3, '0', STR_PAD_LEFT),
-            'name' => trim($data['name']),
+            'name' => $name,
             'active' => true,
         ]);
         $auditLogger->record(module: 'miri_categories', event: 'created', summary: "Created Miri category {$category->name}.", auditable: $category, after: $category->toArray(), user: $request->user(), request: $request);

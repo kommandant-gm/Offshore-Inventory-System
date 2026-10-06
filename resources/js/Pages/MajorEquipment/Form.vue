@@ -6,11 +6,15 @@ import PageHeader from '@/Components/PageHeader.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { computed } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({ equipment: Object, categories: Array, certificateTypes: Array, inventoryType: String });
 const item = props.equipment;
+const categoryOptions = ref([...props.categories]);
+const newCategory = ref('');
+const categoryError = ref('');
+const addingCategory = ref(false);
 const date = (value) => value ? String(value).slice(0, 10) : '';
 const form = useForm({
     company: item?.company ?? '',
@@ -36,6 +40,23 @@ const visibleCertificateTypes = computed(() => [...new Set([
     ...form.certificates.map(cert => cert.certificate_type),
 ])]);
 const submit = () => form.transform(data => ({ ...data, ...(item ? { _method: 'patch' } : {}) })).post(item ? route('major-equipment.update', item.id) : route('major-equipment.store'), { preserveScroll: true, forceFormData: true });
+const addCategory = () => {
+    const name = newCategory.value.trim();
+    if (!name) { categoryError.value = 'Enter a category name.'; return; }
+    categoryError.value = '';
+    addingCategory.value = true;
+    router.post(route('miri-categories.store'), { name }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (!categoryOptions.value.includes(name)) categoryOptions.value.push(name);
+            categoryOptions.value.sort((a, b) => a.localeCompare(b));
+            form.category = name;
+            newCategory.value = '';
+        },
+        onError: errors => { categoryError.value = errors.name ?? 'Could not add this category.'; },
+        onFinish: () => { addingCategory.value = false; },
+    });
+};
 let nextCertificateKey = 0;
 const addCertificate = () => form.certificates.push({ row_key: 'new-' + nextCertificateKey++, id: null, image: null, remove_image: false, has_image: false, image_name: null, certificate_type: visibleCertificateTypes.value?.[0] ?? '', certificate_no: '', issue_date: '', expiry_date: '', raw_value: '' });
 const removeCertificate = (index) => {
@@ -56,7 +77,7 @@ const removeCertificate = (index) => {
                 <h2 class="text-lg font-semibold">{{ cargo ? 'Cargo' : 'Machinery' }} classification</h2>
                 <p class="mt-2 text-sm text-slate-500">Major Equipment / {{ cargo ? 'Cargo Set' : 'Machinery' }}</p>
                 <div class="mt-5 grid gap-4 md:grid-cols-3">
-                    <div><label class="label-text">Category</label><CustomSelect v-model="form.category" class="select select-bordered mt-2 w-full"><option v-for="category in categories" :key="category" :value="category">{{ category }}</option></CustomSelect><InputError :message="form.errors.category" /></div>
+                    <div><label class="label-text">Category</label><CustomSelect v-model="form.category" class="select select-bordered mt-2 w-full"><option v-for="category in categoryOptions" :key="category" :value="category">{{ category }}</option></CustomSelect><InputError :message="form.errors.category" /><div class="mt-2 flex gap-2"><TextInput v-model="newCategory" class="min-w-0 flex-1" placeholder="Add a category" @keydown.enter.prevent="addCategory" /><button type="button" class="btn btn-sm" :disabled="addingCategory" @click="addCategory">{{ addingCategory ? 'Adding…' : 'Add' }}</button></div><InputError :message="categoryError" /></div>
                     <div v-for="[key, label] in fields.slice(0, 2)" :key="key"><label class="label-text">{{ label }}</label><TextInput v-model="form[key]" class="mt-2 w-full" /><InputError :message="form.errors[key]" /></div>
                 </div>
             </section>

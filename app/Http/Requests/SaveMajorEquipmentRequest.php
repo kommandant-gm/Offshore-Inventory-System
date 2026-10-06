@@ -52,7 +52,7 @@ class SaveMajorEquipmentRequest extends FormRequest
     {
         $type = $this->input('inventory_type', $this->route('equipment')?->inventory_type ?? 'machinery');
         $section = trim((string) $this->input('section_1'));
-        $this->merge(['inventory_type' => $type, 'section_1' => $type === 'cargo' ? 'CARGO SET' : (in_array(strtoupper($section), ['MACHINARY', 'MACHINERY'], true) ? 'Machinery' : $section)]);
+        $this->merge(['inventory_type' => $type, 'section_1' => $type === 'cargo' ? $section : (in_array(strtoupper($section), ['MACHINARY', 'MACHINERY'], true) ? 'Machinery' : $section)]);
     }
 
     public function withValidator($validator): void
