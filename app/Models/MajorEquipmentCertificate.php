@@ -24,7 +24,7 @@ class MajorEquipmentCertificate extends Model
 
     protected $fillable = [
         'miri_inventory_item_id', 'branch_id', 'certificate_type', 'certificate_no',
-        'issue_date', 'expiry_date', 'raw_value',
+        'issue_date', 'expiry_date', 'expiry_reminder_sent_for', 'raw_value',
     ];
 
     protected function casts(): array
@@ -33,6 +33,7 @@ class MajorEquipmentCertificate extends Model
             'image_uploaded_at' => 'datetime',
             'issue_date' => 'date',
             'expiry_date' => 'date',
+            'expiry_reminder_sent_for' => 'date',
         ];
     }
 

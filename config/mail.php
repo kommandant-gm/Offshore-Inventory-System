@@ -119,4 +119,11 @@ return [
 
     'supervisor_addresses' => array_values(array_filter(array_map('trim', explode(',', env('SUPERVISOR_EMAILS', 'jasri.ishak@desb.net,shahrydan.azmy@desb.net'))))),
 
+    'miri_certificate_expiry_recipients' => [
+        'miri hq' => env('MIRI_CERTIFICATE_EMAIL_MIRI_HQ', 'mariesim@desb.net'),
+        'maintenance' => env('MIRI_CERTIFICATE_EMAIL_MAINTENANCE', 'stephentee@desb.net'),
+        'labuan' => env('MIRI_CERTIFICATE_EMAIL_LABUAN', 'leekp@desb.net'),
+        'bintulu' => env('MIRI_CERTIFICATE_EMAIL_BINTULU', 'suhailey@desb.net'),
+    ],
+
 ];

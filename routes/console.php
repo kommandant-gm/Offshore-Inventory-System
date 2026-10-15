@@ -7,8 +7,13 @@ use App\Models\Branch;
 use App\Models\EmailActivityLog;
 use App\Models\ItLicense;
 use App\Notifications\SupervisorWorkflowNotification;
+use App\Notifications\MiriCertificateExpiryNotification;
+use App\Models\MajorEquipmentCertificate;
 use App\Services\LdapAuthenticator;
 use App\Services\SupervisorNotificationService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Console\Command;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -181,3 +186,52 @@ Artisan::command('paint:rollover', function (\App\Services\PaintStockLedger $led
     $this->info('Paint stock months are current. Previous months retained.');
 })->purpose('Carry Paint closing quantities into the current month without replaying COGs.');
 Schedule::command('paint:rollover')->timezone('Asia/Kuala_Lumpur')->dailyAt('00:05')->withoutOverlapping();
+
+Artisan::command('miri-certificates:notify-expiring', function () {
+    $branchId = Branch::query()->where('code', 'MIRI')->value('id');
+    if (! $branchId) {
+        $this->error('MIRI branch was not found.');
+        return Command::FAILURE;
+    }
+
+    $recipients = config('mail.miri_certificate_expiry_recipients', []);
+    $targetDate = today()->addDays(60)->toDateString();
+    $sent = 0;
+
+    MajorEquipmentCertificate::withoutGlobalScopes()
+        ->with('equipment')
+        ->where('branch_id', $branchId)
+        ->whereDate('expiry_date', $targetDate)
+        ->where(function ($query) {
+            $query->whereNull('expiry_reminder_sent_for')
+                ->orWhereColumn('expiry_reminder_sent_for', '!=', 'expiry_date');
+        })
+        ->orderBy('id')
+        ->each(function (MajorEquipmentCertificate $certificate) use ($recipients, &$sent): void {
+            $location = mb_strtolower(trim((string) $certificate->equipment?->current_location));
+            $email = $recipients[$location] ?? null;
+            if (! $email) {
+                Log::warning('No Miri certificate expiry recipient is configured for the equipment location.', [
+                    'certificate_id' => $certificate->id,
+                    'location' => $certificate->equipment?->current_location,
+                ]);
+                return;
+            }
+
+            try {
+                Notification::route('mail', $email)->notify(new MiriCertificateExpiryNotification($certificate));
+                $certificate->forceFill(['expiry_reminder_sent_for' => $certificate->expiry_date])->save();
+                $sent++;
+            } catch (Throwable $exception) {
+                Log::error('Unable to send Miri certificate expiry reminder.', [
+                    'certificate_id' => $certificate->id,
+                    'recipient' => $email,
+                    'exception' => $exception,
+                ]);
+            }
+        });
+
+    $this->info("Miri certificate expiry reminders sent: {$sent}.");
+    return Command::SUCCESS;
+})->purpose('Email Miri location contacts 60 days before equipment certificate expiry.');
+Schedule::command('miri-certificates:notify-expiring')->timezone('Asia/Kuala_Lumpur')->dailyAt('08:00')->withoutOverlapping();
