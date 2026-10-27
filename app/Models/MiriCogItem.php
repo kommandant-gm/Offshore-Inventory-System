@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MiriCogItem extends Model
 {
     use BelongsToBranch, HasFactory;
-    protected $fillable = ['construction_destination_id', 'size_model','serial_no','batch_no','mr_reference', 'miri_cog_id', 'branch_id', 'item_type', 'item_id', 'identifier', 'description', 'quantity', 'unit', 'current_location', 'remarks'];
+    protected $fillable = ['scaffolding_stock', 'scaffolding_yard', 'scaffolding_contract', 'construction_destination_id', 'size_model','serial_no','batch_no','mr_reference', 'miri_cog_id', 'branch_id', 'item_type', 'item_id', 'identifier', 'description', 'quantity', 'unit', 'current_location', 'remarks'];
     protected function casts(): array { return ['quantity' => 'decimal:3']; }
     public function cog(): BelongsTo { return $this->belongsTo(MiriCog::class, 'miri_cog_id'); }
 }

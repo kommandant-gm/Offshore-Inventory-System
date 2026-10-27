@@ -268,6 +268,10 @@ class MajorEquipmentController extends Controller
             return $query;
         };
         $query = $filteredQuery()->select('miri_inventory_items.*')->withCount('certificates')->withDuplicateCount();
+        if ($scaffolding) foreach (['BINTULU', 'LABUAN'] as $yard) {
+            $query->selectSub(\Illuminate\Support\Facades\DB::table('scaffolding_stock_accounts')
+                ->select('balance')->whereColumn('equipment_id', 'miri_inventory_items.id')->where('yard', $yard), strtolower($yard).'_balance');
+        }
         // Each dropdown respects the other filters but leaves its own alternatives available.
         $options = fn ($column) => $filteredQuery($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")
             ->distinct()->orderBy($column)->pluck($column)->values();
@@ -302,7 +306,7 @@ class MajorEquipmentController extends Controller
     {
         $this->ensureMiri($request);
         abort_unless($request->user()?->canEdit('assets'), 403);
-        return Inertia::render('MajorEquipment/Form', ['register' => $request->routeIs('scaffolding.create') ? 'scaffolding' : 'major', 'inventoryType' => ! $request->routeIs('scaffolding.create') && $request->query('inventory_type') === 'cargo' ? 'cargo' : 'machinery', 'equipment' => null, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
+        return Inertia::render('MajorEquipment/Form', ['scaffoldingOptions' => $request->routeIs('scaffolding.create') ? ScaffoldingStockController::options() : [], 'register' => $request->routeIs('scaffolding.create') ? 'scaffolding' : 'major', 'inventoryType' => ! $request->routeIs('scaffolding.create') && $request->query('inventory_type') === 'cargo' ? 'cargo' : 'machinery', 'equipment' => null, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
     public function store(SaveMajorEquipmentRequest $request, AuditLogger $auditLogger, MiriCertificateService $certificateService): RedirectResponse
@@ -323,7 +327,7 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri($request);
         abort_unless($request->user()?->canEdit('assets'), 403);
         $equipment->load('certificates');
-        return Inertia::render('MajorEquipment/Form', ['register' => $equipment->isScaffolding() ? 'scaffolding' : 'major', 'equipment' => $equipment, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
+        return Inertia::render('MajorEquipment/Form', ['scaffoldingOptions' => $equipment->isScaffolding() ? ScaffoldingStockController::options() : [], 'register' => $equipment->isScaffolding() ? 'scaffolding' : 'major', 'equipment' => $equipment, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
     public function update(SaveMajorEquipmentRequest $request, MajorEquipment $equipment, AuditLogger $auditLogger, MiriCertificateService $certificateService): RedirectResponse
@@ -344,7 +348,7 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri(request());
         abort_unless(request()->user()?->canRead('assets'), 403);
         $equipment->load('certificates');
-        return Inertia::render('MajorEquipment/Show', ['register' => $equipment->isScaffolding() ? 'scaffolding' : 'major', 'equipment' => $equipment, 'duplicates' => filled($equipment->normalized_tag) ? MajorEquipment::query()->where('branch_id', $equipment->branch_id)->where('id', '<>', $equipment->id)->where('normalized_tag', $equipment->normalized_tag)->get(['id', 'tag_no', 'description', 'inventory_type', 'current_location']) : []]);
+        return Inertia::render('MajorEquipment/Show', ['scaffoldingStock' => $equipment->isScaffolding() ? ScaffoldingStockController::data($equipment) : null, 'canEdit' => request()->user()->canEdit('assets'), 'register' => $equipment->isScaffolding() ? 'scaffolding' : 'major', 'equipment' => $equipment, 'duplicates' => filled($equipment->normalized_tag) ? MajorEquipment::query()->where('branch_id', $equipment->branch_id)->where('id', '<>', $equipment->id)->where('normalized_tag', $equipment->normalized_tag)->get(['id', 'tag_no', 'description', 'inventory_type', 'current_location']) : []]);
     }
 
     public function pdf(Request $request, MajorEquipment $equipment)

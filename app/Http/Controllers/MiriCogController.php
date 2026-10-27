@@ -79,6 +79,8 @@ class MiriCogController extends Controller
             'items.*.item_type'=>['required',\Illuminate\Validation\Rule::in($sources::TYPES)],
             'items.*.item_id'=>['required','integer'], 'items.*.quantity'=>['required','numeric','min:0.001','max:999999999.999','decimal:0,3'],
             'items.*.construction_destination_id' => ['nullable', 'integer'],
+            'items.*.scaffolding_yard' => ['nullable', 'in:BINTULU,LABUAN'],
+            'items.*.scaffolding_contract' => ['nullable', 'string', 'max:255'],
         ];
         foreach (['from_location','to_location','receiver_name','issued_by_name','consignee_name','consignee_department','from_department','copy_to','destination','issued_designation','verified_by_name','verified_designation','receiver_designation'] as $key) $rules[$key] = [$key === 'issued_by_name' ? 'required' : 'nullable','string','max:255'];
         foreach (['issued_date','verified_date','received_date'] as $key) $rules[$key] = ['nullable','date_format:Y-m-d'];
@@ -110,6 +112,13 @@ class MiriCogController extends Controller
                     if (! in_array($snapshot['unit'],['CAN','LTR'])) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.unit"=>'Choose CAN or LTR for Paint.']);
                 }
                 if (blank($snapshot['unit'])) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.unit"=>'Enter the issue unit; it is missing from the source record.']);
+                if ($snapshot['scaffolding_stock']) {
+                    if (empty($line['scaffolding_yard'])) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.scaffolding_yard" => 'Choose BINTULU or LABUAN for scaffolding stock.']);
+                    if (blank($model->unit) || strtoupper(trim($snapshot['unit'])) !== strtoupper(trim($model->unit))) throw \Illuminate\Validation\ValidationException::withMessages(["items.$i.unit" => 'Save the correct unit in the Scaffolding Register first.']);
+                    $snapshot['scaffolding_yard'] = $line['scaffolding_yard'];
+                    $snapshot['scaffolding_contract'] = $line['scaffolding_contract'] ?? $model->scaffolding_contract;
+                    $cog->update(['scaffolding_stock_workflow' => true]);
+                }
                 $destination = null;
                 if ($line['item_type'] === 'Construction' && $data['movement_type'] === 'Transfer') {
                     $destination = \App\Models\MiriConstructionItem::where('branch_id', $branch)->find($line['construction_destination_id'] ?? null);
@@ -172,11 +181,12 @@ class MiriCogController extends Controller
         \Illuminate\Support\Facades\DB::transaction(function () use ($cog, $request, $auditLogger, $data) {
             \App\Models\Branch::whereKey($cog->branch_id)->lockForUpdate()->firstOrFail();
             $locked = MiriCog::whereKey($cog->id)->lockForUpdate()->firstOrFail();
-            $constructionOnly = $locked->construction_stock_workflow && ! $locked->construction_stock_confirmed_at
-                && $locked->items->isNotEmpty() && $locked->items->every(fn ($line) => $line->item_type === 'Construction');
+            $constructionOnly = ! $locked->construction_stock_confirmed_at && ! $locked->scaffolding_stock_confirmed_at
+                && $locked->items->isNotEmpty() && $locked->items->every(fn ($line) => ($line->item_type === 'Construction' && $locked->construction_stock_workflow) || ($line->scaffolding_stock && $locked->scaffolding_stock_workflow));
             abort_unless($locked->status === 'draft' && ! $locked->signature
                 && (in_array($locked->movement_type, \App\Services\MiriCogAvailability::OUTBOUND, true) || $constructionOnly), 409, 'Only an unfulfilled draft note can be cancelled.');
             foreach ($locked->items as $item) {
+                if ($item->scaffolding_stock && $locked->scaffolding_stock_workflow) continue;
                 if ($item->item_type === 'Construction' && $locked->construction_stock_workflow) continue;
                 $laterReturn = \App\Models\MiriCogItem::where('branch_id', $locked->branch_id)
                     ->where('item_type', $item->item_type)->where('item_id', $item->item_id)
@@ -195,8 +205,14 @@ class MiriCogController extends Controller
     {
         $this->authorizeDocument($request, $cog, true);
         $request->validate(['confirmed' => ['required', 'accepted']]);
-        $ledger->confirm($cog, $request->user()->id);
-        return back()->with('success', 'TEC, Garnet & PPE stock movement confirmed.');
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cog, $request, $ledger) {
+            \App\Models\Branch::whereKey($cog->branch_id)->lockForUpdate()->firstOrFail();
+            $locked = MiriCog::whereKey($cog->id)->lockForUpdate()->firstOrFail();
+            if (! $locked->construction_stock_workflow && ! $locked->scaffolding_stock_workflow) throw \Illuminate\Validation\ValidationException::withMessages(['stock' => 'This historical note cannot post stock.']);
+            if ($locked->construction_stock_workflow) $ledger->confirm($locked, $request->user()->id);
+            if ($locked->scaffolding_stock_workflow) app(\App\Services\ScaffoldingStockLedger::class)->confirm($locked, $request->user()->id);
+        });
+        return back()->with('success', 'Stock movement confirmed.');
     }
 
     public function pdf(Request $request, MiriCog $cog)

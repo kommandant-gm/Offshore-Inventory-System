@@ -17,6 +17,7 @@ class MajorEquipment extends Model
     protected $hidden = ['normalized_tag'];
 
     protected $fillable = [
+        'scaffolding_contract',
         'company',
         'inventory_type', 'size_model', 'size_ton', 'size_length', 'quantity', 'import_warnings', 'source_values',
         'branch_id', 'category', 'section_1', 'section_2', 'description', 'unit',
@@ -45,6 +46,20 @@ class MajorEquipment extends Model
     public function isScaffolding(): bool
     {
         return strtoupper(trim((string) $this->section_1)) === 'SCAFFOLDING SET';
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $item) {
+            if (! $item->exists || ! $item->isDirty(['unit', 'section_1', 'inventory_type'])) return;
+            if (\Illuminate\Support\Facades\DB::table('scaffolding_stock_accounts')->where('equipment_id', $item->id)->exists()) {
+                foreach (['unit', 'section_1', 'inventory_type'] as $field) {
+                    if (strtoupper(trim((string) $item->$field)) !== strtoupper(trim((string) $item->getOriginal($field)))) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([$field => 'This record has verified scaffolding stock. Its unit and register classification cannot be changed.']);
+                    }
+                }
+            }
+        });
     }
 
     public function scopeScaffolding($query, bool $included = true)

@@ -27,6 +27,7 @@ class MiriRegisterDeletionController extends Controller
             Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
             $record = $class::where('branch_id', $branch->id)->whereKey($item)->lockForUpdate()->firstOrFail();
             $linked = DB::table('miri_cog_items')->where('item_type', $type)->where('item_id', $item)->exists();
+            if ($register === 'major') $linked = $linked || DB::table('scaffolding_stock_accounts')->where('equipment_id', $item)->exists();
             if ($register === 'construction') {
                 $linked = $linked || DB::table('miri_cog_items')->where('construction_destination_id', $item)->exists()
                     || DB::table('miri_construction_stock_movements')->where(fn ($q) => $q->where('construction_item_id', $item)->orWhere('related_item_id', $item))->exists();
@@ -45,6 +46,7 @@ class MiriRegisterDeletionController extends Controller
                     }
                 }
             }
+            if ($register === 'major') $linked = $linked || DB::table('scaffolding_stock_accounts')->where('equipment_id', $item)->exists();
             if ($register === 'construction') {
                 foreach ($record->attachments ?? [] as $attachment) if (! empty($attachment['path'])) $files[] = ['construction', $attachment['path']];
             }

@@ -15,7 +15,7 @@ class MiriCogSource
             default => throw ValidationException::withMessages(['type' => 'Unknown register.']),
         };
         $columns = match ($type) {
-            'Major equipment' => ['tag_no','unit','size_model','model_brand','serial_no','mr_request'],
+            'Major equipment' => ['tag_no','unit','size_model','model_brand','serial_no','mr_request','section_1','scaffolding_contract'],
             'Rental' => ['serial_tag_equipment_no','unit','mr_no'],
             'Construction' => ['tag_no','unit','model_brand','serial_no','mr_reference'],
             'Paint' => ['batch_no','mr_reference'],
@@ -37,6 +37,8 @@ class MiriCogSource
             'mr_reference' => $model->mr_reference ?: ($model->mr_request ?: $model->mr_no),
             'unit' => $type === 'Paint' ? null : $model->unit,
             'current_location' => $model->current_location,
+            'scaffolding_stock' => $type === 'Major equipment' && $model->isScaffolding(),
+            'scaffolding_contract' => $type === 'Major equipment' && $model->isScaffolding() ? $model->scaffolding_contract : null,
         ];
     }
 }

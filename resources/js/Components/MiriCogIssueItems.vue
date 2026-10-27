@@ -6,7 +6,7 @@ import MiriCogItemPicker from '@/Components/MiriCogItemPicker.vue';
 const props = defineProps({ modelValue: Array, registerTypes: Array, movementType: String });
 const emit = defineEmits(['update:modelValue']);
 let nextKey = 0;
-const empty = (type = 'Major equipment') => ({ item_type: type, item_id: '', construction_destination_id: '', quantity: 1, unit: '', description: '', size_model: '', identifier: '', serial_no: '', mr_reference: '', remarks: '', batch_no: '', location: '' });
+const empty = (type = 'Major equipment') => ({ item_type: type, item_id: '', construction_destination_id: '', scaffolding_stock: false, scaffolding_yard: '', scaffolding_contract: '', quantity: 1, unit: '', description: '', size_model: '', identifier: '', serial_no: '', mr_reference: '', remarks: '', batch_no: '', location: '' });
 const draft = reactive(empty());
 const error = ref('');
 const excludedIds = computed(() => ['Major equipment', 'Rental'].includes(draft.item_type)
@@ -18,6 +18,9 @@ function select(item) {
     draft.construction_destination_id = '';
     for (const key of ['description', 'size_model', 'identifier', 'serial_no', 'mr_reference', 'unit', 'batch_no', 'location']) draft[key] = item?.[key] || '';
     sourceUnit.value = item?.unit || '';
+    draft.scaffolding_stock = !!item?.scaffolding_stock;
+    draft.scaffolding_yard = '';
+    draft.scaffolding_contract = item?.scaffolding_contract || '';
     error.value = '';
 }
 function add() {
@@ -25,6 +28,7 @@ function add() {
     if (!Number.isFinite(Number(draft.quantity)) || Number(draft.quantity) <= 0 || Number(draft.quantity) > 999999999.999 || !/^\d+(\.\d{1,3})?$/.test(String(draft.quantity))) { error.value = 'Enter a positive quantity with at most three decimal places.'; return; }
     if (!draft.unit.trim()) { error.value = 'Enter the unit missing from the register, or choose a paint unit.'; return; }
     if (draft.item_type === 'Construction' && props.movementType === 'Transfer' && !draft.construction_destination_id) { error.value = 'Select a destination stock record for this transfer.'; return; }
+    if (draft.scaffolding_stock && !draft.scaffolding_yard) { error.value = 'Choose the scaffolding stock yard.'; return; }
     if (excludedIds.value.includes(draft.item_id)) { error.value = 'This equipment is already in the list.'; return; }
     if (props.modelValue.length >= 100) { error.value = 'A note can contain up to 100 items.'; return; }
     emit('update:modelValue', [...props.modelValue, { ...draft, row_key: ++nextKey }]);
@@ -40,6 +44,8 @@ const remove = index => emit('update:modelValue', props.modelValue.filter((_, i)
         <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="font-bold text-[#234222]">Issue items</h2><span class="text-sm text-slate-500">{{ modelValue.length }} / 100 items</span></div>
         <label class="my-4 block max-w-md text-sm">Register<CustomSelect v-model="draft.item_type" class="mt-1 w-full rounded-xl border-slate-200"><option v-for="type in registerTypes" :key="type" :value="type">{{ label(type) }}</option></CustomSelect></label>
         <MiriCogItemPicker v-model="draft.item_id" :type="draft.item_type" :movement-type="movementType" :excluded-ids="excludedIds" @selected="select">
+            <label v-if="draft.scaffolding_stock" class="text-sm">Stock yard<select v-model="draft.scaffolding_yard" class="mt-1 w-full rounded-xl border-slate-200"><option value="">Choose yard</option><option>BINTULU</option><option>LABUAN</option></select></label>
+            <label v-if="draft.scaffolding_stock" class="text-sm">Contract<input v-model="draft.scaffolding_contract" maxlength="255" class="mt-1 w-full rounded-xl border-slate-200" /></label>
             <label class="w-24 text-sm">QTY<input v-model="draft.quantity" type="number" min="0.001" max="999999999.999" step="0.001" class="mt-1 w-full rounded-xl border-slate-200" /></label>
             <label class="w-28 text-sm">Unit
                 <CustomSelect v-if="draft.item_type === 'Paint'" v-model="draft.unit" class="mt-1 w-full rounded-xl border-slate-200"><option value="">Choose</option><option>CAN</option><option>LTR</option></CustomSelect>
@@ -62,7 +68,7 @@ const remove = index => emit('update:modelValue', props.modelValue.filter((_, i)
                 <tbody>
                     <tr v-for="(row, index) in modelValue" :key="row.row_key" class="border-t border-[#d8e7d4]">
                         <td class="p-2 text-center">{{ index + 1 }}</td><td class="p-2"><input v-model="row.quantity" :aria-label="`Quantity for item ${index + 1}`" type="number" min="0.001" max="999999999.999" step="0.001" class="w-24 rounded-lg border-slate-200 text-sm" /></td><td class="p-2 text-center">{{ row.unit }}</td>
-                        <td class="p-2">{{ row.description || 'Not recorded' }}<p v-if="row.batch_no" class="text-xs text-slate-500">Batch: {{ row.batch_no }}</p><p v-if="row.construction_destination_id" class="text-xs text-slate-500">Destination record #{{ row.construction_destination_id }}</p></td>
+                        <td class="p-2">{{ row.description || 'Not recorded' }}<p v-if="row.scaffolding_stock" class="text-xs text-slate-500">{{ row.scaffolding_yard }} / {{ row.scaffolding_contract || 'No contract' }}</p><p v-if="row.batch_no" class="text-xs text-slate-500">Batch: {{ row.batch_no }}</p><p v-if="row.construction_destination_id" class="text-xs text-slate-500">Destination record #{{ row.construction_destination_id }}</p></td>
                         <td class="p-2">{{ row.size_model || '-' }}</td><td class="p-2">{{ row.identifier || '-' }}</td><td class="p-2">{{ row.serial_no || '-' }}</td>
                         <td class="p-2"><input v-model="row.mr_reference" :aria-label="`MR number for item ${index + 1}`" maxlength="1000" class="w-28 rounded-lg border-slate-200 text-sm" /></td><td class="p-2"><input v-model="row.remarks" :aria-label="`Remarks for item ${index + 1}`" maxlength="1000" class="w-36 rounded-lg border-slate-200 text-sm" /></td>
                         <td class="p-2"><button type="button" class="text-sm font-semibold text-red-700" :aria-label="`Delete item ${index + 1}`" @click="remove(index)">Delete</button></td>

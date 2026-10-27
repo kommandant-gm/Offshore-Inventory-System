@@ -15,6 +15,10 @@ class MiriCogAvailability
     {
         if (! in_array($type, self::EQUIPMENT, true) || ! $ids) return [];
 
+        if ($type === 'Major equipment') {
+            $scaffolding = \App\Models\MajorEquipment::where('branch_id', $branch)->scaffolding()->whereIn('id', $ids)->pluck('id')->all();
+            $ids = array_diff($ids, $scaffolding);
+        }
         $lines = MiriCogItem::query()->where('branch_id', $branch)->where('item_type', $type)
             ->whereIn('item_id', $ids)->whereHas('cog', fn ($q) => $q->where('status', '!=', 'cancelled'))
             ->with('cog')->orderBy('miri_cog_id')->orderBy('id')->get();
@@ -48,6 +52,7 @@ class MiriCogAvailability
                 throw ValidationException::withMessages(["items.$i.item_id" => 'This equipment is already included in this note.']);
             }
             $seen[$key] = true;
+            if ($line['item_type'] === 'Major equipment' && \App\Models\MajorEquipment::where('branch_id', $branch)->scaffolding()->whereKey($line['item_id'])->exists()) continue;
             $allocations = $this->outstanding($branch, $line['item_type'], [$line['item_id']])[$line['item_id']] ?? [];
             if (in_array($movement, self::OUTBOUND, true) && $allocations) {
                 $numbers = implode(', ', array_unique(array_column($allocations, 'cog_no')));

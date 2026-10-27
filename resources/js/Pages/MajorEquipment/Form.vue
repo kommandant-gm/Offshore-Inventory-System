@@ -9,7 +9,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { computed, ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ equipment: Object, categories: Array, certificateTypes: Array, inventoryType: String, register: String });
+const props = defineProps({ equipment: Object, categories: Array, certificateTypes: Array, inventoryType: String, register: String, scaffoldingOptions: Object });
 const scaffolding = computed(() => props.register === 'scaffolding');
 const pageTitle = computed(() => `${props.equipment ? 'Edit' : 'Register'} ${scaffolding.value ? 'Scaffolding' : 'Miri Equipment'}`);
 const item = props.equipment;
@@ -19,6 +19,7 @@ const categoryError = ref('');
 const addingCategory = ref(false);
 const date = (value) => value ? String(value).slice(0, 10) : '';
 const form = useForm({
+    scaffolding_contract: item?.scaffolding_contract ?? '',
     company: item?.company ?? '',
     removed_certificate_ids: [],
     inventory_type: item?.inventory_type ?? props.inventoryType ?? 'machinery',
@@ -35,7 +36,9 @@ const fields = [
     ['section_1', 'Subcategory 1'], ['section_2', 'Subcategory 2'], ['description', 'Description'], ['unit', 'Unit'], ['model_brand', 'Model / Brand'], ['serial_no', 'Serial No.'], ['tag_no', 'Tag No.'], ['current_location', 'Current Location'], ['issue_out_location', 'Issue-out Location'], ['mr_request', 'MR Request'], ['purchase_order', 'Purchase Order'], ['delivery_order', 'Delivery Order'], ['supplier', 'Supplier'],
 ];
 const cargo = computed(() => form.inventory_type === 'cargo');
-const detailFields = computed(() => fields.slice(2).filter(([key]) => !cargo.value || !['model_brand', 'serial_no'].includes(key)));
+const detailFields = computed(() => fields.slice(2).filter(([key]) => (!cargo.value || !['model_brand', 'serial_no'].includes(key)) && (!scaffolding.value || !['description', 'unit'].includes(key))));
+const scaffoldOption = useForm({ kind: 'subcategory', value: '' });
+const addScaffoldOption = () => scaffoldOption.post(route('scaffolding.options.store'), { preserveScroll: true, onSuccess: () => scaffoldOption.reset('value') });
 const cargoCertificateTypes = ['PADEYE MPI', 'VISUAL INSPECTION', 'WIRE SLING VALIDITY', 'CERTIFICATE OF CONFORMITY'];
 const visibleCertificateTypes = computed(() => [...new Set([
     ...props.certificateTypes.filter(type => cargo.value ? cargoCertificateTypes.includes(type) : !cargoCertificateTypes.includes(type)),
@@ -75,12 +78,23 @@ const removeCertificate = (index) => {
         <form class="space-y-6" @submit.prevent="submit">
             <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
             <div v-if="Object.keys(form.errors).length" role="alert" class="rounded-xl bg-red-50 p-4 text-sm text-red-700"><p v-for="(error,key) in form.errors" :key="key">{{ error }}</p></div>
+            <section v-if="scaffolding" class="rounded-3xl border border-[#d8e7d4] bg-white p-6">
+                <h2 class="text-lg font-semibold">Scaffold classification and detail</h2>
+                <div class="mt-4 grid gap-4 md:grid-cols-3">
+                    <label class="text-sm">Category<input value="SCAFFOLD SET" readonly class="mt-1 w-full rounded-xl border-slate-200 bg-slate-50" /></label>
+                    <label v-for="[key, label, options] in [['section_2', 'Subcategory', 'subcategory'], ['scaffolding_contract', 'Contract', 'contract'], ['description', 'Description', 'description']]" :key="key" class="text-sm">{{ label }}<input v-model="form[key]" :list="'scaffold-' + options" maxlength="255" class="mt-1 w-full rounded-xl border-slate-200" /><datalist :id="'scaffold-' + options"><option v-for="value in scaffoldingOptions?.[options] || []" :key="value" :value="value" /></datalist><InputError :message="form.errors[key]" /></label>
+                    <label class="text-sm">Unit<input v-model="form.unit" maxlength="20" class="mt-1 w-full rounded-xl border-slate-200" /><InputError :message="form.errors.unit" /></label>
+                </div>
+                <p class="mt-3 text-sm text-slate-500">Choose an existing value or enter a new one. After saving, verify initial stock separately for BINTULU and LABUAN on the record page.</p>
+                <div class="mt-4 flex flex-wrap items-end gap-2"><label class="text-sm">Add an option<select v-model="scaffoldOption.kind" class="ml-2 rounded-xl border-slate-200"><option value="subcategory">Subcategory</option><option value="description">Description</option><option value="contract">Contract</option></select></label><input v-model="scaffoldOption.value" maxlength="255" aria-label="New option" class="rounded-xl border-slate-200" /><button type="button" class="btn" :disabled="scaffoldOption.processing || !scaffoldOption.value.trim()" @click="addScaffoldOption">Add</button></div>
+                <InputError :message="scaffoldOption.errors.value" />
+            </section>
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">{{ scaffolding ? 'Scaffolding' : cargo ? 'Cargo' : 'Machinery' }} classification</h2>
                 <p class="mt-2 text-sm text-slate-500">{{ scaffolding ? 'Scaffolding Register / Scaffolding Set' : cargo ? 'Major Equipment / Cargo Set' : 'Major Equipment / Machinery' }}</p>
                 <div class="mt-5 grid gap-4 md:grid-cols-3">
                     <div><label class="label-text">Category</label><CustomSelect v-model="form.category" class="select select-bordered mt-2 w-full"><option v-for="category in categoryOptions" :key="category" :value="category">{{ category }}</option></CustomSelect><InputError :message="form.errors.category" /><div class="mt-2 flex gap-2"><TextInput v-model="newCategory" class="min-w-0 flex-1" placeholder="Add a category" @keydown.enter.prevent="addCategory" /><button type="button" class="btn btn-sm" :disabled="addingCategory" @click="addCategory">{{ addingCategory ? 'Adding…' : 'Add' }}</button></div><InputError :message="categoryError" /></div>
-                    <div v-for="[key, label] in fields.slice(0, 2)" :key="key"><label class="label-text">{{ label }}</label><TextInput v-model="form[key]" class="mt-2 w-full" /><InputError :message="form.errors[key]" /></div>
+                    <div v-for="[key, label] in (scaffolding ? [] : fields.slice(0, 2))" :key="key"><label class="label-text">{{ label }}</label><TextInput v-model="form[key]" class="mt-2 w-full" /><InputError :message="form.errors[key]" /></div>
                 </div>
             </section>
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">

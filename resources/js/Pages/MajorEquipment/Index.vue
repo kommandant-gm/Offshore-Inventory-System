@@ -104,7 +104,7 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                     <table class="table">
                         <thead><tr><th v-if="canEdit"><input v-model="allSelected" type="checkbox" aria-label="Select all items on this page" /></th><th>Company</th><th>Tag No.</th><th>Description</th><th>Category / Subcategory</th>
                             <template v-if="cargo"><th>Dimensions / Model</th><th>Tonnage</th></template>
-                            <th>Current location</th><th>Issue-out location</th><th>Status</th><th>Actions</th>
+                            <template v-if="scaffolding"><th>Bintulu balance</th><th>Labuan balance</th></template><th>Current location</th><th>Issue-out location</th><th>Status</th><th>Actions</th>
                         </tr></thead>
                         <tbody>
                             <tr v-for="item in equipment.data" :key="item.id" :class="Number(item.duplicate_count) > 1 ? 'bg-amber-50/70' : ''"><td v-if="canEdit"><input v-model="selectedIds" type="checkbox" :value="item.id" :aria-label="'Select record #' + item.id" /></td><td>{{ item.company || 'Not assigned' }}</td>
@@ -120,10 +120,10 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                                 <td>{{ item.description || 'Not recorded' }}<p v-if="!cargo" class="text-xs text-slate-500">{{ item.model_brand || '' }}</p></td>
                                 <td>{{ item.category }}<p class="text-xs text-slate-500">{{ item.section_1 || '-' }} / {{ item.section_2 || '-' }}</p></td>
                                 <template v-if="cargo"><td>{{ item.size_model || '-' }}</td><td>{{ item.size_ton || '-' }}</td></template>
-                                <td>{{ item.current_location || '-' }}</td><td>{{ item.issue_out_location || '-' }}</td><td>{{ item.status || 'Not recorded' }}</td>
+                                <template v-if="scaffolding"><td>{{ item.bintulu_balance === null ? 'Unverified' : `${Number(item.bintulu_balance)} ${item.unit || ''}` }}</td><td>{{ item.labuan_balance === null ? 'Unverified' : `${Number(item.labuan_balance)} ${item.unit || ''}` }}</td></template><td>{{ item.current_location || '-' }}</td><td>{{ item.issue_out_location || '-' }}</td><td>{{ item.status || 'Not recorded' }}</td>
                                 <td><div class="flex gap-2"><Link class="btn btn-xs" :href="route('major-equipment.show', item.id)">View</Link><Link v-if="canEdit" class="btn btn-xs" :href="route('major-equipment.edit', item.id)">Edit</Link><DeleteRegisterItem v-if="canEdit" register="major" :item="item" @deleted="id => selectedIds = selectedIds.filter(selected => selected !== id)" /></div></td>
                             </tr>
-                            <tr v-if="!equipment.data.length"><td :colspan="(cargo ? 10 : 8) + (canEdit ? 1 : 0)" class="py-12 text-center text-slate-500">No {{ typeLabel }} records match these filters.</td></tr>
+                            <tr v-if="!equipment.data.length"><td :colspan="(cargo ? 10 : 8) + (canEdit ? 1 : 0) + (scaffolding ? 2 : 0)" class="py-12 text-center text-slate-500">No {{ typeLabel }} records match these filters.</td></tr>
                         </tbody>
                     </table>
                 </div>

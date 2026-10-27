@@ -24,7 +24,7 @@ class MiriCogEditing
 
     public function editable(MiriCog $cog): bool
     {
-        return $cog->status === 'draft' && ! $cog->signature && ! $cog->construction_stock_confirmed_at;
+        return $cog->status === 'draft' && ! $cog->signature && ! $cog->construction_stock_confirmed_at && ! $cog->scaffolding_stock_confirmed_at;
     }
     public function token(MiriCog $cog): string
     {
@@ -39,8 +39,8 @@ class MiriCogEditing
                 ...($type === 'date' ? ['date_format:Y-m-d'] : [$type === 'email' ? 'email' : 'string', 'max:255'])];
         }
         foreach (self::LINE_FIELDS as [$key]) $rules['items.*.'.$key] = ['nullable', 'string', 'max:'.(in_array($key, ['mr_reference', 'remarks']) ? 1000 : 255)];
-        foreach (['movement_type', 'cog_no', 'status', 'signature', 'construction_stock_confirmed_at', 'construction_stock_workflow', 'created_by', 'branch_id'] as $key) $rules[$key] = ['prohibited'];
-        foreach (['item_type', 'item_id', 'quantity', 'unit', 'construction_destination_id', 'current_location', 'batch_no'] as $key) $rules['items.*.'.$key] = ['prohibited'];
+        foreach (['scaffolding_stock_workflow', 'scaffolding_stock_confirmed_at', 'movement_type', 'cog_no', 'status', 'signature', 'construction_stock_confirmed_at', 'construction_stock_workflow', 'created_by', 'branch_id'] as $key) $rules[$key] = ['prohibited'];
+        foreach (['scaffolding_stock', 'scaffolding_yard', 'scaffolding_contract', 'item_type', 'item_id', 'quantity', 'unit', 'construction_destination_id', 'current_location', 'batch_no'] as $key) $rules['items.*.'.$key] = ['prohibited'];
         return $rules;
     }
     public function update(MiriCog $cog, Request $request): void

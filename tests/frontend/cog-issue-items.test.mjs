@@ -20,6 +20,20 @@ function setup() {
 }
 const item = { id: 42, description: 'AIR COMPRESSOR', unit: 'UNIT', identifier: 'TAG-42', serial_no: 'SERIAL-42', size_model: 'AIRMAN', mr_reference: '96000A', location: 'Miri' };
 
+test('scaffolding requires a yard and retains its contract without leaking to the next item', () => {
+    const state = setup();
+    state.select({ ...item, scaffolding_stock: true, scaffolding_contract: 'SHELL' });
+    state.add();
+    assert.equal(state.props.modelValue.length, 0);
+    state.draft.scaffolding_yard = 'BINTULU'; state.add();
+    assert.equal(state.props.modelValue[0].scaffolding_yard, 'BINTULU');
+    assert.equal(state.props.modelValue[0].scaffolding_contract, 'SHELL');
+    state.select({ ...item, id: 43 });
+    assert.equal(state.draft.scaffolding_stock, false);
+    assert.equal(state.draft.scaffolding_yard, '');
+    assert.equal(state.draft.scaffolding_contract, '');
+});
+
 test('selection copies register details and add creates an independent row; delete permits re-selection', () => {
     const state = setup();
     state.select(item);

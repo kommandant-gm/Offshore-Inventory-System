@@ -165,6 +165,8 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::get('/miri-rental/{rental}/edit', [MiriRentalController::class, 'edit'])->name('miri-rental.edit');
     Route::patch('/miri-rental/{rental}', [MiriRentalController::class, 'update'])->name('miri-rental.update');
     Route::resource('locations', LocationController::class)->only(['index', 'store', 'update']);
+    Route::post('/miri-scaffolding/options', [\App\Http\Controllers\ScaffoldingStockController::class, 'option'])->name('scaffolding.options.store');
+    Route::post('/miri-scaffolding/{equipment}/stock', [\App\Http\Controllers\ScaffoldingStockController::class, 'store'])->name('scaffolding.stock.store');
     Route::get('/miri-scaffolding', [MajorEquipmentController::class, 'index'])->name('scaffolding.index');
     Route::get('/miri-scaffolding/create', [MajorEquipmentController::class, 'create'])->name('scaffolding.create');
     Route::post('/miri-scaffolding', [MajorEquipmentController::class, 'store'])->name('scaffolding.store');
