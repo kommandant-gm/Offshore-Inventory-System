@@ -17,7 +17,9 @@ class EquipmentSheetController extends Controller
         abort_unless($branch?->code === 'MIRI', 404);
         $data = $request->validated();
         DB::transaction(function () use ($data, $branch, $request, $audit) {
-            $items = MajorEquipment::where('branch_id', $branch->id)->where('inventory_type', $data['inventory_type'])
+            $scaffolding = $request->routeIs('scaffolding.spreadsheet.update');
+            $items = MajorEquipment::where('branch_id', $branch->id)->scaffolding($scaffolding)
+                ->when(! $scaffolding, fn ($q) => $q->where('inventory_type', $data['inventory_type']))
                 ->whereIn('id', array_column($data['rows'], 'id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             abort_unless($items->count() === count($data['rows']), 404);
             foreach ($data['rows'] as $index => $row) {

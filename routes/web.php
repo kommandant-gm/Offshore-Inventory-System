@@ -165,6 +165,10 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::get('/miri-rental/{rental}/edit', [MiriRentalController::class, 'edit'])->name('miri-rental.edit');
     Route::patch('/miri-rental/{rental}', [MiriRentalController::class, 'update'])->name('miri-rental.update');
     Route::resource('locations', LocationController::class)->only(['index', 'store', 'update']);
+    Route::get('/miri-scaffolding', [MajorEquipmentController::class, 'index'])->name('scaffolding.index');
+    Route::get('/miri-scaffolding/create', [MajorEquipmentController::class, 'create'])->name('scaffolding.create');
+    Route::post('/miri-scaffolding', [MajorEquipmentController::class, 'store'])->name('scaffolding.store');
+    Route::patch('/miri-scaffolding/spreadsheet', [\App\Http\Controllers\EquipmentSheetController::class, 'update'])->name('scaffolding.spreadsheet.update');
     Route::get('/miri-inventory', [MajorEquipmentController::class, 'index'])->name('major-equipment.index');
     Route::patch('/miri-inventory/spreadsheet', [\App\Http\Controllers\EquipmentSheetController::class, 'update'])->name('major-equipment.spreadsheet.update');
     Route::get('/miri-inventory/dashboard', [MajorEquipmentController::class, 'dashboard'])->name('major-equipment.dashboard');

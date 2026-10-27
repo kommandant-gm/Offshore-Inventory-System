@@ -9,7 +9,9 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { computed, ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ equipment: Object, categories: Array, certificateTypes: Array, inventoryType: String });
+const props = defineProps({ equipment: Object, categories: Array, certificateTypes: Array, inventoryType: String, register: String });
+const scaffolding = computed(() => props.register === 'scaffolding');
+const pageTitle = computed(() => `${props.equipment ? 'Edit' : 'Register'} ${scaffolding.value ? 'Scaffolding' : 'Miri Equipment'}`);
 const item = props.equipment;
 const categoryOptions = ref([...props.categories]);
 const newCategory = ref('');
@@ -21,7 +23,7 @@ const form = useForm({
     removed_certificate_ids: [],
     inventory_type: item?.inventory_type ?? props.inventoryType ?? 'machinery',
     size_model: item?.size_model ?? '', size_ton: item?.size_ton ?? '', size_length: item?.size_length ?? '', quantity: item?.quantity ?? '',
-    category: item?.category ?? props.categories?.[0] ?? 'MAJOR EQUIPMENT', section_1: item?.section_1 ?? (props.inventoryType === 'cargo' ? 'CARGO SET' : 'Machinery'), section_2: item?.section_2 ?? '',
+    category: item?.category ?? props.categories?.[0] ?? 'MAJOR EQUIPMENT', section_1: item?.section_1 ?? (scaffolding.value ? 'SCAFFOLDING SET' : props.inventoryType === 'cargo' ? 'CARGO SET' : 'Machinery'), section_2: item?.section_2 ?? '',
     description: item?.description ?? '', unit: item?.unit ?? '', model_brand: item?.model_brand ?? '', serial_no: item?.serial_no ?? '', tag_no: item?.tag_no ?? '',
     current_location: item?.current_location ?? '', status: item?.status ?? (props.inventoryType === 'cargo' ? '' : 'Standby'), issue_out_location: item?.issue_out_location ?? '',
     issue_out_cog_no: item?.issue_out_cog_no ?? '', issue_out_cog_date: date(item?.issue_out_cog_date), received_backload_cog_no: item?.received_backload_cog_no ?? '', received_backload_cog_date: date(item?.received_backload_cog_date),
@@ -39,7 +41,7 @@ const visibleCertificateTypes = computed(() => [...new Set([
     ...props.certificateTypes.filter(type => cargo.value ? cargoCertificateTypes.includes(type) : !cargoCertificateTypes.includes(type)),
     ...form.certificates.map(cert => cert.certificate_type),
 ])]);
-const submit = () => form.transform(data => ({ ...data, ...(item ? { _method: 'patch' } : {}) })).post(item ? route('major-equipment.update', item.id) : route('major-equipment.store'), { preserveScroll: true, forceFormData: true });
+const submit = () => form.transform(data => ({ ...data, ...(item ? { _method: 'patch' } : {}) })).post(item ? route('major-equipment.update', item.id) : route(scaffolding.value ? 'scaffolding.store' : 'major-equipment.store'), { preserveScroll: true, forceFormData: true });
 const addCategory = () => {
     const name = newCategory.value.trim();
     if (!name) { categoryError.value = 'Enter a category name.'; return; }
@@ -67,15 +69,15 @@ const removeCertificate = (index) => {
 };
 </script>
 <template>
-    <Head :title="item ? 'Edit Miri Equipment' : 'Register Miri Equipment'" />
+    <Head :title="pageTitle" />
     <AuthenticatedLayout>
-        <PageHeader :title="item ? 'Edit Miri Equipment' : 'Register Miri Equipment'" :description="cargo ? 'Cargo dimensions, quantities and inspection certificates.' : 'Machinery details and equipment certificates.'" />
+        <PageHeader :title="pageTitle" :description="scaffolding ? 'Scaffolding details, locations and certificates.' : cargo ? 'Cargo dimensions, quantities and inspection certificates.' : 'Machinery details and equipment certificates.'" />
         <form class="space-y-6" @submit.prevent="submit">
             <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
             <div v-if="Object.keys(form.errors).length" role="alert" class="rounded-xl bg-red-50 p-4 text-sm text-red-700"><p v-for="(error,key) in form.errors" :key="key">{{ error }}</p></div>
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
-                <h2 class="text-lg font-semibold">{{ cargo ? 'Cargo' : 'Machinery' }} classification</h2>
-                <p class="mt-2 text-sm text-slate-500">Major Equipment / {{ cargo ? 'Cargo Set' : 'Machinery' }}</p>
+                <h2 class="text-lg font-semibold">{{ scaffolding ? 'Scaffolding' : cargo ? 'Cargo' : 'Machinery' }} classification</h2>
+                <p class="mt-2 text-sm text-slate-500">{{ scaffolding ? 'Scaffolding Register / Scaffolding Set' : cargo ? 'Major Equipment / Cargo Set' : 'Major Equipment / Machinery' }}</p>
                 <div class="mt-5 grid gap-4 md:grid-cols-3">
                     <div><label class="label-text">Category</label><CustomSelect v-model="form.category" class="select select-bordered mt-2 w-full"><option v-for="category in categoryOptions" :key="category" :value="category">{{ category }}</option></CustomSelect><InputError :message="form.errors.category" /><div class="mt-2 flex gap-2"><TextInput v-model="newCategory" class="min-w-0 flex-1" placeholder="Add a category" @keydown.enter.prevent="addCategory" /><button type="button" class="btn btn-sm" :disabled="addingCategory" @click="addCategory">{{ addingCategory ? 'Adding…' : 'Add' }}</button></div><InputError :message="categoryError" /></div>
                     <div v-for="[key, label] in fields.slice(0, 2)" :key="key"><label class="label-text">{{ label }}</label><TextInput v-model="form[key]" class="mt-2 w-full" /><InputError :message="form.errors[key]" /></div>
@@ -121,7 +123,7 @@ const removeCertificate = (index) => {
                 <p v-if="form.progress" class="mt-3 text-sm">Uploading: {{ form.progress.percentage }}%</p>
             </section>
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm"><h2 class="text-lg font-semibold">References and notes</h2><div class="mt-5 grid gap-4 md:grid-cols-2"><div><label class="label-text">Unfit Report</label><textarea v-model="form.unfit_report" class="textarea textarea-bordered mt-2 w-full" rows="3" /></div><div><label class="label-text">Write-off Reference</label><textarea v-model="form.write_off_reference" class="textarea textarea-bordered mt-2 w-full" rows="3" /></div><div class="md:col-span-2"><label class="label-text">Remarks</label><textarea v-model="form.remarks" class="textarea textarea-bordered mt-2 w-full" rows="3" /></div></div></section>
-            <div class="flex gap-3"><PrimaryButton :disabled="form.processing">{{ item ? 'Save changes' : 'Register equipment' }}</PrimaryButton><Link class="btn" :href="route('major-equipment.index', { inventory_type: form.inventory_type })">Cancel</Link></div>
+            <div class="flex gap-3"><PrimaryButton :disabled="form.processing">{{ item ? 'Save changes' : 'Register equipment' }}</PrimaryButton><Link class="btn" :href="route(scaffolding ? 'scaffolding.index' : 'major-equipment.index', { inventory_type: form.inventory_type })">Cancel</Link></div>
         </form>
     </AuthenticatedLayout>
 </template>

@@ -30,7 +30,10 @@
     watch(klExpanded, (value) => localStorage.setItem('sidebar.kl.expanded', String(value)));
     watch(kemamanExpanded, (value) => localStorage.setItem('sidebar.kemaman.expanded', String(value)));
     const hasBranch = (code) => currentUser?.branches?.some((branch) => branch.code === code);
-    const isItemActive = (item) => route().current(item.active ?? item.route);
+    const isItemActive = (item) => {
+        if (page.props.register === 'scaffolding' && item.route === 'scaffolding.index') return true;
+        return route().current(item.active ?? item.route);
+    };
     const openBranchRoute = (branchCode, routeName) => {
         const branch = currentUser?.branches?.find((entry) => entry.code === branchCode);
         if (!branch) return;
@@ -48,6 +51,7 @@
     const miriItems = [
         { name: 'Dashboard', icon: Squares2X2Icon, route: 'major-equipment.dashboard' },
         { name: 'Major Equipment Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
+        { name: 'Scaffolding Register', icon: BuildingStorefrontIcon, route: 'scaffolding.index', active: 'scaffolding.*' },
         { name: 'Rental Register', icon: TruckIcon, route: 'miri-rental.index' },
         { name: 'Construction TEC, Garnet & PPE Register', icon: BuildingStorefrontIcon, route: 'construction.index', active: 'construction.*', wrapLabel: true },
         { name: 'Paint Register', icon: BuildingStorefrontIcon, route: 'paint.index', active: 'paint.*' },

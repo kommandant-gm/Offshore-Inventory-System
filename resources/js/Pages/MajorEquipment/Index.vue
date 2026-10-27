@@ -12,6 +12,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
+    register: String,
     equipment: Object, sheetColumns: Array, summary: Object, tabCounts: Object, filters: Object,
     descriptionOptions: Array, categoryOptions: Array, section1Options: Array, section2Options: Array,
     locationOptions: Array, issueOutLocationOptions: Array, statusOptions: Array, canEdit: Boolean,
@@ -26,13 +27,15 @@ function toggleView() {
 const form = reactive({ ...props.filters });
 watch(() => props.filters, value => Object.assign(form, value));
 const cargo = computed(() => props.filters.inventory_type === 'cargo');
-const typeLabel = computed(() => cargo.value ? 'Cargo' : 'Machinery');
-const applyFilters = () => router.get(route('major-equipment.index'), form, { preserveState: true, preserveScroll: true, replace: true });
+const scaffolding = computed(() => props.register === 'scaffolding');
+const indexRoute = computed(() => scaffolding.value ? 'scaffolding.index' : 'major-equipment.index');
+const typeLabel = computed(() => scaffolding.value ? 'Scaffolding' : cargo.value ? 'Cargo' : 'Machinery');
+const applyFilters = () => router.get(route(indexRoute.value), form, { preserveState: true, preserveScroll: true, replace: true });
 const clearFilters = () => { Object.keys(form).filter(k => k !== 'inventory_type').forEach(k => form[k] = ''); };
 const qualityFilter = (value) => { form.quality = form.quality === value ? '' : value; };
 const missing = (item) => ['tag_no', 'description', 'current_location'].filter(key => !String(item[key] ?? '').trim());
 const { options: liveOptions, loading: optionsLoading, error: optionsError, retry: retryOptions } = useLiveFilterOptions(
-    () => route('major-equipment.index'), () => ({ ...form }),
+    () => route(indexRoute.value), () => ({ ...form }),
     () => ({ descriptionOptions: props.descriptionOptions, categoryOptions: props.categoryOptions, section1Options: props.section1Options, section2Options: props.section2Options, locationOptions: props.locationOptions, issueOutLocationOptions: props.issueOutLocationOptions, statusOptions: props.statusOptions, qualityCounts: props.summary }),
 );
 const selectors = computed(() => [
@@ -45,21 +48,21 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
 </script>
 
 <template>
-    <Head title="Miri Inventory Register" />
+    <Head :title="scaffolding ? 'Scaffolding Register' : 'Miri Inventory Register'" />
     <AuthenticatedLayout>
         <section class="space-y-6">
             <header class="flex flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-[#d8e7d4] bg-white p-7 shadow-sm">
                 <div>
-                    <p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">Miri Inventory · Major Equipment</p>
-                    <h1 class="mt-2 text-3xl font-bold text-[#234222]">Miri Inventory Register</h1>
+                    <p class="text-xs font-bold uppercase tracking-[.25em] text-[#4f9f4a]">Miri Inventory · {{ scaffolding ? 'Scaffolding' : 'Major Equipment' }}</p>
+                    <h1 class="mt-2 text-3xl font-bold text-[#234222]">{{ scaffolding ? 'Scaffolding Register' : 'Miri Inventory Register' }}</h1>
                     <p class="mt-2 text-sm text-[#60745d]">Equipment, certificates, locations and COG tracking.</p>
                 </div>
                 <div v-if="canEdit" class="flex flex-wrap gap-2">
-                    <Link :href="route('major-equipment.import', { inventory_type: filters.inventory_type })" class="btn border-[#4f9f4a] text-[#2f7d32]">Import {{ typeLabel }} CSV</Link>
-                    <Link :href="route('major-equipment.create', { inventory_type: filters.inventory_type })" class="btn bg-[#4f9f4a] text-white">Register {{ typeLabel }}</Link>
+                    <Link v-if="!scaffolding" :href="route('major-equipment.import', { inventory_type: filters.inventory_type })" class="btn border-[#4f9f4a] text-[#2f7d32]">Import {{ typeLabel }} CSV</Link>
+                    <Link :href="route(scaffolding ? 'scaffolding.create' : 'major-equipment.create', { inventory_type: filters.inventory_type })" class="btn bg-[#4f9f4a] text-white">Register {{ typeLabel }}</Link>
                 </div>
             </header>
-            <nav aria-label="Equipment type" class="flex w-fit gap-2 rounded-2xl border border-[#d8e7d4] bg-white p-2">
+            <nav v-if="!scaffolding" aria-label="Equipment type" class="flex w-fit gap-2 rounded-2xl border border-[#d8e7d4] bg-white p-2">
                 <Link v-for="tab in ['machinery', 'cargo']" :key="tab" preserve-state :href="route('major-equipment.index', { inventory_type: tab })"
                     :aria-current="filters.inventory_type === tab ? 'page' : undefined"
                     class="rounded-xl px-6 py-3 font-bold capitalize"
@@ -84,7 +87,7 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                 </div>
                 <div class="mt-5 border-t border-[#edf3eb] pt-4">
                     <h3 class="filter-label">Data quality</h3>
-                    <p class="mb-3 text-xs text-slate-500">Issue counts follow the selections in this filter card. Duplicate tags are checked across Machinery and Cargo in Miri.</p>
+                    <p class="mb-3 text-xs text-slate-500">Issue counts follow the selections in this filter card. Duplicate tags are checked across Machinery, Cargo and Scaffolding in Miri.</p>
                     <div class="flex flex-wrap gap-2">
                         <button v-for="[key,label,count] in [['duplicates','Duplicate tags',liveOptions.qualityCounts.duplicates],['missing','Missing details',liveOptions.qualityCounts.missing_details],['warnings','Import warnings',liveOptions.qualityCounts.warnings]]"
                             :key="key" type="button" class="rounded-xl border px-4 py-2 text-sm font-semibold"
@@ -93,10 +96,10 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                     </div>
                 </div>
             </form>
-            <BulkCompanyAssignment v-if="canEdit && !excelView" :ids="selectedIds" :register="filters.inventory_type" @assigned="selectedIds = []" />
+            <BulkCompanyAssignment v-if="canEdit && !excelView" :ids="selectedIds" :register="scaffolding ? 'scaffolding' : filters.inventory_type" @assigned="selectedIds = []" />
             <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><p><strong>{{ equipment.total }}</strong> {{ typeLabel }} records found <span v-if="equipment.total">· Showing {{ equipment.from }}–{{ equipment.to }}</span></p><button type="button" class="btn btn-sm border-[#4f9f4a] text-[#2f7d32]" :aria-pressed="excelView" @click="toggleView">{{ excelView ? 'Table view' : 'Excel view' }}</button></div>
-                <EquipmentSpreadsheet v-if="excelView" ref="spreadsheet" :records="equipment.data" :columns="sheetColumns" :can-edit="canEdit" :inventory-type="filters.inventory_type" :first-row="equipment.from" />
+                <EquipmentSpreadsheet v-if="excelView" ref="spreadsheet" :records="equipment.data" :columns="sheetColumns" :can-edit="canEdit" :inventory-type="filters.inventory_type" :first-row="equipment.from" :label="typeLabel" :update-url="route(scaffolding ? 'scaffolding.spreadsheet.update' : 'major-equipment.spreadsheet.update')" />
                 <div v-else class="overflow-x-auto">
                     <table class="table">
                         <thead><tr><th v-if="canEdit"><input v-model="allSelected" type="checkbox" aria-label="Select all items on this page" /></th><th>Company</th><th>Tag No.</th><th>Description</th><th>Category / Subcategory</th>

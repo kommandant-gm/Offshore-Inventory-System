@@ -13,6 +13,7 @@ class BranchContextController extends Controller
         'dashboard',
         'major-equipment.dashboard',
         'major-equipment.index',
+        'scaffolding.index',
         'miri-rental.index',
         'construction.index',
         'paint.index',

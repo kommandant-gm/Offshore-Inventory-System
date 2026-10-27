@@ -42,6 +42,16 @@ class MajorEquipment extends Model
         return $this->hasMany(MajorEquipmentCertificate::class, 'miri_inventory_item_id');
     }
 
+    public function isScaffolding(): bool
+    {
+        return strtoupper(trim((string) $this->section_1)) === 'SCAFFOLDING SET';
+    }
+
+    public function scopeScaffolding($query, bool $included = true)
+    {
+        return $query->whereRaw("UPPER(TRIM(COALESCE(section_1, ''))) ".($included ? '=' : '<>')." ?", ['SCAFFOLDING SET']);
+    }
+
     public function scopeMissingDetails($query)
     {
         return $query->where(function ($query) {

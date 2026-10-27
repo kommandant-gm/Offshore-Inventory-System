@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { Head, Link } from '@inertiajs/vue3';
-defineProps({ equipment: Object, duplicates: { type: Array, default: () => [] } });
+defineProps({ equipment: Object, register: String, duplicates: { type: Array, default: () => [] } });
 
 const formatDate = (value) => {
     if (!value) return '-';
@@ -17,7 +17,7 @@ const formatDate = (value) => {
 <template>
     <Head :title="equipment.tag_no || equipment.description || 'Major Equipment'" />
     <AuthenticatedLayout>
-        <PageHeader :title="equipment.tag_no || 'Major Equipment'" :description="equipment.description || '-'" />
+        <PageHeader :title="equipment.tag_no || (register === 'scaffolding' ? 'Scaffolding' : 'Major Equipment')" :description="equipment.description || '-'" />
         <p class="my-4 text-sm">Company: <strong>{{ equipment.company || 'Not assigned' }}</strong></p>
         <section v-if="duplicates.length" class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
             <h2 class="font-bold text-amber-900">Duplicate tag — review matching records</h2>
@@ -42,6 +42,6 @@ const formatDate = (value) => {
             <dl class="mt-4 grid gap-4 md:grid-cols-2"><div v-for="[key,label] in [['unit','Unit'],['supplier','Supplier'],['mr_request','MR Request'],['purchase_order','Purchase Order'],['delivery_order','Delivery Order'],['unfit_report','Unfit / Damage Report'],['write_off_reference','Write-off Reference'],['remarks','Remarks']]" :key="key"><dt class="text-xs text-slate-500">{{ label }}</dt><dd class="whitespace-pre-wrap">{{ equipment[key] || '-' }}</dd></div></dl>
         </section>
         <details v-if="equipment.source_values?.columns" class="mt-5 rounded-xl border p-4"><summary class="cursor-pointer text-sm font-bold">Original import values (CSV record {{ equipment.source_values.csv_record }})</summary><p class="mt-2 text-xs text-slate-500">Source values are kept for comparison; edits do not change this copy.</p><dl class="mt-3 grid gap-2 sm:grid-cols-2"><div v-for="(value,index) in equipment.source_values.columns" :key="index" class="text-xs"><dt class="text-slate-500">Column {{ index + 1 }}</dt><dd class="whitespace-pre-wrap">{{ value || '-' }}</dd></div></dl></details>
-        <div class="mt-5 flex flex-wrap gap-3"><a class="btn bg-[#234222] text-white" :href="route('major-equipment.pdf', equipment.id)">Download registration form</a><Link v-if="$page.props.auth?.user?.can?.assets_edit" class="btn bg-[#4f9f4a] text-white" :href="route('major-equipment.edit', equipment.id)">Edit equipment</Link><Link class="btn" :href="route('major-equipment.index', { inventory_type: equipment.inventory_type })">Back to Miri Inventory</Link></div>
+        <div class="mt-5 flex flex-wrap gap-3"><a class="btn bg-[#234222] text-white" :href="route('major-equipment.pdf', equipment.id)">Download registration form</a><Link v-if="$page.props.auth?.user?.can?.assets_edit" class="btn bg-[#4f9f4a] text-white" :href="route('major-equipment.edit', equipment.id)">Edit equipment</Link><Link class="btn" :href="route(register === 'scaffolding' ? 'scaffolding.index' : 'major-equipment.index', { inventory_type: equipment.inventory_type })">Back to {{ register === 'scaffolding' ? 'Scaffolding Register' : 'Miri Inventory' }}</Link></div>
     </AuthenticatedLayout>
 </template>

@@ -101,7 +101,7 @@ class MajorEquipmentController extends Controller
                 'rentalDashboard' => $this->rentalDashboard(today(), $company),
             ]);
         }
-        $query = MajorEquipment::query()->companyFilter($company)->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type));
+        $query = MajorEquipment::query()->scaffolding(false)->companyFilter($company)->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type));
         $statusRows = (clone $query)->selectRaw("COALESCE(NULLIF(TRIM(status), ''), 'Not recorded') as label, COUNT(*) as value")->groupByRaw("COALESCE(NULLIF(TRIM(status), ''), 'Not recorded')")->orderByDesc('value')->get();
         $subcategoryExpression = "COALESCE(NULLIF(TRIM(section_2), ''), 'Not recorded')";
         $statusExpression = "COALESCE(NULLIF(TRIM(status), ''), 'Not recorded')";
@@ -118,10 +118,10 @@ class MajorEquipmentController extends Controller
             ->sort(fn ($a, $b) => ($b['total'] <=> $a['total']) ?: strcmp($a['category'], $b['category']))
             ->values();
         $today = today();
-        $certificateQuery = MajorEquipmentCertificate::query()->whereHas('equipment', fn ($q) => $q->companyFilter($company)->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type)));
+        $certificateQuery = MajorEquipmentCertificate::query()->whereHas('equipment', fn ($q) => $q->scaffolding(false)->companyFilter($company)->when($type !== 'all', fn ($q) => $q->where('inventory_type', $type)));
         return Inertia::render('MajorEquipment/Dashboard', [
             'companyFilter' => $company, 'inventoryType' => $type,
-            'typeCounts' => MajorEquipment::query()->companyFilter($company)->select('inventory_type')->selectRaw('COUNT(*) as total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
+            'typeCounts' => MajorEquipment::query()->scaffolding(false)->companyFilter($company)->select('inventory_type')->selectRaw('COUNT(*) as total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
             'statusBreakdown' => $statusRows,
             'quality' => ['duplicates' => (clone $query)->duplicateTag()->count(), 'missing' => (clone $query)->missingDetails()->count(), 'warnings' => (clone $query)->whereNotNull('import_warnings')->count()],
             'quantityRecorded' => (clone $query)->whereNotNull('quantity')->count(),
@@ -240,9 +240,11 @@ class MajorEquipmentController extends Controller
             'location' => ['nullable', 'string', 'max:255'], 'status' => ['nullable', 'string', 'max:255'],
             'issue_out_location' => ['nullable', 'string', 'max:255'], 'quality' => ['nullable', 'in:duplicates,missing,warnings'],
         ]);
-        $type = $filters['inventory_type'] ?? 'machinery';
+        $scaffolding = $request->routeIs('scaffolding.index');
+        $type = $scaffolding ? 'machinery' : ($filters['inventory_type'] ?? 'machinery');
         if ($type !== 'cargo') unset($filters['description']);
-        $base = MajorEquipment::query()->companyFilter($filters['company'] ?? null)->where('inventory_type', $type);
+        $base = MajorEquipment::query()->scaffolding($scaffolding)->companyFilter($filters['company'] ?? null)
+            ->when(! $scaffolding, fn ($q) => $q->where('inventory_type', $type));
         $searchQuery = clone $base;
         if (filled($filters['search'] ?? null)) $searchQuery->where(function ($q) use ($filters) {
             foreach (['tag_no', 'serial_no', 'description', 'model_brand', 'size_model', 'current_location', 'issue_out_cog_no', 'received_backload_cog_no'] as $column) $q->orWhere($column, 'like', '%'.$filters['search'].'%');
@@ -277,9 +279,10 @@ class MajorEquipmentController extends Controller
             'qualityCounts' => ['duplicates' => (clone $summaryQuery)->duplicateTag()->count(), 'missing_details' => (clone $summaryQuery)->missingDetails()->count(), 'warnings' => (clone $summaryQuery)->whereNotNull('import_warnings')->count()],
         ]);
         return Inertia::render('MajorEquipment/Index', [
+            'register' => $scaffolding ? 'scaffolding' : 'major',
             'sheetColumns' => \App\Support\EquipmentSheet::columns($type),
             'equipment' => $query->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('id')->paginate(25)->withQueryString(),
-            'tabCounts' => MajorEquipment::query()->select('inventory_type')->selectRaw('COUNT(*) AS total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
+            'tabCounts' => MajorEquipment::query()->scaffolding(false)->select('inventory_type')->selectRaw('COUNT(*) AS total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
             'summary' => [
                 'total' => (clone $summaryQuery)->count(), 'in_use' => (clone $summaryQuery)->where('status', 'In Use')->count(),
                 'standby' => (clone $summaryQuery)->where('status', 'Standby')->count(), 'under_repair' => (clone $summaryQuery)->whereIn('status', ['Under Repair', 'PENDING REPAIR'])->count(),
@@ -299,7 +302,7 @@ class MajorEquipmentController extends Controller
     {
         $this->ensureMiri($request);
         abort_unless($request->user()?->canEdit('assets'), 403);
-        return Inertia::render('MajorEquipment/Form', ['inventoryType' => $request->query('inventory_type') === 'cargo' ? 'cargo' : 'machinery', 'equipment' => null, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
+        return Inertia::render('MajorEquipment/Form', ['register' => $request->routeIs('scaffolding.create') ? 'scaffolding' : 'major', 'inventoryType' => ! $request->routeIs('scaffolding.create') && $request->query('inventory_type') === 'cargo' ? 'cargo' : 'machinery', 'equipment' => null, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
     public function store(SaveMajorEquipmentRequest $request, AuditLogger $auditLogger, MiriCertificateService $certificateService): RedirectResponse
@@ -320,7 +323,7 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri($request);
         abort_unless($request->user()?->canEdit('assets'), 403);
         $equipment->load('certificates');
-        return Inertia::render('MajorEquipment/Form', ['equipment' => $equipment, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
+        return Inertia::render('MajorEquipment/Form', ['register' => $equipment->isScaffolding() ? 'scaffolding' : 'major', 'equipment' => $equipment, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
     public function update(SaveMajorEquipmentRequest $request, MajorEquipment $equipment, AuditLogger $auditLogger, MiriCertificateService $certificateService): RedirectResponse
@@ -341,7 +344,7 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri(request());
         abort_unless(request()->user()?->canRead('assets'), 403);
         $equipment->load('certificates');
-        return Inertia::render('MajorEquipment/Show', ['equipment' => $equipment, 'duplicates' => filled($equipment->normalized_tag) ? MajorEquipment::query()->where('branch_id', $equipment->branch_id)->where('id', '<>', $equipment->id)->where('normalized_tag', $equipment->normalized_tag)->get(['id', 'tag_no', 'description', 'inventory_type', 'current_location']) : []]);
+        return Inertia::render('MajorEquipment/Show', ['register' => $equipment->isScaffolding() ? 'scaffolding' : 'major', 'equipment' => $equipment, 'duplicates' => filled($equipment->normalized_tag) ? MajorEquipment::query()->where('branch_id', $equipment->branch_id)->where('id', '<>', $equipment->id)->where('normalized_tag', $equipment->normalized_tag)->get(['id', 'tag_no', 'description', 'inventory_type', 'current_location']) : []]);
     }
 
     public function pdf(Request $request, MajorEquipment $equipment)

@@ -50,6 +50,9 @@ class SaveMajorEquipmentRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if ($this->routeIs('scaffolding.store')) {
+            $this->merge(['inventory_type' => 'machinery', 'section_1' => 'SCAFFOLDING SET']);
+        }
         $type = $this->input('inventory_type', $this->route('equipment')?->inventory_type ?? 'machinery');
         $section = trim((string) $this->input('section_1'));
         $this->merge(['inventory_type' => $type, 'section_1' => $type === 'cargo' ? $section : (in_array(strtoupper($section), ['MACHINARY', 'MACHINERY'], true) ? 'Machinery' : $section)]);
