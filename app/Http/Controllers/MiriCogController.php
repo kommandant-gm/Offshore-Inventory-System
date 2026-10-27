@@ -32,27 +32,31 @@ class MiriCogController extends Controller
     public function items(Request $request, \App\Services\MiriCogSource $sources)
     {
         $this->ensureMiri($request); abort_unless($request->user()?->canEdit('cogs'), 403);
-        $data = $request->validate(['company'=>['nullable','in:DESB,FTSB,unassigned'], 'search'=>['nullable','string','max:255'], 'type'=>['required',\Illuminate\Validation\Rule::in($sources::TYPES)], 'after_id'=>['nullable','integer','min:0'], 'inventory_type'=>['nullable','in:machinery,cargo'], 'description'=>['nullable','string','max:255'], 'section_2'=>['nullable','string','max:255'], 'location'=>['nullable','string','max:255']]);
+        $data = $request->validate(['company'=>['nullable','in:DESB,FTSB,unassigned'], 'search'=>['nullable','string','max:255'], 'type'=>['required',\Illuminate\Validation\Rule::in($sources::TYPES)], 'after_id'=>['nullable','integer','min:0'], 'inventory_type'=>['nullable','in:machinery,cargo,scaffolding'], 'tag_no'=>['nullable','string','max:255'], 'serial_no'=>['nullable','string','max:255'], 'description'=>['nullable','string','max:255'], 'section_2'=>['nullable','string','max:255'], 'location'=>['nullable','string','max:255']]);
         $branch = app(BranchContext::class)->id($request->user());
         $identifier = $sources->identifier($data['type']);
         $base = $sources->query($data['type'], $branch)->companyFilter($data['company'] ?? null)
             ->when($data['search'] ?? null, fn ($q,$term) => $q->where(fn ($q) => $q->where($identifier,'like','%'.$term.'%')->orWhere('description','like','%'.$term.'%')->orWhere('current_location','like','%'.$term.'%')->when(ctype_digit($term),fn ($q)=>$q->orWhere('id',$term))));
         $major = $data['type'] === 'Major equipment';
-        if ($major && filled($data['inventory_type'] ?? null)) $base->where('inventory_type', $data['inventory_type']);
-        $filtered = function (?string $except = null) use ($base, $major, $data) {
+        if ($major && filled($data['inventory_type'] ?? null)) {
+            $base->scaffolding($data['inventory_type'] === 'scaffolding');
+            if ($data['inventory_type'] !== 'scaffolding') $base->where('inventory_type', $data['inventory_type']);
+        }
+        if (filled($data['tag_no'] ?? null)) $base->where($identifier, 'like', '%'.$data['tag_no'].'%');
+        if (filled($data['serial_no'] ?? null)) {
+            if ($data['type'] === 'Paint') $base->whereRaw('1 = 0');
+            else $base->where($data['type'] === 'Rental' ? 'serial_tag_equipment_no' : 'serial_no', 'like', '%'.$data['serial_no'].'%');
+        }
+        $filtered = function (?string $except = null) use ($base, $data) {
             $query = clone $base;
-            if ($major) {
-                foreach (['description' => 'description', 'section_2' => 'section_2', 'location' => 'current_location'] as $key => $column) {
-                    if ($key !== $except && filled($data[$key] ?? null)) $query->where($column, $data[$key]);
-                }
+            foreach (['description' => 'description', 'section_2' => 'section_2', 'location' => 'current_location'] as $key => $column) {
+                if ($key !== $except && filled($data[$key] ?? null)) $query->where($column, $data[$key]);
             }
             return $query;
         };
         $options = [];
-        if ($major) {
-            foreach (['description' => 'description', 'section_2' => 'section_2', 'location' => 'current_location'] as $key => $column) {
-                $options[$key] = $filtered($key)->select($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")->distinct()->orderBy($column)->pluck($column)->values();
-            }
+        foreach (['description' => 'description', 'section_2' => 'section_2', 'location' => 'current_location'] as $key => $column) {
+            $options[$key] = $filtered($key)->select($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")->distinct()->orderBy($column)->pluck($column)->values();
         }
         $items = $filtered()->when($data['after_id'] ?? null, fn ($q, $id) => $q->where('id', '>', $id))
             ->orderBy('id')->limit(26)->get();

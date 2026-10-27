@@ -218,7 +218,8 @@ class InventoryPerformanceTest extends TestCase
         $this->getJson(route('miri-cogs.items', array_replace($filters, ['description' => 'WINCH'])))->assertOk()->assertJsonCount(0, 'items');
         $this->getJson(route('miri-cogs.items', ['type' => 'Major equipment', 'inventory_type' => 'invalid']))->assertUnprocessable();
         MiriRentalItem::create(['branch_id' => $branch, 'description' => 'Rental item']);
-        $this->getJson(route('miri-cogs.items', array_replace($filters, ['type' => 'Rental'])))->assertOk()->assertJsonCount(1, 'items');
+        $this->getJson(route('miri-cogs.items', array_replace($filters, ['type' => 'Rental'])))->assertOk()->assertJsonCount(0, 'items');
+        $this->getJson(route('miri-cogs.items', ['type' => 'Rental', 'description' => 'Rental item']))->assertOk()->assertJsonCount(1, 'items');
     }
 
     public function test_rental_dashboard_groups_projects_and_excludes_completed_rentals_from_alerts(): void
