@@ -76,9 +76,14 @@ class ScaffoldingReportTest extends TestCase
             $zip = new \ZipArchive; $this->assertTrue($zip->open($path));
             for ($i = 0; $i < $zip->numFiles; $i++) { $xml = new \DOMDocument; $this->assertTrue($xml->loadXML($zip->getFromIndex($i))); }
             $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
-            $this->assertStringContainsString('state="frozen"', $sheet); $this->assertStringContainsString('mergeCell', $sheet);
-            $this->assertStringContainsString('=1+1 &amp; &lt;TUBE&gt;', $sheet); $this->assertStringNotContainsString('<f>', $sheet);
-            $this->assertStringContainsString('Recorded-stock report', $sheet); $zip->close();
+            $details = $zip->getFromName('xl/worksheets/sheet2.xml');
+            $this->assertStringContainsString('width="40.1796875"', $sheet); $this->assertStringContainsString('ref="M3:S3"', $sheet);
+            $this->assertStringContainsString('=1+1 &amp; &lt;TUBE&gt;', $details); $this->assertStringNotContainsString('<f>', $sheet.$details);
+            $this->assertStringContainsString('Recorded-stock report', $details);
+            $this->assertStringContainsString('Scaffold Inventory Report', $zip->getFromName('xl/workbook.xml'));
+            $this->assertStringNotContainsString('SK MAJESTIC', $sheet);
+            $template = new \ZipArchive; $template->open(resource_path('report-templates/scaffolding-inventory.xlsx'));
+            $this->assertSame($template->getFromName('xl/styles.xml'), $zip->getFromName('xl/styles.xml')); $template->close(); $zip->close();
         } finally { unlink($path); }
     }
     public function test_preview_and_exports_share_access_and_filter_validation(): void

@@ -34,11 +34,25 @@ creation, Excel edits, company assignment, and issue-note source availability.
 ### Materials report
 
 Open **Materials report** from the Scaffolding Register/dashboard or Miri Reports.
-Choose an as-of date and company. The matrix groups actual register subcategories,
-descriptions, size/model and units into columns, and shows yard rows followed by
-project/location and contract rows with MR references. Excel exports the full matrix
-with merged group headers and frozen headings. A3 landscape PDF splits columns into
-panels of ten, repeating locations, headers and basis notes. No extra migration is needed.
+Choose an as-of date and company. The main form follows the supplied **Scaffold Inventory
+Report** worksheet: fixed A:AG columns, six material groups, pink headers, narrow spacer
+columns, project rows, location subtotal, yard stock rows and overall totals. The Excel
+export preserves the source styles, widths, merged headings and A3 landscape print setup.
+Screen and PDF use the same extracted layout; PDF fonts depend on the PDF renderer.
+No extra migration is needed.
+
+The sanitized template and layout metadata live in `resources/report-templates`.
+Only the requested worksheet's design is retained; sample numbers, project names,
+hidden sheets and source workbook metadata are excluded. The title uses the selected
+date. Project rows grow when necessary. Labuan is labelled as combined yard stock,
+not specifically Bedaun, because the current stock account does not distinguish sub-yards.
+
+Materials are mapped conservatively to the fixed size/type columns. Ambiguous names,
+unsupported sizes and non-piece units remain in a separate **Report data and notes**
+Excel sheet, with an explicit unmapped-material list on screen and in the PDF appendix.
+Notes and data-quality warnings remain outside the main form. Totals sum each material
+column separately; any unknown constituent makes its total unknown. Decimal quantities
+retain their precision rather than being rounded by the template's integer format.
 
 This first version is a **recorded-stock report**, not a certified physical inventory.
 Yard values sum confirmed signed movements by document date only if all records in a
