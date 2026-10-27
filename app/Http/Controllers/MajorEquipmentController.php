@@ -81,6 +81,12 @@ class MajorEquipmentController extends Controller
         $selection = $request->validate(['company' => ['nullable', 'in:DESB,FTSB,unassigned'], 'inventory_type' => ['nullable', 'in:all,machinery,cargo']]);
         $company = $selection['company'] ?? '';
         $type = $selection['inventory_type'] ?? 'all';
+        if ($request->query('view') === 'scaffolding') {
+            return Inertia::render('MajorEquipment/Dashboard', [
+                'activeDashboard' => 'scaffolding', 'companyFilter' => $company, 'inventoryType' => $type,
+                'scaffoldingDashboard' => app(\App\Services\ScaffoldingDashboardService::class)->data($company),
+            ]);
+        }
         if ($request->query('view') === 'paint') {
             return Inertia::render('MajorEquipment/Dashboard', [
                 'activeDashboard' => 'paint', 'companyFilter' => $company, 'inventoryType' => $type,

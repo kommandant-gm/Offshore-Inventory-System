@@ -2,13 +2,14 @@
 import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import MiriScaffoldingDashboard from '@/Components/MiriScaffoldingDashboard.vue';
 import MiriPaintDashboard from '@/Components/MiriPaintDashboard.vue';
 import MiriRentalDashboard from '@/Components/MiriRentalDashboard.vue';
 import MiriConstructionDashboard from '@/Components/MiriConstructionDashboard.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-const props = defineProps({ companyFilter: String, paintDashboard: Object, canEditPaint: Boolean, summary: Object, categories: Array, recent: Array, expiry: Object, expiring: Array, rentalDashboard: Object, constructionDashboard: Object, canEditConstruction: Boolean, activeDashboard: String, inventoryType: String, typeCounts: Object, statusBreakdown: Array, quality: Object, quantityRecorded: Number });
+const props = defineProps({ companyFilter: String, scaffoldingDashboard: Object, paintDashboard: Object, canEditPaint: Boolean, summary: Object, categories: Array, recent: Array, expiry: Object, expiring: Array, rentalDashboard: Object, constructionDashboard: Object, canEditConstruction: Boolean, activeDashboard: String, inventoryType: String, typeCounts: Object, statusBreakdown: Array, quality: Object, quantityRecorded: Number });
 const selectedCompany = ref(props.companyFilter || '');
 watch(() => props.companyFilter, value => selectedCompany.value = value || '');
 const applyCompany = value => router.get(route('major-equipment.dashboard'), { view: activeDashboard.value, inventory_type: props.inventoryType || 'all', company: value }, { preserveScroll: true });
@@ -87,12 +88,14 @@ const pie = computed(() => {
         <section class="dashboard-shell space-y-6">
             <nav class="inline-flex flex-wrap rounded-2xl border border-[#d8e7d4] bg-white p-1.5 shadow-[0_8px_28px_rgba(39,89,45,.06)]" aria-label="Miri dashboard view">
                 <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'major' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'major'" @click="router.get(route('major-equipment.dashboard'), { view: 'major', company: companyFilter, inventory_type: inventoryType || 'all' }, { preserveScroll: true })">Major Equipment</button>
+                <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'scaffolding' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'scaffolding'" @click="router.get(route('major-equipment.dashboard'), { view: 'scaffolding', company: companyFilter }, { preserveScroll: true })">Scaffolding</button>
                 <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'rentals' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'rentals'" @click="router.get(route('major-equipment.dashboard'), { view: 'rentals', company: companyFilter, inventory_type: inventoryType || 'all' }, { preserveScroll: true })">Rentals</button>
                 <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'construction' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'construction'" title="Construction TEC, Garnet & PPE" @click="router.get(route('major-equipment.dashboard'), { view: 'construction', company: companyFilter }, { preserveScroll: true })">TEC, Garnet &amp; PPE</button>
                 <button type="button" class="rounded-xl px-5 py-2.5 text-sm font-bold transition" :class="activeDashboard === 'paint' ? 'bg-[#234222] text-white shadow-sm' : 'text-[#60745d] hover:bg-[#f1f7ef] hover:text-[#234222]'" :aria-pressed="activeDashboard === 'paint'" @click="router.get(route('major-equipment.dashboard'), { view: 'paint', company: companyFilter }, { preserveScroll: true })">Paint</button>
             </nav>
             <div class="max-w-sm rounded-2xl border bg-white p-4"><CompanyField v-model="selectedCompany" filter @update:model-value="applyCompany" /></div>
             <MiriPaintDashboard v-if="activeDashboard === 'paint'" :dashboard="paintDashboard" :can-edit="canEditPaint" />
+            <MiriScaffoldingDashboard v-else-if="activeDashboard === 'scaffolding'" :dashboard="scaffoldingDashboard" :company="companyFilter" />
             <MiriConstructionDashboard v-else-if="activeDashboard === 'construction'" :dashboard="constructionDashboard" :can-edit="canEditConstruction" />
             <MiriRentalDashboard v-else-if="activeDashboard === 'rentals'" :dashboard="rentalDashboard" />
             <template v-else>

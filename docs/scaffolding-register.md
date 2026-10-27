@@ -31,6 +31,13 @@ creation, Excel edits, company assignment, and issue-note source availability.
 
 ## Yard stock and issue history
 
+The Miri Dashboard includes a **Scaffolding** tab using the existing company filter.
+It shows record counts, verified/unverified item-yard balances, verified zero balances,
+stock grouped separately by yard and unit, subcategory counts, items requiring opening
+verification, and the ten latest confirmed postings. Unverified quantities and drafts
+are excluded from stock totals. The dashboard uses the stock migration below and does
+not require another migration.
+
 Run `php artisan migrate` when deploying the stock feature, alongside rebuilt frontend
 assets. The additive scaffolding migration creates yard accounts, an immutable movement
 ledger, classification options and stock-workflow fields on Internal Issue Notes.
