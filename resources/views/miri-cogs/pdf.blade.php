@@ -6,7 +6,7 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{vertical-alig
 .sheet{page-break-after:always}.sheet:last-child{page-break-after:auto}.code{text-align:right;margin-bottom:2pt}
 .head{border:1px solid #000}.brand{text-align:center;font-weight:bold;color:#328024;font-size:20px}.company{font-size:10pt;color:#000}
 .title{font-size:23px;color:#000;font-weight:bold}.logo-window{width:52px;height:54px;overflow:hidden}.logo{width:260px;margin-left:-17px;margin-top:-9px}
-.header-details td{padding:2pt 4pt;font-size:10pt}.number{color:red;font-size:15pt;font-weight:bold;white-space:nowrap}.line{border-bottom:1px solid #000;min-height:12pt}
+.header-details td{padding:2pt 4pt;font-size:10pt}.number{color:red;font-size:15pt;font-weight:bold;white-space:nowrap}.destination-value{min-height:12pt}
 .header-reference{text-align:right;padding:4pt 6pt 0 0}.reference-block{display:inline-block;text-align:left;vertical-align:top}.document-meta{margin-top:6pt;text-align:left;font-size:10pt;line-height:14pt}
 .party-fields{line-height:14pt}.party-fields .field-row{position:relative;padding-left:64pt;min-height:14pt}.party-fields .field-label{position:absolute;left:0;top:0;width:64pt;white-space:nowrap}.header-details td.aligned-field{padding:0 4pt;border-bottom:0}.routing-label,.routing-value{min-height:14pt;line-height:14pt}
 .items th,.items td{border:1px solid #000}.items th{font-size:10pt;vertical-align:middle;height:32pt;text-align:center}
@@ -24,7 +24,7 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{vertical-alig
 <tr>
 <td class="aligned-field" style="width:45%"><div class="party-fields"><div class="field-row"><span class="field-label">CONSIGNEE:</span>{{ $document['header']['consignee_name'] ?: $document['header']['receiver_name'] }}</div><div class="field-row">{{ $document['header']['consignee_department'] ?: ' ' }}</div></div></td>
 <td class="aligned-field" style="width:25%"><div class="routing-label">TO:</div><div class="routing-value">{{ $document['header']['to_location'] ?: ' ' }}</div></td>
-<td rowspan="2" style="width:30%;vertical-align:bottom">DESTINATION: <div class="line">{{ $document['header']['destination'] ?: $document['header']['to_location'] }}</div></td>
+<td rowspan="2" style="width:30%;vertical-align:bottom">DESTINATION: <div class="destination-value">{{ $document['header']['destination'] ?: $document['header']['to_location'] }}</div></td>
 </tr>
 <tr>
 <td class="aligned-field"><div class="party-fields"><div class="field-row"><span class="field-label">FROM:</span>{{ $document['header']['from_department'] }}</div><div class="field-row">{{ $document['header']['from_location'] ?: ' ' }}</div></div></td>
