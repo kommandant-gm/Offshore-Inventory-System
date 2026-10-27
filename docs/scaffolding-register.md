@@ -31,6 +31,30 @@ creation, Excel edits, company assignment, and issue-note source availability.
 
 ## Yard stock and issue history
 
+### Materials report
+
+Open **Materials report** from the Scaffolding Register/dashboard or Miri Reports.
+Choose an as-of date and company. The matrix groups actual register subcategories,
+descriptions, size/model and units into columns, and shows yard rows followed by
+project/location and contract rows with MR references. Excel exports the full matrix
+with merged group headers and frozen headings. A3 landscape PDF splits columns into
+panels of ten, repeating locations, headers and basis notes. No extra migration is needed.
+
+This first version is a **recorded-stock report**, not a certified physical inventory.
+Yard values sum confirmed signed movements by document date only if all records in a
+material column have an opening entry by that date. Missing openings or negative dated
+balances show unknown. Project values reflect recorded issues; pre-existing project
+holdings are not inferred from legacy COG metadata. Existing backloads cannot reliably
+identify the returning project, so affected project/material cells show unknown and a
+return-review list gives the quantities. The report never guesses that allocation.
+Current classification/company metadata is used; later backdated postings can restate
+past dates. The same limitations are printed in both exports. There are no mixed-unit
+grand totals. Future complete physical-stock reporting needs verified project openings
+and explicit source-project allocation for returns and project transfers.
+
+`ScaffoldingReportTest` verifies dated quantities, unknowns, company/branch isolation,
+material grouping, export XML and literal text handling, PDF generation and access.
+
 The Miri Dashboard includes a **Scaffolding** tab using the existing company filter.
 It shows record counts, verified/unverified item-yard balances, verified zero balances,
 stock grouped separately by yard and unit, subcategory counts, items requiring opening

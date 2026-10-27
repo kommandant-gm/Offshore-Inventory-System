@@ -57,6 +57,7 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
                     <h1 class="mt-2 text-3xl font-bold text-[#234222]">{{ scaffolding ? 'Scaffolding Register' : 'Miri Inventory Register' }}</h1>
                     <p class="mt-2 text-sm text-[#60745d]">Equipment, certificates, locations and COG tracking.</p>
                 </div>
+                <Link v-if="scaffolding" :href="route('miri-reports.scaffolding', { company: filters.company })" class="btn text-green-800">Materials report</Link>
                 <div v-if="canEdit" class="flex flex-wrap gap-2">
                     <Link v-if="!scaffolding" :href="route('major-equipment.import', { inventory_type: filters.inventory_type })" class="btn border-[#4f9f4a] text-[#2f7d32]">Import {{ typeLabel }} CSV</Link>
                     <Link :href="route(scaffolding ? 'scaffolding.create' : 'major-equipment.create', { inventory_type: filters.inventory_type })" class="btn bg-[#4f9f4a] text-white">Register {{ typeLabel }}</Link>

@@ -11,6 +11,7 @@ const date = value => String(value || '').slice(0, 10).split('-').reverse().join
         <h1 class="mt-3 text-3xl font-bold sm:text-4xl">Scaffolding Dashboard</h1>
         <p class="mt-3 max-w-2xl text-sm text-emerald-100">Monitor verified yard stock, opening-stock verification and confirmed movements across contracts.</p>
         <Link :href="route('scaffolding.index', { company })" class="mt-6 inline-flex rounded-xl bg-white px-4 py-3 text-sm font-semibold text-emerald-900">View Scaffolding Register</Link>
+        <Link :href="route('miri-reports.scaffolding', { company })" class="ml-3 mt-6 inline-flex rounded-xl border border-white/40 px-4 py-3 text-sm font-semibold text-white">Materials report</Link>
     </header>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <article v-for="[key, label, detail] in [['records', 'Scaffolding items', 'Register records'], ['verified', 'Verified yard balances', 'Item and yard combinations'], ['unverified', 'Awaiting verification', 'Opening stock not yet checked'], ['zero_balance', 'Zero stock balances', 'Verified balances only']]" :key="key" class="rounded-2xl border border-[#d8e7d4] bg-white p-5">
