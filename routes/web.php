@@ -56,6 +56,8 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::get('/miri-reports/bintulu-yard-ppe', [\App\Http\Controllers\MiriReportsController::class, 'bintuluPpe'])->name('miri-reports.bintulu-ppe');
     Route::get('/miri-reports/bintulu-yard-ppe/export', [\App\Http\Controllers\MiriReportsController::class, 'exportPpe'])->name('miri-reports.ppe.export');
     Route::get('/miri-reports/scaffolding', [\App\Http\Controllers\ScaffoldingReportController::class, 'show'])->name('miri-reports.scaffolding');
+    Route::get('/miri-reports/labuan-ppe', [\App\Http\Controllers\MiriReportsController::class, 'labuanPpe'])->name('miri-reports.labuan-ppe');
+    Route::get('/miri-reports/labuan-ppe/export', [\App\Http\Controllers\MiriReportsController::class, 'exportLabuanPpe'])->name('miri-reports.labuan-ppe.export');
     Route::get('/miri-reports', [\App\Http\Controllers\MiriReportsController::class, 'index'])->name('miri-reports.index');
     Route::get('/miri-reports/equipment-rental-summary', [\App\Http\Controllers\MiriReportsController::class, 'rental'])->name('miri-reports.rental');
     Route::get('/miri-reports/equipment-rental-summary/export', [\App\Http\Controllers\MiriReportsController::class, 'exportRental'])->name('miri-reports.rental.export');

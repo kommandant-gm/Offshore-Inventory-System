@@ -10,8 +10,9 @@ class LabuanConsumableReportWorkbook
 {
     use WorkbookXml;
 
-    public function create(array $report, array $filters): string
+    public function create(array $report, array $filters, array $layout = []): string
     {
+        $layout += ['template' => 'labuan-consumable-inventory.xlsx', 'location' => 'LABUAN GENERAL STORES', 'sheet' => 'GENERAL STORE', 'total' => true, 'preserve_styles' => false];
         $path = tempnam(sys_get_temp_dir(), 'labuan-consumable-');
         if ($path === false) {
             throw new RuntimeException('Unable to create report file.');
@@ -19,7 +20,7 @@ class LabuanConsumableReportWorkbook
         $zip = new ZipArchive;
         $opened = false;
         try {
-            if (! copy(resource_path('report-templates/labuan-consumable-inventory.xlsx'), $path) || $zip->open($path) !== true) {
+            if (! copy(resource_path('report-templates/'.$layout['template']), $path) || $zip->open($path) !== true) {
                 throw new RuntimeException('Unable to open Labuan template.');
             }
             $opened = true;
@@ -36,7 +37,7 @@ class LabuanConsumableReportWorkbook
             }
             $rows = [];
             for ($n = 1; $n <= 42 + $offset; $n++) {
-                $source = $n < 7 ? $n : ($n < 39 + $offset ? 7 : $n - $offset);
+                $source = $n < 7 ? $n : ($n < 39 + $offset ? ($layout['preserve_styles'] && $n <= 38 ? $n : 7) : $n - $offset);
                 $row = $original[$source]->cloneNode(true);
                 $row->setAttribute('r', (string) $n);
                 foreach ($xp->query('s:c', $row) as $cell) {
@@ -45,13 +46,15 @@ class LabuanConsumableReportWorkbook
                 $body->appendChild($row);
                 $rows[$n] = $row;
             }
-            $this->cell($rows[2], 'C', '    LOCATION : LABUAN GENERAL STORES');
+            $this->cell($rows[2], 'C', '    LOCATION : '.$layout['location']);
             $this->cell($rows[4], 'C', '    STATUS AS FOR '.strtoupper(CarbonImmutable::createFromFormat('!Y-m', $filters['month'])->format('F Y')));
             $this->cell($rows[3], 'P', now('Asia/Kuala_Lumpur')->format('d/m/Y'));
             $this->cell($rows[41 + $offset], 'B', 'Name :');
             $this->cell($rows[41 + $offset], 'I', 'Name :');
             $columns = ['B', 'C', 'D', 'E', 'F', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q'];
             $widths = [8, 58, 16, 11, 10, 34, 14, 16, 26, 13, 11, 10, 10, 14, 14];
+            $styles = $this->document($zip->getFromName('xl/styles.xml'));
+            $formats = $this->xpath($styles)->query('//s:cellXfs')->item(0); $bodyStyles = [];
             foreach ($report['rows'] as $i => $data) {
                 $lines = 1;
                 foreach (array_keys(LabuanConsumableInventoryReport::COLUMNS) as $index => $key) {
@@ -60,14 +63,28 @@ class LabuanConsumableReportWorkbook
                     foreach (explode("\n", (string) $data[$key]) as $line) {
                         $textLines += max(1, (int) ceil(mb_strwidth($line) / $widths[$index]));
                     }
+                    if ($layout['preserve_styles'] && ($textLines > 1 || (is_numeric($data[$key]) && floor((float) $data[$key]) !== (float) $data[$key]))) {
+                        $cell = $xp->query('s:c[@r="'.$columns[$index].(7 + $i).'"]', $rows[7 + $i])->item(0);
+                        $base = (int) $cell->getAttribute('s');
+                        if (! isset($bodyStyles[$base])) {
+                            $format = $formats->childNodes->item($base)->cloneNode(true); $format->setAttribute('numFmtId', '0');
+                            $alignment = $this->xpath($styles)->query('s:alignment', $format)->item(0);
+                            if (! $alignment) { $alignment = $styles->createElementNS(self::NS, 'alignment'); $format->appendChild($alignment); }
+                            $alignment->setAttribute('wrapText', '1'); $format->setAttribute('applyAlignment', '1');
+                            $bodyStyles[$base] = $formats->childNodes->length; $formats->appendChild($format);
+                        }
+                        $cell->setAttribute('s', (string) $bodyStyles[$base]);
+                    }
                     $lines = max($lines, $textLines);
                 }
                 $rows[7 + $i]->setAttribute('ht', (string) min(409, max(30, $lines * 14)));
                 $rows[7 + $i]->setAttribute('customHeight', '1');
             }
-            $this->cell($rows[39 + $offset], 'C', 'GRAND TOTAL');
-            $rows[39 + $offset]->setAttribute('ht', '30');
-            if (count(array_unique(array_column($report['rows'], 'unit'))) === 1 && filled($report['rows'][0]['unit'] ?? null)) {
+            if ($layout['total']) {
+                $this->cell($rows[39 + $offset], 'C', 'GRAND TOTAL');
+                $rows[39 + $offset]->setAttribute('ht', '30');
+            }
+            if ($layout['total'] && count(array_unique(array_column($report['rows'], 'unit'))) === 1 && filled($report['rows'][0]['unit'] ?? null)) {
                 foreach (['E' => 'opening', 'F' => 'received', 'J' => 'issued', 'M' => 'misc', 'N' => 'closing'] as $column => $key) {
                     $values = array_column($report['rows'], $key);
                     if (in_array(null, $values, true)) {
@@ -94,8 +111,8 @@ class LabuanConsumableReportWorkbook
             $merges->setAttribute('count', (string) count($refs));
             $xp->query('//s:dimension')->item(0)->setAttribute('ref', 'A1:S'.(42 + $offset));
             $zip->addFromString('xl/worksheets/sheet1.xml', $doc->saveXML());
-            $styles = $this->document($zip->getFromName('xl/styles.xml'));
-            foreach ($this->xpath($styles)->query('//s:cellXfs/s:xf') as $format) {
+            $formats->setAttribute('count', (string) $formats->childNodes->length);
+            foreach ($layout['preserve_styles'] ? [] : $this->xpath($styles)->query('//s:cellXfs/s:xf') as $format) {
                 $alignment = $this->xpath($styles)->query('s:alignment', $format)->item(0);
                 if (! $alignment) {
                     $alignment = $styles->createElementNS(self::NS, 'alignment');
@@ -104,10 +121,10 @@ class LabuanConsumableReportWorkbook
                 $alignment->setAttribute('wrapText', '1');
                 $format->setAttribute('applyAlignment', '1');
             }
-            $zip->addFromString('xl/styles.xml', $styles->saveXML());
+            if (! $layout['preserve_styles'] || $bodyStyles) $zip->addFromString('xl/styles.xml', $styles->saveXML());
             $workbook = $this->document($zip->getFromName('xl/workbook.xml'));
             $wx = $this->xpath($workbook);
-            $name = 'GENERAL STORE';
+            $name = $layout['sheet'];
             $wx->query('//s:sheet')->item(0)->setAttribute('name', $name);
             $wx->query('//s:definedName[@name="_xlnm.Print_Area"]')->item(0)->nodeValue = "'{$name}'!\$A\$1:\$S\$".(42 + $offset);
             foreach (iterator_to_array($wx->query('//s:definedName')) as $defined) {

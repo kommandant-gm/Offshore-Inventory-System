@@ -131,6 +131,27 @@ class MiriReportsController extends Controller
         return Inertia::render('MiriReports/LabuanConsumable', ['filters' => $filters, 'report' => $report, 'columns' => LabuanConsumableInventoryReport::COLUMNS]);
     }
 
+    public function labuanPpe(Request $request): Response
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->filters($request, 'LBN');
+        $report = $request->boolean('preview') ? app(\App\Services\LabuanPpeInventoryReport::class)->generate($branch, $filters['month']) : null;
+        $layout = $report && ! $report['unavailable'] ? app(\App\Services\LabuanPpeReportPreview::class)->create($report, $filters) : null;
+        return Inertia::render('MiriReports/LabuanPpe', ['filters' => $filters, 'report' => $report, 'layout' => $layout]);
+    }
+
+    public function exportLabuanPpe(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->filters($request, 'LBN');
+        $report = app(\App\Services\LabuanPpeInventoryReport::class)->generate($branch, $filters['month']);
+        abort_if($report['unavailable'] !== null, 422, $report['unavailable'] ?? 'Report unavailable.');
+        $path = app(\App\Services\LabuanPpeReportWorkbook::class)->create($report, $filters);
+        return response()->download($path, 'labuan-warehouse-ppe-report-'.$filters['month'].'.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Cache-Control' => 'private, no-store',
+        ])->deleteFileAfterSend(true);
+    }
+
     public function exportLabuanConsumable(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $branch = $this->authorizeReport($request);
