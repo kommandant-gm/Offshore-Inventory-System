@@ -13,6 +13,20 @@ class MiriRentalItem extends Model
 
     protected $table = 'miri_rental_items';
 
+    public const GAS_SUPPLIERS = ['BIG', 'LGM'];
+
+    public function isGas(): bool
+    {
+        return in_array(strtoupper(trim((string) $this->supplier)), self::GAS_SUPPLIERS, true);
+    }
+
+    public function scopeForRegister(\Illuminate\Database\Eloquent\Builder $query, bool $gas): \Illuminate\Database\Eloquent\Builder
+    {
+        // COALESCE keeps records without a supplier in the Rental Register.
+        $column = $query->qualifyColumn('supplier');
+        return $query->whereRaw("UPPER(TRIM(COALESCE({$column}, ''))) ".($gas ? 'IN' : 'NOT IN')." (?, ?)", self::GAS_SUPPLIERS);
+    }
+
     public const ATTACHMENTS = ['lcn' => 'LCN', 'bcn' => 'BCN', 'offhire' => 'Off-hire certificate', 'onhire' => 'On-hire certificate'];
 
     protected $hidden = ['attachments'];

@@ -4,16 +4,16 @@ import PageHeader from '@/Components/PageHeader.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { rentalDetailGroups, rentalDetailValue } from '@/Support/rentalDetails';
-const props = defineProps({ rental: Object });
+const props = defineProps({ isGas: Boolean, rental: Object });
 const page = usePage();
 const canEdit = computed(() => page.props.auth?.user?.can?.assets_edit);
 const groups = computed(() => rentalDetailGroups(props.rental));
 const overview = [['company', 'Company'], ['status', 'Rental Status'], ['project_contract', 'Project / Contract'], ['current_location', 'Current Location']];
 </script>
 <template>
-    <Head title="Rental Details" />
+    <Head :title="isGas ? 'Gas Details' : 'Rental Details'" />
     <AuthenticatedLayout>
-        <PageHeader title="Rental Details" description="Issue-out, received-backload, and return-to-supplier record." />
+        <PageHeader :title="isGas ? 'Gas Details' : 'Rental Details'" description="Issue-out, received-backload, and return-to-supplier record." />
         <div class="space-y-5">
             <section aria-label="Rental summary" class="overflow-hidden rounded-2xl border border-[#d8e7d4] bg-[#f5f9f3]">
                 <dl class="grid gap-px bg-[#d8e7d4] sm:grid-cols-2 xl:grid-cols-4">
@@ -44,8 +44,8 @@ const overview = [['company', 'Company'], ['status', 'Rental Status'], ['project
             </div>
             <div class="flex flex-wrap gap-3 rounded-2xl border border-[#d8e7d4] bg-white p-5">
                 <a class="btn h-auto min-h-12 bg-[#234222] py-3 text-white" :href="route('miri-rental.pdf', rental.id)">Download registration form</a>
-                <Link v-if="canEdit" class="btn bg-[#4f9f4a] text-white" :href="route('miri-rental.edit', rental.id)">Edit rental</Link>
-                <Link class="btn" :href="route('miri-rental.index')">Back to Rental Register</Link>
+                <Link v-if="canEdit" class="btn bg-[#4f9f4a] text-white" :href="route('miri-rental.edit', rental.id)">Edit {{ isGas ? 'gas item' : 'rental' }}</Link>
+                <Link class="btn" :href="route(isGas ? 'miri-gas.index' : 'miri-rental.index')">Back to {{ isGas ? 'Gas' : 'Rental' }} Register</Link>
             </div>
         </div>
     </AuthenticatedLayout>

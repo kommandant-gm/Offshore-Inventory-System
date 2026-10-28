@@ -31,6 +31,15 @@ const scaffolding = computed(() => props.register === 'scaffolding');
 const indexRoute = computed(() => scaffolding.value ? 'scaffolding.index' : 'major-equipment.index');
 const typeLabel = computed(() => scaffolding.value ? 'Scaffolding' : cargo.value ? 'Cargo' : 'Machinery');
 const applyFilters = () => router.get(route(indexRoute.value), form, { preserveState: true, preserveScroll: true, replace: true });
+const sortByTaggingNumber = () => {
+    if (excelView.value && !spreadsheet.value?.requestClose()) return;
+    selectedIds.value = [];
+    form.sort = props.filters.sort === 'record_asc' ? 'record_desc' : 'record_asc';
+    applyFilters();
+};
+const sortLabel = computed(() => props.filters.sort === 'record_asc'
+    ? 'Tagging # ? Low to high'
+    : props.filters.sort === 'record_desc' ? 'Tagging # ? High to low' : 'Sort tagging # ?');
 const clearFilters = () => { Object.keys(form).filter(k => k !== 'inventory_type').forEach(k => form[k] = ''); };
 const qualityFilter = (value) => { form.quality = form.quality === value ? '' : value; };
 const missing = (item) => ['tag_no', 'description', 'current_location'].filter(key => !String(item[key] ?? '').trim());
@@ -99,7 +108,7 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
             </form>
             <BulkCompanyAssignment v-if="canEdit && !excelView" :ids="selectedIds" :register="scaffolding ? 'scaffolding' : filters.inventory_type" @assigned="selectedIds = []" />
             <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
-                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><p><strong>{{ equipment.total }}</strong> {{ typeLabel }} records found <span v-if="equipment.total">· Showing {{ equipment.from }}–{{ equipment.to }}</span></p><button type="button" class="btn btn-sm border-[#4f9f4a] text-[#2f7d32]" :aria-pressed="excelView" @click="toggleView">{{ excelView ? 'Table view' : 'Excel view' }}</button></div>
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><p><strong>{{ equipment.total }}</strong> {{ typeLabel }} records found <span v-if="equipment.total">· Showing {{ equipment.from }}–{{ equipment.to }}</span></p><div class="flex flex-wrap gap-2"><button type="button" class="btn btn-sm border-[#4f9f4a] text-[#2f7d32]" :aria-pressed="!!filters.sort" title="Sort the # record numbers across all matching records. Click again to reverse." @click="sortByTaggingNumber">{{ sortLabel }}</button><button type="button" class="btn btn-sm border-[#4f9f4a] text-[#2f7d32]" :aria-pressed="excelView" @click="toggleView">{{ excelView ? 'Table view' : 'Excel view' }}</button></div></div>
                 <EquipmentSpreadsheet v-if="excelView" ref="spreadsheet" :records="equipment.data" :columns="sheetColumns" :can-edit="canEdit" :inventory-type="filters.inventory_type" :first-row="equipment.from" :label="typeLabel" :update-url="route(scaffolding ? 'scaffolding.spreadsheet.update' : 'major-equipment.spreadsheet.update')" />
                 <div v-else class="overflow-x-auto">
                     <table class="table">

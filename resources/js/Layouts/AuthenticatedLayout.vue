@@ -31,6 +31,7 @@
     watch(kemamanExpanded, (value) => localStorage.setItem('sidebar.kemaman.expanded', String(value)));
     const hasBranch = (code) => currentUser?.branches?.some((branch) => branch.code === code);
     const isItemActive = (item) => {
+        if (['miri-rental.index', 'miri-gas.index'].includes(item.route) && typeof page.props.isGas === 'boolean') return item.route === (page.props.isGas ? 'miri-gas.index' : 'miri-rental.index');
         if (page.props.register === 'scaffolding' && item.route === 'scaffolding.index') return true;
         return route().current(item.active ?? item.route);
     };
@@ -53,6 +54,7 @@
         { name: 'Major Equipment Register', icon: ArchiveBoxIcon, route: 'major-equipment.index' },
         { name: 'Scaffolding Register', icon: BuildingStorefrontIcon, route: 'scaffolding.index', active: 'scaffolding.*' },
         { name: 'Rental Register', icon: TruckIcon, route: 'miri-rental.index' },
+        { name: 'Gas Register', icon: ArchiveBoxIcon, route: 'miri-gas.index', active: 'miri-gas.*' },
         { name: 'Construction TEC, Garnet & PPE Register', icon: BuildingStorefrontIcon, route: 'construction.index', active: 'construction.*', wrapLabel: true },
         { name: 'Paint Register', icon: BuildingStorefrontIcon, route: 'paint.index', active: 'paint.*' },
         { name: 'Internal Issue Note', icon: ClipboardDocumentListIcon, route: 'miri-cogs.index' },

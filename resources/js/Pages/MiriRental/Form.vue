@@ -8,14 +8,14 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import InputError from '@/Components/InputError.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-const props = defineProps({ rental: Object, categories: Array });
+const props = defineProps({ isGas: Boolean, rental: Object, categories: Array });
 const item = props.rental;
 const date = (value) => value ? String(value).slice(0, 10) : '';
 const form = useForm({
     company: item?.company ?? '',
     uploads: { lcn: null, bcn: null, offhire: null, onhire: null },
     category: item?.category ?? '', section_1: item?.section_1 ?? '', section_2: item?.section_2 ?? '', description: item?.description ?? '',
-    serial_tag_equipment_no: item?.serial_tag_equipment_no ?? '', unit: item?.unit ?? '', supplier: item?.supplier ?? '', project_contract: item?.project_contract ?? '',
+    serial_tag_equipment_no: item?.serial_tag_equipment_no ?? '', unit: item?.unit ?? '', supplier: item?.supplier ?? (props.isGas ? 'BIG' : ''), project_contract: item?.project_contract ?? '',
     current_location: item?.current_location ?? '', rental_due_date: date(item?.rental_due_date), issue_out_cog_no: item?.issue_out_cog_no ?? '', issue_out_cog_date: date(item?.issue_out_cog_date),
     received_backload_from_location: item?.received_backload_from_location ?? '', received_backload_cog_no: item?.received_backload_cog_no ?? '', received_backload_cog_date: date(item?.received_backload_cog_date),
     offhire_certificate_no: item?.offhire_certificate_no ?? '', offhire_certificate_date: date(item?.offhire_certificate_date), return_cog_no: item?.return_cog_no ?? '', return_cog_date: date(item?.return_cog_date),
@@ -34,9 +34,9 @@ const submit = () => form.transform(data => item ? { ...data, _method: 'patch' }
     .post(item ? route('miri-rental.update', item.id) : route('miri-rental.store'), { forceFormData: true });
 </script>
 <template>
-    <Head :title="item ? 'Edit Rental' : 'Register Rental'" />
+    <Head :title="`${item ? 'Edit' : 'Register'} ${isGas ? 'Gas Item' : 'Rental'}`" />
     <AuthenticatedLayout>
-        <PageHeader :title="item ? 'Edit Rental' : 'Register Rental'" description="Maintain the Rental register with separate movement and supplier-return information." />
+        <PageHeader :title="`${item ? 'Edit' : 'Register'} ${isGas ? 'Gas Item' : 'Rental'}`" description="BIG and LGM suppliers belong to Gas Register. All other suppliers belong to Rental Register." />
         <form class="space-y-6" @submit.prevent="submit">
             <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
             <section v-for="group in groups" :key="group.title" class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
@@ -71,7 +71,7 @@ const submit = () => form.transform(data => item ? { ...data, _method: 'patch' }
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm"><label class="label-text">Status</label><CustomSelect v-model="form.status" class="select select-bordered mt-2 w-full md:w-1/3"><option v-for="status in statuses" :key="status">{{ status }}</option></CustomSelect><label class="label-text mt-5 block">Remarks</label><textarea v-model="form.remarks" class="textarea textarea-bordered mt-2 w-full" rows="4" /></section>
             <InputError :message="form.errors.uploads" />
             <p v-if="form.progress" class="text-sm text-slate-500">Uploading: {{ form.progress.percentage }}%</p>
-            <div class="flex gap-3"><PrimaryButton :disabled="form.processing">{{ item ? 'Save changes' : 'Register rental' }}</PrimaryButton><Link class="btn" :href="route('miri-rental.index')">Cancel</Link></div>
+            <div class="flex gap-3"><PrimaryButton :disabled="form.processing">{{ item ? 'Save changes' : (isGas ? 'Register gas item' : 'Register rental') }}</PrimaryButton><Link class="btn" :href="route(isGas ? 'miri-gas.index' : 'miri-rental.index')">Cancel</Link></div>
         </form>
     </AuthenticatedLayout>
 </template>

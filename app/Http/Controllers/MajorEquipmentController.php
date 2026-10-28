@@ -241,6 +241,7 @@ class MajorEquipmentController extends Controller
         abort_unless($request->user()?->canRead('assets'), 403);
         $filters = $request->validate(['company' => ['nullable', 'in:DESB,FTSB,unassigned'],
             'inventory_type' => ['nullable', 'in:machinery,cargo'],
+            'sort' => ['nullable', 'in:record_asc,record_desc'],
             'search' => ['nullable', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:255'], 'category' => ['nullable', 'string', 'max:255'],
             'section_1' => ['nullable', 'string', 'max:255'], 'section_2' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'], 'status' => ['nullable', 'string', 'max:255'],
@@ -288,10 +289,15 @@ class MajorEquipmentController extends Controller
             'locationOptions' => $options('current_location'), 'issueOutLocationOptions' => $options('issue_out_location'), 'statusOptions' => $options('status'),
             'qualityCounts' => ['duplicates' => (clone $summaryQuery)->duplicateTag()->count(), 'missing_details' => (clone $summaryQuery)->missingDetails()->count(), 'warnings' => (clone $summaryQuery)->whereNotNull('import_warnings')->count()],
         ]);
+        if (filled($filters['sort'] ?? null)) {
+            $query->orderBy('id', $filters['sort'] === 'record_desc' ? 'desc' : 'asc');
+        } else {
+            $query->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('id');
+        }
         return Inertia::render('MajorEquipment/Index', [
             'register' => $scaffolding ? 'scaffolding' : 'major',
             'sheetColumns' => \App\Support\EquipmentSheet::columns($type),
-            'equipment' => $query->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('id')->paginate(25)->withQueryString(),
+            'equipment' => $query->paginate(25)->withQueryString(),
             'tabCounts' => MajorEquipment::query()->scaffolding(false)->select('inventory_type')->selectRaw('COUNT(*) AS total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
             'summary' => [
                 'total' => (clone $summaryQuery)->count(), 'in_use' => (clone $summaryQuery)->where('status', 'In Use')->count(),
@@ -300,7 +306,7 @@ class MajorEquipmentController extends Controller
                 'warnings' => (clone $summaryQuery)->whereNotNull('import_warnings')->count(),
                 'quantity_known' => (clone $summaryQuery)->whereNotNull('quantity')->count(),
             ],
-            'filters' => array_merge(array_fill_keys(['company', 'search', 'description', 'category', 'section_1', 'section_2', 'location', 'status', 'issue_out_location', 'quality'], ''), $filters, ['inventory_type' => $type]),
+            'filters' => array_merge(array_fill_keys(['sort', 'company', 'search', 'description', 'category', 'section_1', 'section_2', 'location', 'status', 'issue_out_location', 'quality'], ''), $filters, ['inventory_type' => $type]),
             'descriptionOptions' => $type === 'cargo' ? $options('description') : [],
             'categoryOptions' => $options('category'), 'section1Options' => $options('section_1'), 'section2Options' => $options('section_2'),
             'locationOptions' => $options('current_location'), 'issueOutLocationOptions' => $options('issue_out_location'), 'statusOptions' => $options('status'),

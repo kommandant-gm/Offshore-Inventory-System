@@ -15,6 +15,7 @@ class BranchContextController extends Controller
         'major-equipment.index',
         'scaffolding.index',
         'miri-rental.index',
+        'miri-gas.index',
         'construction.index',
         'paint.index',
         'miri-reports.index',
