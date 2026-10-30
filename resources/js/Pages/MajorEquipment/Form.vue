@@ -1,4 +1,6 @@
 <script setup>
+import ScaffoldingStockPanel from '@/Components/ScaffoldingStockPanel.vue';
+import ScaffoldOpeningFields from '@/Components/ScaffoldOpeningFields.vue';
 import CustomSelect from '@/Components/CustomSelect.vue';
 import CompanyField from '@/Components/CompanyField.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -9,22 +11,23 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { computed, ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ equipment: Object, categories: Array, certificateTypes: Array, inventoryType: String, register: String, scaffoldingOptions: Object });
+const props = defineProps({ equipment: Object, categories: Array, certificateTypes: Array, inventoryType: String, register: String, scaffoldingOptions: Object, scaffoldingStock: Object });
 const scaffolding = computed(() => props.register === 'scaffolding');
 const pageTitle = computed(() => `${props.equipment ? 'Edit' : 'Register'} ${scaffolding.value ? 'Scaffolding' : 'Miri Equipment'}`);
 const item = props.equipment;
-const categoryOptions = ref([...props.categories]);
+const categoryOptions = ref([...new Set([...(scaffolding.value ? ['SCAFFOLD SET'] : []), ...props.categories])]);
 const newCategory = ref('');
 const categoryError = ref('');
 const addingCategory = ref(false);
 const date = (value) => value ? String(value).slice(0, 10) : '';
 const form = useForm({
+    scaffold_total: '', scaffold_issues: [],
     scaffolding_contract: item?.scaffolding_contract ?? '',
     company: item?.company ?? '',
     removed_certificate_ids: [],
     inventory_type: item?.inventory_type ?? props.inventoryType ?? 'machinery',
     size_model: item?.size_model ?? '', size_ton: item?.size_ton ?? '', size_length: item?.size_length ?? '', quantity: item?.quantity ?? '',
-    category: item?.category ?? props.categories?.[0] ?? 'MAJOR EQUIPMENT', section_1: item?.section_1 ?? (scaffolding.value ? 'SCAFFOLDING SET' : props.inventoryType === 'cargo' ? 'CARGO SET' : 'Machinery'), section_2: item?.section_2 ?? '',
+    category: item?.category ?? (scaffolding.value ? 'SCAFFOLD SET' : props.categories?.[0] ?? 'MAJOR EQUIPMENT'), section_1: item?.section_1 ?? (scaffolding.value ? 'SCAFFOLDING SET' : props.inventoryType === 'cargo' ? 'CARGO SET' : 'Machinery'), section_2: item?.section_2 ?? '',
     description: item?.description ?? '', unit: item?.unit ?? '', model_brand: item?.model_brand ?? '', serial_no: item?.serial_no ?? '', tag_no: item?.tag_no ?? '',
     current_location: item?.current_location ?? '', status: item?.status ?? (props.inventoryType === 'cargo' ? '' : 'Standby'), issue_out_location: item?.issue_out_location ?? '',
     issue_out_cog_no: item?.issue_out_cog_no ?? '', issue_out_cog_date: date(item?.issue_out_cog_date), received_backload_cog_no: item?.received_backload_cog_no ?? '', received_backload_cog_date: date(item?.received_backload_cog_date),
@@ -36,7 +39,15 @@ const fields = [
     ['section_1', 'Subcategory 1'], ['section_2', 'Subcategory 2'], ['description', 'Description'], ['unit', 'Unit'], ['model_brand', 'Model / Brand'], ['serial_no', 'Serial No.'], ['tag_no', 'Tag No.'], ['current_location', 'Current Location'], ['issue_out_location', 'Issue-out Location'], ['mr_request', 'MR Request'], ['purchase_order', 'Purchase Order'], ['delivery_order', 'Delivery Order'], ['supplier', 'Supplier'],
 ];
 const cargo = computed(() => form.inventory_type === 'cargo');
-const detailFields = computed(() => fields.slice(2).filter(([key]) => (!cargo.value || !['model_brand', 'serial_no'].includes(key)) && (!scaffolding.value || !['description', 'unit'].includes(key))));
+const detailFields = computed(() => fields.slice(2).filter(([key]) => (!cargo.value || !['model_brand', 'serial_no'].includes(key)) && (!scaffolding.value || !['description', 'unit', 'current_location', 'issue_out_location', 'mr_request'].includes(key))));
+const scaffoldChoices = (kind, current) => [...new Set([...(props.scaffoldingOptions?.[kind] || []), ...(current ? [current] : [])])];
+const descriptionChoices = computed(() => {
+    const groups = props.scaffoldingOptions?.descriptionsBySubcategory || {};
+    const known = Object.values(groups).flat();
+    const custom = (props.scaffoldingOptions?.description || []).filter(value => !known.includes(value));
+    return [...new Set([...(groups[form.section_2] || props.scaffoldingOptions?.description || []), ...custom, ...(form.description ? [form.description] : [])])];
+});
+const selectSubcategory = () => { form.description = ''; };
 const scaffoldOption = useForm({ kind: 'subcategory', value: '' });
 const addScaffoldOption = () => scaffoldOption.post(route('scaffolding.options.store'), { preserveScroll: true, onSuccess: () => scaffoldOption.reset('value') });
 const cargoCertificateTypes = ['PADEYE MPI', 'VISUAL INSPECTION', 'WIRE SLING VALIDITY', 'CERTIFICATE OF CONFORMITY'];
@@ -79,17 +90,24 @@ const removeCertificate = (index) => {
             <div class="rounded-2xl border bg-white p-5"><CompanyField v-model="form.company" :error="form.errors.company" /></div>
             <div v-if="Object.keys(form.errors).length" role="alert" class="rounded-xl bg-red-50 p-4 text-sm text-red-700"><p v-for="(error,key) in form.errors" :key="key">{{ error }}</p></div>
             <section v-if="scaffolding" class="rounded-3xl border border-[#d8e7d4] bg-white p-6">
-                <h2 class="text-lg font-semibold">Scaffold classification and detail</h2>
+                <h2 class="text-lg font-semibold">Scaffold classification</h2>
                 <div class="mt-4 grid gap-4 md:grid-cols-3">
-                    <label class="text-sm">Category<input value="SCAFFOLD SET" readonly class="mt-1 w-full rounded-xl border-slate-200 bg-slate-50" /></label>
-                    <label v-for="[key, label, options] in [['section_2', 'Subcategory', 'subcategory'], ['scaffolding_contract', 'Contract', 'contract'], ['description', 'Description', 'description']]" :key="key" class="text-sm">{{ label }}<input v-model="form[key]" :list="'scaffold-' + options" maxlength="255" class="mt-1 w-full rounded-xl border-slate-200" /><datalist :id="'scaffold-' + options"><option v-for="value in scaffoldingOptions?.[options] || []" :key="value" :value="value" /></datalist><InputError :message="form.errors[key]" /></label>
+                    <div><label class="text-sm">Category<CustomSelect v-model="form.category" class="mt-1 w-full rounded-xl border-slate-200"><option v-for="value in categoryOptions" :key="value">{{ value }}</option></CustomSelect></label><div class="mt-2 flex gap-2"><TextInput v-model="newCategory" class="min-w-0 flex-1" placeholder="Add a category" @keydown.enter.prevent="addCategory" /><button type="button" class="btn btn-sm" :disabled="addingCategory" @click="addCategory">Add</button></div><InputError :message="categoryError" /></div>
+                    <label class="text-sm">Subcategory (Note 1)<select v-model="form.section_2" class="mt-1 w-full rounded-xl border-slate-200" @change="selectSubcategory"><option value="">Select subcategory</option><option v-for="value in scaffoldChoices('subcategory', form.section_2)" :key="value">{{ value }}</option></select></label>
+                    <label class="text-sm">Stock location<select v-model="form.current_location" class="mt-1 w-full rounded-xl border-slate-200"><option value="">Select stock location</option><option v-if="form.current_location && !['BINTULU','LABUAN'].includes(form.current_location)" :value="form.current_location">{{ form.current_location }} (existing)</option><option>BINTULU</option><option>LABUAN</option></select></label>
+                    <label class="text-sm">Contract<select v-model="form.scaffolding_contract" class="mt-1 w-full rounded-xl border-slate-200"><option value="">Select contract</option><option v-for="value in scaffoldChoices('contract', form.scaffolding_contract)" :key="value">{{ value }}</option></select></label>
+                </div>
+                <h2 class="mt-6 text-lg font-semibold">Scaffold details</h2>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <label class="text-sm">Description (Note 2)<select v-model="form.description" class="mt-1 w-full rounded-xl border-slate-200"><option value="">Select description</option><option v-for="value in descriptionChoices" :key="value">{{ value }}</option></select></label>
                     <label class="text-sm">Unit<input v-model="form.unit" maxlength="20" class="mt-1 w-full rounded-xl border-slate-200" /><InputError :message="form.errors.unit" /></label>
                 </div>
-                <p class="mt-3 text-sm text-slate-500">Choose an existing value or enter a new one. After saving, verify initial stock separately for BINTULU and LABUAN on the record page.</p>
+                <ScaffoldOpeningFields v-if="!item" :form="form" />
+                <p v-else class="mt-3 text-sm text-slate-500">Stock and up to 10 new issue-out / COG rows can be entered in the stock section below. Confirmed entries stay in stock history.</p>
                 <div class="mt-4 flex flex-wrap items-end gap-2"><label class="text-sm">Add an option<select v-model="scaffoldOption.kind" class="ml-2 rounded-xl border-slate-200"><option value="subcategory">Subcategory</option><option value="description">Description</option><option value="contract">Contract</option></select></label><input v-model="scaffoldOption.value" maxlength="255" aria-label="New option" class="rounded-xl border-slate-200" /><button type="button" class="btn" :disabled="scaffoldOption.processing || !scaffoldOption.value.trim()" @click="addScaffoldOption">Add</button></div>
                 <InputError :message="scaffoldOption.errors.value" />
             </section>
-            <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
+            <section v-if="!scaffolding" class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">{{ scaffolding ? 'Scaffolding' : cargo ? 'Cargo' : 'Machinery' }} classification</h2>
                 <p class="mt-2 text-sm text-slate-500">{{ scaffolding ? 'Scaffolding Register / Scaffolding Set' : cargo ? 'Major Equipment / Cargo Set' : 'Major Equipment / Machinery' }}</p>
                 <div class="mt-5 grid gap-4 md:grid-cols-3">
@@ -108,7 +126,7 @@ const removeCertificate = (index) => {
                     <label><span class="label-text">Quantity (leave blank if unknown)</span><input v-model="form.quantity" type="number" min="0" step="0.01" class="input input-bordered mt-2 w-full" /><InputError :message="form.errors.quantity" /></label>
                 </div>
             </section>
-            <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
+            <section v-if="!scaffolding" class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">COG information</h2>
                 <div class="mt-5 grid gap-4 md:grid-cols-2"><div><label class="label-text">Issue-out COG No.</label><TextInput v-model="form.issue_out_cog_no" class="mt-2 w-full" /></div><div><label class="label-text">Issue-out COG Date</label><input v-model="form.issue_out_cog_date" type="date" class="input input-bordered mt-2 w-full" /></div><div><label class="label-text">Received-backload COG No.</label><TextInput v-model="form.received_backload_cog_no" class="mt-2 w-full" /></div><div><label class="label-text">Received-backload COG Date</label><input v-model="form.received_backload_cog_date" type="date" class="input input-bordered mt-2 w-full" /></div></div>
             </section>
@@ -139,5 +157,6 @@ const removeCertificate = (index) => {
             <section class="rounded-[2rem] border border-[#d8e7d4] bg-white p-6 shadow-sm"><h2 class="text-lg font-semibold">References and notes</h2><div class="mt-5 grid gap-4 md:grid-cols-2"><div><label class="label-text">Unfit Report</label><textarea v-model="form.unfit_report" class="textarea textarea-bordered mt-2 w-full" rows="3" /></div><div><label class="label-text">Write-off Reference</label><textarea v-model="form.write_off_reference" class="textarea textarea-bordered mt-2 w-full" rows="3" /></div><div class="md:col-span-2"><label class="label-text">Remarks</label><textarea v-model="form.remarks" class="textarea textarea-bordered mt-2 w-full" rows="3" /></div></div></section>
             <div class="flex gap-3"><PrimaryButton :disabled="form.processing">{{ item ? 'Save changes' : 'Register equipment' }}</PrimaryButton><Link class="btn" :href="route(scaffolding ? 'scaffolding.index' : 'major-equipment.index', { inventory_type: form.inventory_type })">Cancel</Link></div>
         </form>
+        <ScaffoldingStockPanel v-if="scaffolding && item && scaffoldingStock" class="mt-6" :equipment="item" :stock="scaffoldingStock" :can-edit="true" />
     </AuthenticatedLayout>
 </template>

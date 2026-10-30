@@ -12,6 +12,37 @@ class ScaffoldingRegisterTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_workbook_dropdowns_and_initial_stock_with_paired_cog_rows(): void
+    {
+        $this->withoutVite();
+        $this->editor();
+        $this->get(route('scaffolding.create'))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->has('scaffoldingOptions.subcategory', 5)->has('scaffoldingOptions.description', 27)
+            ->has('scaffoldingOptions.contract', 5)
+            ->where('scaffoldingOptions.descriptionsBySubcategory.SCAFFOLD TUBE.0', 'SCAFFOLD TUBE ODD SIZE'));
+        $row = ['destination' => 'Project A', 'mr_reference' => 'MR1', 'quantity' => 20, 'reference' => 'EXTERNAL-1', 'document_date' => '2026-10-30'];
+        $payload = ['category' => 'SCAFFOLD SET', 'section_2' => 'SCAFFOLD TUBE', 'description' => 'SCAFFOLD TUBE 6FT',
+            'unit' => 'PC', 'current_location' => 'LABUAN', 'scaffolding_contract' => 'SHELL', 'scaffold_total' => 100,
+            'scaffold_issues' => [$row, [...$row, 'quantity' => 15, 'reference' => 'EXTERNAL-2']]];
+        $invalid = $payload;
+        $invalid['scaffold_issues'][1]['quantity'] = 90;
+        $this->post(route('scaffolding.store'), $invalid)->assertSessionHasErrors('stock');
+        $this->assertDatabaseCount('miri_inventory_items', 0);
+        $this->assertDatabaseCount('scaffolding_stock_accounts', 0);
+        $this->assertDatabaseCount('scaffolding_stock_movements', 0);
+        $this->post(route('scaffolding.store'), [...$payload, 'scaffold_issues' => array_fill(0, 11, $row)])->assertSessionHasErrors('scaffold_issues');
+        $this->post(route('scaffolding.store'), [...$payload, 'scaffold_total' => null])->assertSessionHasErrors('scaffold_total');
+        $this->post(route('scaffolding.store'), $payload)->assertSessionHasNoErrors();
+        $item = MajorEquipment::firstOrFail();
+        $this->assertTrue($item->isScaffolding());
+        $this->assertDatabaseHas('scaffolding_stock_accounts', ['equipment_id' => $item->id, 'yard' => 'LABUAN', 'opening_quantity' => 100, 'balance' => 65]);
+        $this->assertDatabaseHas('scaffolding_stock_movements', ['reference' => 'EXTERNAL-1', 'balance_after' => 80, 'mr_reference' => 'MR1']);
+        $this->assertDatabaseHas('scaffolding_stock_movements', ['reference' => 'EXTERNAL-2', 'balance_after' => 65, 'contract' => 'SHELL']);
+        $this->patch(route('major-equipment.update', $item), [...$payload, 'section_1' => 'SCAFFOLDING SET', 'remarks' => 'Metadata edit'])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('scaffolding_stock_movements', 3);
+        $this->assertDatabaseHas('scaffolding_stock_accounts', ['equipment_id' => $item->id, 'balance' => 65]);
+    }
+
     private function editor(): Branch
     {
         $branch = Branch::where('code', 'MIRI')->firstOrFail();

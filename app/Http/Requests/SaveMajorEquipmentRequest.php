@@ -16,7 +16,7 @@ class SaveMajorEquipmentRequest extends FormRequest
     {
         $equipmentId = $this->route('equipment')?->id ?? 0;
         $ownedCertificate = fn () => Rule::exists('miri_inventory_certificates', 'id')->where('miri_inventory_item_id', $equipmentId);
-        return [
+        $rules = [
             'company' => ['nullable', 'in:DESB,FTSB'],
             'scaffolding_contract' => ['nullable', 'string', 'max:255'],
             'removed_certificate_ids' => ['sometimes', 'array', 'max:100'],
@@ -47,6 +47,20 @@ class SaveMajorEquipmentRequest extends FormRequest
             'certificates.*.certificate_no' => ['nullable', 'string', 'max:255'], 'certificates.*.issue_date' => ['nullable', 'date'],
             'certificates.*.expiry_date' => ['nullable', 'date'], 'certificates.*.raw_value' => ['nullable', 'string'],
         ];
+        if ($this->routeIs('scaffolding.store')) {
+            $rules['scaffold_total'] = ['nullable', 'numeric', 'min:0', 'max:999999999.999', 'decimal:0,3'];
+            $rules['scaffold_issues'] = ['nullable', 'array', 'max:10'];
+            foreach (['destination', 'reference'] as $key) $rules['scaffold_issues.*.'.$key] = ['required', 'string', 'max:255'];
+            $rules['scaffold_issues.*.mr_reference'] = ['nullable', 'string', 'max:255'];
+            $rules['scaffold_issues.*.quantity'] = ['required', 'numeric', 'min:0.001', 'max:999999999.999', 'decimal:0,3'];
+            $rules['scaffold_issues.*.document_date'] = ['required', 'date_format:Y-m-d'];
+            if ($this->filled('scaffold_total') || $this->filled('scaffold_issues')) {
+                $rules['scaffold_total'][0] = 'required';
+                $rules['current_location'] = ['required', 'in:BINTULU,LABUAN'];
+                $rules['unit'] = ['required', 'string', 'max:20'];
+            }
+        }
+        return $rules;
     }
 
     protected function prepareForValidation(): void

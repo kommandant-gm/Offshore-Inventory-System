@@ -16,8 +16,15 @@ class MiriCertificateService
         $obsoleteFiles = [];
         try {
             DB::transaction(function () use ($equipment, $data, $certificates, $removedIds, $userId, &$newFiles, &$obsoleteFiles) {
+                $initialTotal = $data['scaffold_total'] ?? null;
+                $initialIssues = $data['scaffold_issues'] ?? [];
+                unset($data['scaffold_total'], $data['scaffold_issues']);
+                $newScaffold = ! $equipment->exists;
                 if ($equipment->exists) MajorEquipment::query()->whereKey($equipment->id)->lockForUpdate()->firstOrFail();
                 $equipment->fill($data)->save();
+                if ($newScaffold && $equipment->isScaffolding() && $initialTotal !== null && $initialTotal !== '') {
+                    app(ScaffoldingStockLedger::class)->registerOpening($equipment, $initialTotal, $initialIssues, $userId);
+                }
                 foreach ($removedIds as $id) {
                     if (in_array((int) $id, array_map('intval', array_column($certificates, 'id')), true)) {
                         throw ValidationException::withMessages(['certificates' => 'A certificate cannot be saved and removed at the same time.']);

@@ -16,12 +16,14 @@ class ScaffoldingStockController extends Controller
         $result = [];
         foreach ($columns as $kind => $column) {
             $result[$kind] = MajorEquipment::scaffolding()->whereNotNull($column)->pluck($column)
+                ->merge(\App\Support\ScaffoldingOptions::defaults($kind))
                 ->merge(DB::table('scaffolding_options')->where('branch_id', $branch)->where('kind', $kind)->pluck('value'))
                 ->filter(fn ($value) => filled($value))->unique()->sort()->values();
         }
         $result['contract'] = $result['contract']->merge(DB::table('scaffolding_stock_movements as m')
             ->join('scaffolding_stock_accounts as a', 'a.id', '=', 'm.account_id')->where('a.branch_id', $branch)->pluck('m.contract'))
             ->filter(fn ($value) => filled($value))->unique()->sort()->values();
+        $result['descriptionsBySubcategory'] = \App\Support\ScaffoldingOptions::DESCRIPTIONS;
         return $result;
     }
 
@@ -76,7 +78,7 @@ class ScaffoldingStockController extends Controller
             'document_date' => ['required', 'date_format:Y-m-d'], 'note' => ['required', 'string', 'max:1000'],
         ];
         if ($request->input('kind') === 'issue') {
-            $rules['rows'] = ['required', 'array', 'min:1', 'max:100'];
+            $rules['rows'] = ['required', 'array', 'min:1', 'max:10'];
             foreach ($rowRules as $key => $rule) $rules['rows.*.'.$key] = $rule;
         } else $rules += $rowRules;
         $ledger->manual($equipment->id, $branch, $request->validate($rules), $request->user()->id);

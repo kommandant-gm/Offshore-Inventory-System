@@ -118,7 +118,9 @@ class ScaffoldingStockTest extends TestCase
     {
         $item = $this->item();
         $this->post(route('scaffolding.options.store'), ['kind' => 'contract', 'value' => 'NEW CONTRACT'])->assertSessionHasNoErrors();
-        $this->get(route('major-equipment.edit', $item))->assertOk()->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page->where('scaffoldingOptions.contract.0', 'NEW CONTRACT'));
+        $this->get(route('major-equipment.edit', $item))->assertOk()->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->where('scaffoldingOptions.contract', fn ($values) => collect($values)->contains('NEW CONTRACT') && collect($values)->contains('SHELL'))
+            ->has('scaffoldingStock.yards', 2));
         $foreign = MajorEquipment::withoutGlobalScopes()->create(['branch_id' => Branch::where('code', '!=', 'MIRI')->value('id'), 'description' => 'Other branch', 'section_1' => 'SCAFFOLDING SET', 'unit' => 'PC']);
         $this->postStock($foreign, $this->data($foreign))->assertNotFound();
         $normal = $this->item(); $normal->update(['section_1' => 'Machinery']);
@@ -128,5 +130,24 @@ class ScaffoldingStockTest extends TestCase
         $this->postStock($item, $this->data($item))->assertForbidden();
         $this->post(route('scaffolding.options.store'), ['kind' => 'contract', 'value' => 'DENIED'])->assertForbidden();
         $this->assertDatabaseCount('scaffolding_stock_accounts', 0);
+    }
+
+    public function test_ten_paired_issue_rows_are_saved_in_order_and_eleven_are_rejected(): void
+    {
+        $item = $this->item();
+        $this->postStock($item, $this->data($item))->assertSessionHasNoErrors();
+        $rows = array_map(fn ($i) => ['quantity' => 1, 'destination' => 'Project '.$i, 'reference' => 'EXT-'.$i,
+            'mr_reference' => 'MR-'.$i, 'document_date' => '2026-10-27', 'note' => 'Issued'], range(1, 11));
+        $this->postStock($item, [...$this->data($item, 'issue'), 'rows' => $rows])->assertSessionHasErrors('rows');
+        $this->assertSame(100.0, $this->balance($item));
+        $this->assertDatabaseCount('scaffolding_stock_movements', 1);
+        $this->postStock($item, [...$this->data($item, 'issue'), 'rows' => array_slice($rows, 0, 10)])->assertSessionHasNoErrors();
+        $this->assertSame(90.0, $this->balance($item));
+        $movements = DB::table('scaffolding_stock_movements')->where('kind', 'issue')->orderBy('id')->get();
+        foreach ($movements as $i => $movement) {
+            $this->assertSame('EXT-'.($i + 1), $movement->reference);
+            $this->assertSame('MR-'.($i + 1), $movement->mr_reference);
+            $this->assertEquals(99 - $i, $movement->balance_after);
+        }
     }
 }

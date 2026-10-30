@@ -339,7 +339,7 @@ class MajorEquipmentController extends Controller
         $this->ensureMiri($request);
         abort_unless($request->user()?->canEdit('assets'), 403);
         $equipment->load('certificates');
-        return Inertia::render('MajorEquipment/Form', ['scaffoldingOptions' => $equipment->isScaffolding() ? ScaffoldingStockController::options() : [], 'register' => $equipment->isScaffolding() ? 'scaffolding' : 'major', 'equipment' => $equipment, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
+        return Inertia::render('MajorEquipment/Form', ['scaffoldingStock' => $equipment->isScaffolding() ? ScaffoldingStockController::data($equipment) : null, 'scaffoldingOptions' => $equipment->isScaffolding() ? ScaffoldingStockController::options() : [], 'register' => $equipment->isScaffolding() ? 'scaffolding' : 'major', 'equipment' => $equipment, 'categories' => $this->categories(), 'certificateTypes' => $this->certificateTypes()]);
     }
 
     public function update(SaveMajorEquipmentRequest $request, MajorEquipment $equipment, AuditLogger $auditLogger, MiriCertificateService $certificateService): RedirectResponse

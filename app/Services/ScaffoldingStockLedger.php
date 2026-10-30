@@ -19,6 +19,24 @@ class ScaffoldingStockLedger
         return hash('sha256', json_encode($account ? [$account->id, $account->revision, $account->balance, $account->unit] : null));
     }
 
+    // Called inside the register/certificate transaction: an invalid issue rolls back the entire registration.
+    public function registerOpening(MajorEquipment $item, $total, array $rows, int $user): void
+    {
+        $data = [
+            'kind' => 'opening', 'yard' => $item->current_location, 'quantity' => $total,
+            'stock_token' => $this->token(null), 'request_key' => (string) \Illuminate\Support\Str::uuid(),
+            'document_date' => now('Asia/Kuala_Lumpur')->toDateString(), 'note' => 'Opening stock entered on scaffold registration',
+            'contract' => $item->scaffolding_contract,
+        ];
+        $this->manual($item->id, $item->branch_id, $data, $user);
+        if ($rows === []) return;
+        $account = DB::table('scaffolding_stock_accounts')->where('equipment_id', $item->id)->where('yard', $item->current_location)->first();
+        $this->manual($item->id, $item->branch_id, [
+            ...$data, 'kind' => 'issue', 'stock_token' => $this->token($account), 'request_key' => (string) \Illuminate\Support\Str::uuid(),
+            'rows' => array_map(fn ($row) => [...$row, 'contract' => $item->scaffolding_contract, 'note' => 'Issue entered on scaffold registration'], $rows),
+        ], $user);
+    }
+
     private function item(int $id, int $branch): MajorEquipment
     {
         return MajorEquipment::where('branch_id', $branch)->scaffolding()->whereKey($id)->lockForUpdate()->firstOrFail();
