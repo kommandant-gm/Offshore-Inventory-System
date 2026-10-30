@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Services\BranchContext;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,11 +17,14 @@ class MiriLogController extends Controller
         abort_unless($request->user()?->canRead('assets'), 403);
 
         $query = AuditLog::query()->with('user')->latest('created_at');
+        $start = CarbonImmutable::now('Asia/Kuala_Lumpur')->startOfDay();
+        $end = $start->addDay();
 
         return Inertia::render('MajorEquipment/MiriLog', [
             'summary' => [
                 'total' => (clone $query)->count(),
-                'today' => (clone $query)->whereDate('created_at', today())->count(),
+                'today' => (clone $query)->where('created_at', '>=', $start->utc())
+                    ->where('created_at', '<', $end->utc())->count(),
                 'created' => (clone $query)->whereIn('event', ['created', 'imported', 'login'])->count(),
                 'changed' => (clone $query)->whereIn('event', ['updated', 'deleted', 'signed', 'logout'])->count(),
             ],
@@ -31,7 +35,7 @@ class MiriLogController extends Controller
                 'event' => $log->event,
                 'summary' => $log->summary,
                 'ip_address' => $log->ip_address,
-                'created_at' => $log->created_at?->format('d M Y, H:i'),
+                'created_at' => $log->created_at?->copy()->setTimezone('Asia/Kuala_Lumpur')->format('d M Y, H:i'),
             ]),
         ]);
     }
