@@ -10,7 +10,7 @@ class LabuanPaintReportWorkbook
 {
     use WorkbookXml;
 
-    public function create(array $report, array $filters): string
+    public function create(array $report, array $filters, array $layout = []): string
     {
         $path = tempnam(sys_get_temp_dir(), 'labuan-paint-');
         if ($path === false) {
@@ -51,7 +51,11 @@ class LabuanPaintReportWorkbook
                 $rows[$n] = $row;
             }
             $month = CarbonImmutable::createFromFormat('!Y-m', $filters['month']);
-            $this->cell($rows[3], 'E', 'PAINTS INVENTORY REPORT '.$month->format('Y'));
+            $this->cell($rows[3], 'E', ($layout['title'] ?? 'PAINTS INVENTORY REPORT').' '.$month->format('Y'));
+            foreach ($layout['headers'] ?? [] as $address => $value) {
+                preg_match('/^([A-Z]+)(\d+)$/', $address, $parts);
+                $this->cell($rows[(int) $parts[2]], $parts[1], $value);
+            }
             // Excel date serial retains the original date cell's display format.
             $asOf = $month->endOfMonth()->min(CarbonImmutable::now('Asia/Kuala_Lumpur'))->startOfDay();
             $this->cell($rows[4], 'E', (int) CarbonImmutable::create(1899, 12, 30, 0, 0, 0, 'UTC')->diffInDays(CarbonImmutable::createFromFormat('!Y-m-d', $asOf->format('Y-m-d'), 'UTC')));
@@ -61,7 +65,7 @@ class LabuanPaintReportWorkbook
             $columns = ['A', 'C', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB'];
             foreach ($report['rows'] as $i => $data) {
                 $lines = 1;
-                foreach (array_keys(LabuanPaintInventoryReport::COLUMNS) as $index => $key) {
+                foreach (array_keys($layout['columns'] ?? LabuanPaintInventoryReport::COLUMNS) as $index => $key) {
                     $this->cell($rows[9 + $i], $columns[$index], $data[$key] ?? null);
                     $cell = $xp->query('s:c[@r="'.$columns[$index].(9 + $i).'"]', $rows[9 + $i])->item(0);
                     $base = (int) $cell->getAttribute('s');
@@ -106,7 +110,7 @@ class LabuanPaintReportWorkbook
 
             $workbook = $this->document($zip->getFromName('xl/workbook.xml'));
             $wx = $this->xpath($workbook);
-            $name = 'PAINT '.$month->format('Y');
+            $name = ($layout['sheet'] ?? 'PAINT').' '.$month->format('Y');
             $wx->query('//s:sheet')->item(0)->setAttribute('name', $name);
             $wx->query('//s:definedName[@name="_xlnm.Print_Titles"]')->item(0)->nodeValue = "'{$name}'!\$6:\$8";
             $printArea = $workbook->createElementNS(self::NS, 'definedName');

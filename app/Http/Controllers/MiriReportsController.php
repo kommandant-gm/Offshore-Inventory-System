@@ -189,6 +189,33 @@ class MiriReportsController extends Controller
         ])->deleteFileAfterSend(true);
     }
 
+    public function gas(Request $request): Response
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->gasFilters($request);
+        return Inertia::render('MiriReports/Gas', ['filters' => $filters,
+            'columns' => \App\Services\GasInventoryReport::COLUMNS,
+            'report' => $request->boolean('preview') ? app(\App\Services\GasInventoryReport::class)->generate($branch, $filters) : null]);
+    }
+
+    public function exportGas(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $branch = $this->authorizeReport($request);
+        $filters = $this->gasFilters($request);
+        $report = app(\App\Services\GasInventoryReport::class)->generate($branch, $filters);
+        abort_if($report['unavailable'] !== null, 422, $report['unavailable'] ?? 'Report unavailable.');
+        $path = app(\App\Services\GasReportWorkbook::class)->create($report, $filters);
+        return response()->download($path, "gas-inventory-report-{$filters['month']}.xlsx", [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Cache-Control' => 'private, no-store',
+        ])->deleteFileAfterSend(true);
+    }
+
+    private function gasFilters(Request $request): array
+    {
+        $data = $request->validate(['month' => ['sometimes', 'required', 'date_format:Y-m', 'before_or_equal:'.now('Asia/Kuala_Lumpur')->format('Y-m')]]);
+        return ['month' => $data['month'] ?? now('Asia/Kuala_Lumpur')->format('Y-m')];
+    }
+
     private function authorizeReport(Request $request): int
     {
         $branch = app(BranchContext::class)->branch($request->user());

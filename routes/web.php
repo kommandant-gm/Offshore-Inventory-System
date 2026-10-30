@@ -52,6 +52,8 @@ Route::middleware(['auth', 'system.access'])->group(function () {
     Route::get('/miri-reports/labuan-consumable', [\App\Http\Controllers\MiriReportsController::class, 'labuanConsumable'])->name('miri-reports.labuan-consumable');
     Route::get('/miri-reports/labuan-consumable/export', [\App\Http\Controllers\MiriReportsController::class, 'exportLabuanConsumable'])->name('miri-reports.labuan-consumable.export');
     Route::get('/miri-reports/labuan-paint', [\App\Http\Controllers\MiriReportsController::class, 'labuanPaint'])->name('miri-reports.labuan-paint');
+    Route::get('/miri-reports/gas', [\App\Http\Controllers\MiriReportsController::class, 'gas'])->name('miri-reports.gas');
+    Route::get('/miri-reports/gas/export', [\App\Http\Controllers\MiriReportsController::class, 'exportGas'])->name('miri-reports.gas.export');
     Route::get('/miri-reports/labuan-paint/export', [\App\Http\Controllers\MiriReportsController::class, 'exportLabuanPaint'])->name('miri-reports.labuan-paint.export');
     Route::get('/miri-reports/bintulu-yard-ppe', [\App\Http\Controllers\MiriReportsController::class, 'bintuluPpe'])->name('miri-reports.bintulu-ppe');
     Route::get('/miri-reports/bintulu-yard-ppe/export', [\App\Http\Controllers\MiriReportsController::class, 'exportPpe'])->name('miri-reports.ppe.export');
