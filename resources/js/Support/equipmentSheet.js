@@ -62,6 +62,15 @@ export function columnLetter(index) {
     return label;
 }
 
+export function sheetOptions(column, row, original = {}) {
+    let options = column.options || [];
+    if (column.dependsOn && column.optionsByValue?.[row[column.dependsOn]]) {
+        const grouped = Object.values(column.optionsByValue).flat();
+        options = [...column.optionsByValue[row[column.dependsOn]], ...options.filter(value => !grouped.includes(value))];
+    }
+    return [...new Set([...options, ...(original[column.key] ? [original[column.key]] : [])])];
+}
+
 // Keep original letters and freeze boundaries even when intermediate columns are hidden.
 export function sheetLayout(columns, hiddenKeys = [], freezeThrough = '__record') {
     const all = [{ key: '__record', label: 'Record', width: 112 }, ...columns.map((column, index) => ({ ...column, letter: columnLetter(index), width: 192 }))];

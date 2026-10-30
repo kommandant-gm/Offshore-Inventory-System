@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
-import { cellValue, pasteCells, sheetChanges, sheetRows, sheetLayout } from '@/Support/equipmentSheet';
+import { cellValue, pasteCells, sheetChanges, sheetRows, sheetLayout, sheetOptions } from '@/Support/equipmentSheet';
 
 const props = defineProps({ records: Array, columns: Array, canEdit: Boolean, inventoryType: String, firstRow: Number,
     updateUrl: String, showRoute: { type: String, default: 'major-equipment.show' },
@@ -51,6 +51,9 @@ const changed = (index, key) => rows.value[index][key] !== originals.value[index
 function edit(index, column, value) {
     if (!editable.value || column.readonly) return;
     rows.value[index][column.key] = cellValue(value, column.type);
+    for (const dependent of props.columns.filter(field => field.dependsOn === column.key)) {
+        if (!sheetOptions(dependent, rows.value[index]).includes(rows.value[index][dependent.key])) rows.value[index][dependent.key] = '';
+    }
     delete errors.value[`${rows.value[index].id}.${column.key}`];
     notice.value = '';
 }
@@ -63,6 +66,7 @@ function paste(event, row, column) {
     catch (error) { notice.value = error.message; }
 }
 function move(event, row, column) {
+    if (event.target.tagName === 'SELECT' && event.key !== 'Enter') return;
     let targetRow = row, targetColumn = column;
     if (event.key === 'Enter') targetRow += event.shiftKey ? -1 : 1;
     else if (event.key === 'ArrowDown') targetRow++;
@@ -72,7 +76,7 @@ function move(event, row, column) {
     else return;
     event.preventDefault();
     const target = table.value?.querySelector(`[data-cell="${targetRow}-${targetColumn}"]`);
-    target?.focus(); target?.select();
+    target?.focus(); target?.select?.();
 }
 function discard() {
     if (saving.value || (dirty.value && !window.confirm('Discard your unsaved spreadsheet changes?'))) return false;
@@ -170,7 +174,12 @@ onBeforeUnmount(() => { removeNavigationGuard(); window.removeEventListener('bef
                             <span class="mr-2 text-slate-400">{{ (firstRow || 1) + rowIndex }}</span><a :href="route(showRoute, row.id)" target="_blank" rel="noopener" class="font-semibold text-green-800 underline" :aria-label="`Open record ${row.id} in a new tab`">#{{ row.id }}</a>
                         </th>
                         <td v-for="(column, columnIndex) in visibleColumns" :key="column.key" :style="columnStyle(column)" class="border-b border-r border-[#d8e7d4] p-0" :class="[column.frozen ? 'z-10' : '', errors[`${row.id}.${column.key}`] ? 'bg-red-50' : changed(rowIndex, column.key) ? 'bg-amber-50' : 'bg-white']">
-                            <input :value="row[column.key]" type="text" :data-cell="`${rowIndex}-${columnIndex}`" :readonly="!editable || column.readonly" :aria-label="`Record ${row.id}, ${column.label}`" :aria-invalid="!!errors[`${row.id}.${column.key}`]" :title="errors[`${row.id}.${column.key}`] || row[column.key]" :list="editable && column.key === 'company' ? 'equipment-sheet-companies' : undefined" class="block h-10 w-full min-w-48 border-0 bg-transparent px-3 text-sm focus:relative focus:z-10 focus:ring-2 focus:ring-inset focus:ring-green-600" @input="edit(rowIndex, column, $event.target.value)" @keydown="move($event, rowIndex, columnIndex)" @paste="paste($event, rowIndex, columnIndex)" />
+                            <select v-if="editable && !column.readonly && column.options" :value="row[column.key]" :data-cell="`${rowIndex}-${columnIndex}`" :aria-label="`Record ${row.id}, ${column.label}`" :aria-invalid="!!errors[`${row.id}.${column.key}`]" class="block h-10 w-full border-0 bg-transparent pl-3 pr-7 text-sm focus:ring-inset focus:ring-green-600" @change="edit(rowIndex, column, $event.target.value)" @keydown="move($event, rowIndex, columnIndex)" @paste="paste($event, rowIndex, columnIndex)">
+                                <option value="">Select</option>
+                                <option v-for="value in sheetOptions(column, row, originals[rowIndex])" :key="value" :value="value">{{ value }}</option>
+                                <option v-if="row[column.key] && !sheetOptions(column, row, originals[rowIndex]).includes(row[column.key])" :value="row[column.key]" disabled>{{ row[column.key] }} (choose an option)</option>
+                            </select>
+                            <input v-else :value="row[column.key]" type="text" :data-cell="`${rowIndex}-${columnIndex}`" :readonly="!editable || column.readonly" :aria-label="`Record ${row.id}, ${column.label}`" :aria-invalid="!!errors[`${row.id}.${column.key}`]" :title="errors[`${row.id}.${column.key}`] || row[column.key]" :list="editable && column.key === 'company' ? 'equipment-sheet-companies' : undefined" class="block h-10 w-full min-w-48 border-0 bg-transparent px-3 text-sm focus:relative focus:z-10 focus:ring-2 focus:ring-inset focus:ring-green-600" @input="edit(rowIndex, column, $event.target.value)" @keydown="move($event, rowIndex, columnIndex)" @paste="paste($event, rowIndex, columnIndex)" />
                         </td>
                     </tr>
                     <tr v-if="!rows.length"><td :colspan="layout.length" class="p-8 text-center text-slate-500">No records match these filters.</td></tr>

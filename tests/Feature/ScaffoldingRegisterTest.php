@@ -113,6 +113,7 @@ class ScaffoldingRegisterTest extends TestCase
             ['id' => $scaffold->id, 'changes' => ['description' => 'EDITED PLATE'], 'original' => ['description' => 'NEW PLATE']],
         ]];
         $this->patchJson(route('major-equipment.spreadsheet.update'), $payload)->assertNotFound();
+        $this->post(route('scaffolding.options.store'), ['kind' => 'description', 'value' => 'EDITED PLATE'])->assertSessionHasNoErrors();
         $this->patchJson(route('scaffolding.spreadsheet.update'), $payload)->assertOk();
         $this->assertSame('EDITED PLATE', $scaffold->fresh()->description);
         $this->patch(route('miri-company.assign'), ['register' => 'scaffolding', 'ids' => [$scaffold->id], 'company' => 'DESB'])

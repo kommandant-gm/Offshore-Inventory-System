@@ -9,7 +9,8 @@ class SaveEquipmentSheetRequest extends SaveMajorEquipmentRequest
     public function rules(): array
     {
         $equipmentRules = parent::rules();
-        $allowed = implode(',', array_keys(EquipmentSheet::FIELDS));
+        $fields = $this->routeIs('scaffolding.spreadsheet.update') ? \App\Support\ScaffoldingSheet::EDITABLE : EquipmentSheet::FIELDS;
+        $allowed = implode(',', array_keys($fields));
         $rules = [
             'inventory_type' => ['required', 'in:machinery,cargo'],
             'rows' => ['required', 'array', 'min:1', 'max:100'],
@@ -19,7 +20,7 @@ class SaveEquipmentSheetRequest extends SaveMajorEquipmentRequest
             'rows.*.original' => ['required', 'array:'.$allowed, 'min:1'],
             'rows.*.original.*' => ['nullable', 'string'],
         ];
-        foreach (EquipmentSheet::FIELDS as $key => $label) {
+        foreach ($fields as $key => $label) {
             $rules['rows.*.changes.'.$key] = ['sometimes', ...$equipmentRules[$key]];
         }
         return $rules;

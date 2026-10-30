@@ -1,5 +1,6 @@
 <script setup>
 import EquipmentSpreadsheet from '@/Components/EquipmentSpreadsheet.vue';
+import ScaffoldRegisterTable from '@/Components/ScaffoldRegisterTable.vue';
 import { useLiveFilterOptions } from '@/Composables/useLiveFilterOptions';
 import LiveFilterNotice from '@/Components/LiveFilterNotice.vue';
 import DeleteRegisterItem from '@/Components/DeleteRegisterItem.vue';
@@ -109,7 +110,8 @@ const { selectedIds, allSelected } = useCompanySelection(() => props.equipment.d
             <BulkCompanyAssignment v-if="canEdit && !excelView" :ids="selectedIds" :register="scaffolding ? 'scaffolding' : filters.inventory_type" @assigned="selectedIds = []" />
             <div class="overflow-hidden rounded-[1.7rem] border border-[#d8e7d4] bg-white">
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf3eb] px-5 py-3 text-sm text-[#60745d]"><p><strong>{{ equipment.total }}</strong> {{ typeLabel }} records found <span v-if="equipment.total">· Showing {{ equipment.from }}–{{ equipment.to }}</span></p><div class="flex flex-wrap gap-2"><button type="button" class="btn btn-sm border-[#4f9f4a] text-[#2f7d32]" :aria-pressed="!!filters.sort" title="Sort the # record numbers across all matching records. Click again to reverse." @click="sortByTaggingNumber">{{ sortLabel }}</button><button type="button" class="btn btn-sm border-[#4f9f4a] text-[#2f7d32]" :aria-pressed="excelView" @click="toggleView">{{ excelView ? 'Table view' : 'Excel view' }}</button></div></div>
-                <EquipmentSpreadsheet v-if="excelView" ref="spreadsheet" :records="equipment.data" :columns="sheetColumns" :can-edit="canEdit" :inventory-type="filters.inventory_type" :first-row="equipment.from" :label="typeLabel" :update-url="route(scaffolding ? 'scaffolding.spreadsheet.update' : 'major-equipment.spreadsheet.update')" />
+                <EquipmentSpreadsheet v-if="excelView" ref="spreadsheet" :records="equipment.data" :columns="sheetColumns" :can-edit="canEdit" :inventory-type="filters.inventory_type" :first-row="equipment.from" :label="typeLabel" :update-url="route(scaffolding ? 'scaffolding.spreadsheet.update' : 'major-equipment.spreadsheet.update')" :help="scaffolding ? 'Stock and issue/COG columns are read-only confirmed records. Issue 1–10 show the latest 10 issues in posting order. Balances also include receipts, returns, transfers and corrections. Open a record to confirm stock or view full history.' : 'Showing this page of records. Open a record to manage its certificates.'" />
+                <ScaffoldRegisterTable v-else-if="scaffolding" v-model:selected-ids="selectedIds" :records="equipment.data" :columns="sheetColumns" :can-edit="canEdit" />
                 <div v-else class="overflow-x-auto">
                     <table class="table">
                         <thead><tr><th v-if="canEdit"><input v-model="allSelected" type="checkbox" aria-label="Select all items on this page" /></th><th>Company</th><th>Tag No.</th><th>Description</th><th>Category / Subcategory</th>

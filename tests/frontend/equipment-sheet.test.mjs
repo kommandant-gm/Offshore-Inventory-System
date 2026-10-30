@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cellValue, columnLetter, parseClipboard, pasteCells, sheetChanges, sheetRows, sheetLayout } from '../../resources/js/Support/equipmentSheet.js';
+import { cellValue, columnLetter, parseClipboard, pasteCells, sheetChanges, sheetRows, sheetLayout, sheetOptions } from '../../resources/js/Support/equipmentSheet.js';
 
 const columns = [{ key: 'tag_no', type: 'text' }, { key: 'description', type: 'text' }, { key: 'issue_out_cog_date', type: 'date' }];
+
+test('dependent dropdowns follow the subcategory while preserving custom and original values', () => {
+    const column = { key: 'description', options: ['Tube', 'Ladder', 'Custom'], dependsOn: 'section_2', optionsByValue: { TUBES: ['Tube'], LADDERS: ['Ladder'] } };
+    assert.deepEqual(sheetOptions(column, { section_2: 'TUBES' }), ['Tube', 'Custom']);
+    assert.deepEqual(sheetOptions(column, { section_2: 'LADDERS' }, { description: 'Legacy' }), ['Ladder', 'Custom', 'Legacy']);
+    assert.deepEqual(sheetOptions(column, { section_2: 'Legacy category' }), ['Tube', 'Ladder', 'Custom']);
+});
 
 test('freeze offsets close hidden gaps and retain original column letters and boundary', () => {
     const layout = sheetLayout(columns, ['__record', 'description'], 'description');

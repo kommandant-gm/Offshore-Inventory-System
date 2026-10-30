@@ -253,16 +253,27 @@ class MajorEquipmentController extends Controller
         $base = MajorEquipment::query()->scaffolding($scaffolding)->companyFilter($filters['company'] ?? null)
             ->when(! $scaffolding, fn ($q) => $q->where('inventory_type', $type));
         $searchQuery = clone $base;
-        if (filled($filters['search'] ?? null)) $searchQuery->where(function ($q) use ($filters) {
+        if (filled($filters['search'] ?? null)) $searchQuery->where(function ($q) use ($filters, $scaffolding) {
             foreach (['tag_no', 'serial_no', 'description', 'model_brand', 'size_model', 'current_location', 'issue_out_cog_no', 'received_backload_cog_no'] as $column) $q->orWhere($column, 'like', '%'.$filters['search'].'%');
+            if ($scaffolding) $q->orWhere('scaffolding_contract', 'like', '%'.$filters['search'].'%')->orWhereExists(function ($movement) use ($filters) {
+                $movement->selectRaw('1')->from('scaffolding_stock_movements as m')->join('scaffolding_stock_accounts as a', 'a.id', '=', 'm.account_id')
+                    ->whereColumn('a.equipment_id', 'miri_inventory_items.id')->where('m.kind', 'issue')
+                    ->where(fn ($match) => $match->where('m.reference', 'like', '%'.$filters['search'].'%')->orWhere('m.destination', 'like', '%'.$filters['search'].'%')->orWhere('m.mr_reference', 'like', '%'.$filters['search'].'%'));
+            });
         });
         $filterColumns = ['category' => 'category', 'section_1' => 'section_1', 'section_2' => 'section_2',
             'location' => 'current_location', 'issue_out_location' => 'issue_out_location', 'status' => 'status'];
         if ($type === 'cargo') $filterColumns['description'] = 'description';
-        $filteredQuery = function (?string $except = null, bool $includeQuality = true) use ($searchQuery, $filterColumns, $filters) {
+        $filteredQuery = function (?string $except = null, bool $includeQuality = true) use ($searchQuery, $filterColumns, $filters, $scaffolding) {
             $query = clone $searchQuery;
             foreach ($filterColumns as $key => $column) {
-                if ($column !== $except && filled($filters[$key] ?? null)) $query->where($column, $filters[$key]);
+                if ($column === $except || ! filled($filters[$key] ?? null)) continue;
+                if ($scaffolding && $key === 'issue_out_location') {
+                    $query->where(fn ($q) => $q->where($column, $filters[$key])->orWhereExists(function ($movement) use ($filters, $key) {
+                        $movement->selectRaw('1')->from('scaffolding_stock_movements as m')->join('scaffolding_stock_accounts as a', 'a.id', '=', 'm.account_id')
+                            ->whereColumn('a.equipment_id', 'miri_inventory_items.id')->where('m.kind', 'issue')->where('m.destination', $filters[$key]);
+                    }));
+                } else $query->where($column, $filters[$key]);
             }
             if ($includeQuality) {
                 match ($filters['quality'] ?? '') {
@@ -282,11 +293,16 @@ class MajorEquipmentController extends Controller
         // Each dropdown respects the other filters but leaves its own alternatives available.
         $options = fn ($column) => $filteredQuery($column)->whereNotNull($column)->whereRaw("TRIM({$column}) != ''")
             ->distinct()->orderBy($column)->pluck($column)->values();
+        $issueOptions = $options('issue_out_location');
+        if ($scaffolding) $issueOptions = $issueOptions->merge(\Illuminate\Support\Facades\DB::table('scaffolding_stock_movements as m')
+            ->join('scaffolding_stock_accounts as a', 'a.id', '=', 'm.account_id')->where('m.kind', 'issue')
+            ->whereIn('a.equipment_id', $filteredQuery('issue_out_location')->select('miri_inventory_items.id'))
+            ->whereNotNull('m.destination')->distinct()->pluck('m.destination'))->filter()->unique()->sort()->values();
         $summaryQuery = $filteredQuery(null, false);
         if ($request->boolean('filter_options')) return response()->json([
             'descriptionOptions' => $type === 'cargo' ? $options('description') : [],
             'categoryOptions' => $options('category'), 'section1Options' => $options('section_1'), 'section2Options' => $options('section_2'),
-            'locationOptions' => $options('current_location'), 'issueOutLocationOptions' => $options('issue_out_location'), 'statusOptions' => $options('status'),
+            'locationOptions' => $options('current_location'), 'issueOutLocationOptions' => $issueOptions, 'statusOptions' => $options('status'),
             'qualityCounts' => ['duplicates' => (clone $summaryQuery)->duplicateTag()->count(), 'missing_details' => (clone $summaryQuery)->missingDetails()->count(), 'warnings' => (clone $summaryQuery)->whereNotNull('import_warnings')->count()],
         ]);
         if (filled($filters['sort'] ?? null)) {
@@ -294,10 +310,13 @@ class MajorEquipmentController extends Controller
         } else {
             $query->orderBy('section_1')->orderBy('section_2')->orderBy('description')->orderBy('id');
         }
+        $equipment = $query->paginate(25)->withQueryString();
+        $scaffoldOptions = $scaffolding ? ScaffoldingStockController::options() : [];
+        if ($scaffolding) \App\Support\ScaffoldingSheet::populate($equipment->getCollection());
         return Inertia::render('MajorEquipment/Index', [
             'register' => $scaffolding ? 'scaffolding' : 'major',
-            'sheetColumns' => \App\Support\EquipmentSheet::columns($type),
-            'equipment' => $query->paginate(25)->withQueryString(),
+            'sheetColumns' => $scaffolding ? \App\Support\ScaffoldingSheet::columns($scaffoldOptions, $this->categories()) : \App\Support\EquipmentSheet::columns($type),
+            'equipment' => $equipment,
             'tabCounts' => MajorEquipment::query()->scaffolding(false)->select('inventory_type')->selectRaw('COUNT(*) AS total')->groupBy('inventory_type')->pluck('total', 'inventory_type'),
             'summary' => [
                 'total' => (clone $summaryQuery)->count(), 'in_use' => (clone $summaryQuery)->where('status', 'In Use')->count(),
@@ -309,7 +328,7 @@ class MajorEquipmentController extends Controller
             'filters' => array_merge(array_fill_keys(['sort', 'company', 'search', 'description', 'category', 'section_1', 'section_2', 'location', 'status', 'issue_out_location', 'quality'], ''), $filters, ['inventory_type' => $type]),
             'descriptionOptions' => $type === 'cargo' ? $options('description') : [],
             'categoryOptions' => $options('category'), 'section1Options' => $options('section_1'), 'section2Options' => $options('section_2'),
-            'locationOptions' => $options('current_location'), 'issueOutLocationOptions' => $options('issue_out_location'), 'statusOptions' => $options('status'),
+            'locationOptions' => $options('current_location'), 'issueOutLocationOptions' => $issueOptions, 'statusOptions' => $options('status'),
             'canEdit' => $request->user()->canEdit('assets'),
         ]);
     }
