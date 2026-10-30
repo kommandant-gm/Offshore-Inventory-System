@@ -27,12 +27,12 @@ class LabuanConsumableInventoryReport extends ConsumableInventoryReport
 
     protected function scopeNote(): string
     {
-        return 'Includes Labuan/LBN construction records in the Consumable and PPE categories, regardless of Section 1.';
+        return 'Includes all categories from the Construction TEC, Garnet & PPE register whose current location is GENERAL STORE LABUAN YARD 1.';
     }
 
     protected function matches(MiriConstructionItem $item): bool
     {
-        return in_array(strtoupper(trim($item->category ?? '')), ['CONSUMABLE', 'PPE'], true);
+        return strtoupper(trim($item->current_location ?? '')) === 'GENERAL STORE LABUAN YARD 1';
     }
 
     public function generate(int $branch, string $month): array
@@ -52,7 +52,7 @@ class LabuanConsumableInventoryReport extends ConsumableInventoryReport
             ->orderBy('m.created_at')->orderBy('m.id')->get(['m.*', 'c.from_location', 'c.to_location'])->groupBy('construction_item_id');
         $report['notes'][3] = 'IN includes receipts, backloads and transfers in. OUT includes issues, transfers out and supplier returns. Other Misc. is the signed total of corrections and write-offs. Opening verification is not a receipt.';
         $report['notes'][5] = 'This template has no price columns. Dates refer to stock posting dates in Malaysia time; multiple movement dates/locations are listed together.';
-        $report['notes'][] = 'Location filtering uses current register location. The warehouse heading identifies Labuan as a whole; the specific recorded store and rack are retained on each row.';
+        $report['notes'][] = 'Location filtering uses current register location; the recorded store and rack are retained on each row.';
         foreach ($report['rows'] as &$row) {
             $activity = $movements->get($row['id'], collect());
             $in = $activity->whereIn('kind', ['receipt', 'backload', 'transfer_in']);

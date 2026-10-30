@@ -44,6 +44,10 @@ class MiriCogIssueNoteTest extends TestCase
         $html = view('miri-cogs.pdf', ['cog'=>$legacy, 'document'=>$doc, 'logoPath'=>''])->render();
         $this->assertStringContainsString('DESB/26/004', $html);
         $this->assertStringNotContainsString('MIRI-COG-2026-0004', $html);
+        $this->assertStringContainsString('No :', $html);
+        $this->assertStringContainsString('Document Remarks:', $html);
+        $this->assertStringContainsString('COPY TO:', $html);
+        $this->assertStringNotContainsString('no automatic stock posting', $html);
         $this->get(route('miri-cogs.pdf', $legacy))->assertOk()->assertHeader('content-disposition', 'attachment; filename="miri-cog-DESB-26-004.pdf"');
         $this->travelTo(now()->setDate(2027, 1, 1));
         $this->post(route('miri-cogs.store'), $payload)->assertSessionHasNoErrors();
@@ -149,8 +153,8 @@ class MiriCogIssueNoteTest extends TestCase
         $this->get(route('miri-cogs.pdf',$cog))->assertOk()->assertHeader('content-type','application/pdf');
         $pdf=app('dompdf.wrapper')->loadView('miri-cogs.pdf',['cog'=>$cog,'document'=>$doc,'logoPath'=>'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/dayang-logo.png')))])->setPaper('a4','landscape');
         $bytes=$pdf->output(['compress'=>0]);
-        $this->assertSame(1,$pdf->getDomPDF()->getCanvas()->get_page_count());
         Storage::disk('local')->put('testing/miri-cog-review.pdf',$bytes);
+        $this->assertSame(1,$pdf->getDomPDF()->getCanvas()->get_page_count());
         fwrite(STDOUT,"\nCOG review PDF: ".Storage::disk('local')->path('testing/miri-cog-review.pdf')."\n");
     }
     public function test_long_documents_paginate_and_keep_all_text(): void {
@@ -160,25 +164,27 @@ class MiriCogIssueNoteTest extends TestCase
         $cog->load('items');$doc=app(MiriCogDocument::class)->data($cog);
         $this->assertGreaterThan(1,count($doc['pages']));
         $this->assertSame(['2.5 LTR'],$doc['totals']);
-        $this->assertStringContainsString('DOCUMENT REMARKS:',json_encode($doc['pages']));
+        $this->assertSame($cog->remarks, collect($doc['remarks'])->flatten()->implode(''));
+        $this->assertStringNotContainsString('DOCUMENT REMARKS:',json_encode($doc['pages']));
         $pdf=app('dompdf.wrapper')->loadView('miri-cogs.pdf',['cog'=>$cog,'document'=>$doc,'logoPath'=>'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/dayang-logo.png')))])->setPaper('a4','landscape');
         $bytes=$pdf->output(['compress'=>0]);
-        $this->assertSame(count($doc['pages']),$pdf->getDomPDF()->getCanvas()->get_page_count());
         Storage::disk('local')->put('testing/miri-cog-multipage.pdf',$bytes);
+        $this->assertSame(count($doc['pages']),$pdf->getDomPDF()->getCanvas()->get_page_count());
     }
     public function test_large_text_headers_and_quantities_fit_planned_pdf_pages(): void
     {
         $branch = $this->staff();
         $fields = array_fill_keys(['consignee_name','consignee_department','from_department','from_location','to_location','copy_to','destination','issued_by_name','issued_designation','verified_by_name','verified_designation','receiver_name','receiver_designation'], str_repeat('W', 255));
-        $cog = MiriCog::create([...$fields, 'branch_id'=>$branch, 'cog_no'=>'DESB/26/123', 'document_date'=>'2026-09-17', 'movement_type'=>'Issue out']);
+        $cog = MiriCog::create([...$fields, 'branch_id'=>$branch, 'cog_no'=>'DESB/26/123', 'document_date'=>'2026-09-17', 'movement_type'=>'Issue out', 'remarks'=>str_repeat('W', 2000)]);
         $cog->items()->create(['branch_id'=>$branch, 'item_type'=>'Paint', 'item_id'=>1, 'quantity'=>'999999999.999', 'unit'=>'LTR', 'description'=>str_repeat('W', 255)]);
         $cog->load('items');
         $doc = app(MiriCogDocument::class)->data($cog);
+        $this->assertSame($cog->remarks, collect($doc['remarks'])->flatten()->implode(''));
         $this->assertSame('999999999.999', collect($doc['pages'])->flatten(1)->pluck('quantity')->implode(''));
         $pdf = app('dompdf.wrapper')->loadView('miri-cogs.pdf', ['cog'=>$cog, 'document'=>$doc, 'logoPath'=>'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/dayang-logo.png')))])->setPaper('a4', 'landscape');
         $bytes = $pdf->output(['compress'=>0]);
-        $this->assertSame(count($doc['pages']), $pdf->getDomPDF()->getCanvas()->get_page_count());
         Storage::disk('local')->put('testing/miri-cog-long-fields.pdf', $bytes);
+        $this->assertSame(count($doc['pages']), $pdf->getDomPDF()->getCanvas()->get_page_count());
     }
 
     public function test_paint_units_invalid_ids_and_cross_branch_are_rejected_atomically(): void {

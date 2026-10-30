@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
-import { cellValue, columnLetter, pasteCells, sheetChanges, sheetRows } from '@/Support/equipmentSheet';
+import { cellValue, pasteCells, sheetChanges, sheetRows, sheetLayout } from '@/Support/equipmentSheet';
 
 const props = defineProps({ records: Array, columns: Array, canEdit: Boolean, inventoryType: String, firstRow: Number,
     updateUrl: String, showRoute: { type: String, default: 'major-equipment.show' },
@@ -11,6 +11,31 @@ const props = defineProps({ records: Array, columns: Array, canEdit: Boolean, in
 });
 const rows = ref([]), originals = ref([]), errors = ref({}), notice = ref(''), saving = ref(false), table = ref(null);
 const editing = ref(false);
+const hiddenColumns = ref([]), freezeThrough = ref('__record');
+const preferenceKey = computed(() => `register-sheet-layout:${props.showRoute}:${props.label}:${props.inventoryType || ''}`);
+const allColumns = computed(() => sheetLayout(props.columns));
+const layout = computed(() => sheetLayout(props.columns, hiddenColumns.value, freezeThrough.value));
+const visibleColumns = computed(() => layout.value.filter(column => column.key !== '__record'));
+const recordColumn = computed(() => layout.value.find(column => column.key === '__record'));
+const sheetWidth = computed(() => layout.value.reduce((width, column) => width + column.width, 0));
+const columnStyle = column => column.frozen ? { position: 'sticky', left: `${column.left}px` } : {};
+watch(preferenceKey, key => {
+    hiddenColumns.value = []; freezeThrough.value = '__record';
+    try {
+        const saved = JSON.parse(window.localStorage.getItem(key));
+        if (Array.isArray(saved?.hidden)) hiddenColumns.value = saved.hidden.filter(key => allColumns.value.some(column => column.key === key));
+        if (hiddenColumns.value.length === allColumns.value.length) hiddenColumns.value = [];
+        if (saved?.freeze === '' || allColumns.value.some(column => column.key === saved?.freeze)) freezeThrough.value = saved.freeze;
+    } catch { /* Layout controls also work when browser storage is unavailable. */ }
+}, { immediate: true });
+function rememberLayout() {
+    try { window.localStorage.setItem(preferenceKey.value, JSON.stringify({ hidden: hiddenColumns.value, freeze: freezeThrough.value })); } catch { /* Keep the layout for this view. */ }
+}
+function toggleColumn(key) {
+    hiddenColumns.value = hiddenColumns.value.includes(key) ? hiddenColumns.value.filter(value => value !== key) : [...hiddenColumns.value, key];
+    rememberLayout();
+}
+function showAllColumns() { hiddenColumns.value = []; rememberLayout(); }
 const editable = computed(() => props.canEdit && editing.value && !saving.value);
 let internalReload = false;
 const changes = computed(() => sheetChanges(rows.value, originals.value, props.columns));
@@ -34,7 +59,7 @@ function paste(event, row, column) {
     const text = event.clipboardData.getData('text/plain');
     if (!/[\t\r\n]/.test(text)) return;
     event.preventDefault();
-    try { rows.value = pasteCells(rows.value, props.columns, row, column, text); errors.value = {}; notice.value = ''; }
+    try { rows.value = pasteCells(rows.value, visibleColumns.value, row, column, text); errors.value = {}; notice.value = ''; }
     catch (error) { notice.value = error.message; }
 }
 function move(event, row, column) {
@@ -103,30 +128,52 @@ onBeforeUnmount(() => { removeNavigationGuard(); window.removeEventListener('bef
                 </template>
             </div>
         </div>
+        <div class="flex flex-wrap items-start gap-4 border-b border-[#d8e7d4] bg-[#f5f9f3] px-5 py-3 text-sm">
+            <label class="flex items-center gap-2 font-medium text-[#234222]">
+                Freeze through
+                <select v-model="freezeThrough" class="max-w-64 rounded border-[#cfe0cb] text-sm" @change="rememberLayout">
+                    <option value="">None</option>
+                    <option v-for="column in allColumns" :key="column.key" :value="column.key">{{ column.letter ? `${column.letter} · ` : '' }}{{ column.label }}</option>
+                </select>
+            </label>
+            <details class="rounded border border-[#cfe0cb] bg-white px-3 py-2">
+                <summary class="cursor-pointer font-medium text-[#234222]">Hide / unhide columns ({{ hiddenColumns.length }} hidden)</summary>
+                <button type="button" class="my-2 text-green-800 underline" @click="showAllColumns">Show all columns</button>
+                <div class="grid max-h-64 gap-2 overflow-auto pr-3">
+                    <label v-for="column in allColumns" :key="column.key" class="flex items-center gap-2">
+                        <input type="checkbox" :checked="!hiddenColumns.includes(column.key)" :disabled="layout.length === 1 && !hiddenColumns.includes(column.key)" class="rounded border-[#cfe0cb] text-green-700" @change="toggleColumn(column.key)" />
+                        {{ column.letter ? `${column.letter} · ` : '' }}{{ column.label }}
+                    </label>
+                </div>
+                <p class="mt-2 text-xs text-slate-500">Checked columns are visible. Keep at least one column visible.</p>
+            </details>
+            <p class="basis-full text-xs text-slate-500">Freeze keeps the selected column and preceding visible columns in place when scrolling sideways. Settings are remembered in this browser.</p>
+        </div>
         <div v-if="notice || Object.keys(errors).length" class="border-b px-5 py-3 text-sm" role="status" aria-live="polite">
             <p>{{ notice }}</p>
             <ul v-if="Object.keys(errors).length" class="mt-2 list-disc pl-5 text-red-700"><li v-for="(error, key) in errors" :key="key">{{ /^\d+\./.test(key) ? `Record #${key.split('.')[0]}: ` : '' }}{{ error }}</li></ul>
         </div>
         <div ref="table" class="max-h-[70vh] overflow-auto">
-            <table class="sheet-table w-max min-w-full border-separate border-spacing-0 text-sm" :aria-label="`${editable ? 'Editable' : 'Read-only'} ${label} spreadsheet`">
+            <table class="sheet-table table-fixed border-separate border-spacing-0 text-sm" :style="{ width: `${sheetWidth}px` }" :aria-label="`${editable ? 'Editable' : 'Read-only'} ${label} spreadsheet`">
+                <colgroup><col v-for="column in layout" :key="column.key" :style="{ width: `${column.width}px` }" /></colgroup>
                 <thead class="sticky top-0 z-20">
                     <tr>
-                        <th class="sticky left-0 z-30 min-w-28 border-b border-r border-[#cfe0cb] bg-[#eaf2e7] px-3 py-2">Record</th>
-                        <th v-for="(column, index) in columns" :key="column.key" class="min-w-48 border-b border-r border-[#cfe0cb] bg-[#eaf2e7] px-3 py-2 text-left">
-                            <span class="block text-[10px] font-normal text-slate-500">{{ columnLetter(index) }}</span>{{ column.label }}<span v-if="column.readonly" class="block text-xs font-normal text-slate-500">Read-only</span>
+                        <th v-if="recordColumn" :style="columnStyle(recordColumn)" :class="{ 'z-30': recordColumn.frozen }" class="border-b border-r border-[#cfe0cb] bg-[#eaf2e7] px-3 py-2">Record</th>
+                        <th v-for="column in visibleColumns" :key="column.key" :style="columnStyle(column)" :class="{ 'z-30': column.frozen }" class="break-words border-b border-r border-[#cfe0cb] bg-[#eaf2e7] px-3 py-2 text-left">
+                            <span class="block text-[10px] font-normal text-slate-500">{{ column.letter }}</span>{{ column.label }}<span v-if="column.readonly" class="block text-xs font-normal text-slate-500">Read-only</span>
                         </th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr v-for="(row, rowIndex) in rows" :key="row.id">
-                        <th class="sticky left-0 z-10 border-b border-r border-[#d8e7d4] bg-[#f5f9f3] px-3 text-left text-xs font-normal">
+                        <th v-if="recordColumn" :style="columnStyle(recordColumn)" :class="{ 'z-10': recordColumn.frozen }" class="break-words border-b border-r border-[#d8e7d4] bg-[#f5f9f3] px-3 text-left text-xs font-normal">
                             <span class="mr-2 text-slate-400">{{ (firstRow || 1) + rowIndex }}</span><a :href="route(showRoute, row.id)" target="_blank" rel="noopener" class="font-semibold text-green-800 underline" :aria-label="`Open record ${row.id} in a new tab`">#{{ row.id }}</a>
                         </th>
-                        <td v-for="(column, columnIndex) in columns" :key="column.key" class="border-b border-r border-[#d8e7d4] p-0" :class="errors[`${row.id}.${column.key}`] ? 'bg-red-50' : changed(rowIndex, column.key) ? 'bg-amber-50' : 'bg-white'">
+                        <td v-for="(column, columnIndex) in visibleColumns" :key="column.key" :style="columnStyle(column)" class="border-b border-r border-[#d8e7d4] p-0" :class="[column.frozen ? 'z-10' : '', errors[`${row.id}.${column.key}`] ? 'bg-red-50' : changed(rowIndex, column.key) ? 'bg-amber-50' : 'bg-white']">
                             <input :value="row[column.key]" type="text" :data-cell="`${rowIndex}-${columnIndex}`" :readonly="!editable || column.readonly" :aria-label="`Record ${row.id}, ${column.label}`" :aria-invalid="!!errors[`${row.id}.${column.key}`]" :title="errors[`${row.id}.${column.key}`] || row[column.key]" :list="editable && column.key === 'company' ? 'equipment-sheet-companies' : undefined" class="block h-10 w-full min-w-48 border-0 bg-transparent px-3 text-sm focus:relative focus:z-10 focus:ring-2 focus:ring-inset focus:ring-green-600" @input="edit(rowIndex, column, $event.target.value)" @keydown="move($event, rowIndex, columnIndex)" @paste="paste($event, rowIndex, columnIndex)" />
                         </td>
                     </tr>
-                    <tr v-if="!rows.length"><td :colspan="columns.length + 1" class="p-8 text-center text-slate-500">No records match these filters.</td></tr>
+                    <tr v-if="!rows.length"><td :colspan="layout.length" class="p-8 text-center text-slate-500">No records match these filters.</td></tr>
                 </tbody>
             </table>
         </div>

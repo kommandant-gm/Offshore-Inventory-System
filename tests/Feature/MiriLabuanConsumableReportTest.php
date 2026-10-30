@@ -31,13 +31,16 @@ class MiriLabuanConsumableReportTest extends TestCase
         return [$user, $branch];
     }
 
-    public function test_labuan_consumable_and_ppe_scope_and_monthly_in_out_details(): void
+    public function test_general_store_yard_one_scope_and_monthly_in_out_details(): void
     {
         [$user, $branch] = $this->reader();
         $base = ['branch_id' => $branch, 'category' => 'CONSUMABLE', 'description' => 'A Consumable', 'current_location' => 'GENERAL STORE LABUAN YARD 1', 'unit' => 'PCS', 'storage_rack' => 'RACK A', 'stock_balance' => 14, 'created_at' => '2026-08-01'];
         $item = MiriConstructionItem::create($base);
-        MiriConstructionItem::create([...$base, 'category' => ' ppe ', 'description' => 'B PPE', 'current_location' => 'LBN']);
-        foreach ([['category' => 'ACCESSORIES'], ['current_location' => 'BINTULU YARD'], ['branch_id' => Branch::where('code', 'KL-IT')->value('id')]] as $extra) {
+        MiriConstructionItem::create([...$base, 'category' => ' ppe ', 'description' => 'B PPE', 'current_location' => ' general store labuan yard 1 ']);
+        foreach (['ACCESSORIES', 'TEC', 'GARNET'] as $category) {
+            MiriConstructionItem::create([...$base, 'category' => $category, 'description' => 'C '.$category]);
+        }
+        foreach ([['current_location' => 'LBN'], ['current_location' => 'GENERAL STORE LABUAN YARD 2'], ['current_location' => 'GENERAL STORE LABUAN YARD 10'], ['current_location' => 'PPE STORE LABUAN'], ['current_location' => null], ['current_location' => 'BINTULU YARD'], ['branch_id' => Branch::where('code', 'KL-IT')->value('id')]] as $extra) {
             MiriConstructionItem::create([...$base, ...$extra]);
         }
         $cog = MiriCog::create(['branch_id' => $branch, 'cog_no' => 'REPORT-TEST', 'movement_type' => 'Issue out', 'document_date' => '2026-09-03', 'from_location' => 'SUPPLIER YARD', 'to_location' => 'VESSEL A', 'status' => 'Confirmed', 'created_by' => $user->id]);
@@ -50,7 +53,7 @@ class MiriLabuanConsumableReportTest extends TestCase
             DB::table('miri_construction_stock_movements')->insert(['branch_id' => $branch, 'construction_item_id' => $item->id, 'cog_item_id' => in_array($kind, ['backload', 'issue']) ? $line->id : null, 'kind' => $kind, 'unit' => 'PCS', 'quantity' => $quantity, 'balance_after' => $after, 'location' => 'LABUAN', 'reference' => $kind === 'receipt' ? 'PO-123' : null, 'note' => 'Test', 'request_key' => 'labuan-'.$i, 'user_id' => $user->id, 'created_at' => $date]);
         }
         $this->get(route('miri-reports.labuan-consumable', ['preview' => 1, 'month' => '2026-09']))->assertOk()->assertInertia(fn (AssertableInertia $p) => $p
-            ->component('MiriReports/LabuanConsumable')->where('filters.location', 'LBN')->has('report.rows', 2)
+            ->component('MiriReports/LabuanConsumable')->where('filters.location', 'LBN')->has('report.rows', 5)
             ->where('report.rows.0.opening', 10)->where('report.rows.0.received', 7)->where('report.rows.0.issued', 2)
             ->where('report.rows.0.misc', -1)->where('report.rows.0.closing', 14)->where('report.rows.0.rack', 'RACK A')
             ->where('report.rows.0.source', "PO-123\nSUPPLIER YARD")->where('report.rows.0.destination', 'VESSEL A')
@@ -65,7 +68,10 @@ class MiriLabuanConsumableReportTest extends TestCase
     {
         [, $branch] = $this->reader();
         foreach (range(1, 35) as $i) {
-            MiriConstructionItem::create(['branch_id' => $branch, 'category' => $i % 2 ? 'CONSUMABLE' : 'PPE', 'description' => sprintf('Item %02d', $i), 'current_location' => 'LBN', 'unit' => 'PCS', 'stock_balance' => 1, 'storage_rack' => '=literal']);
+            MiriConstructionItem::create(['branch_id' => $branch, 'category' => $i % 2 ? 'TEC' : 'GARNET', 'description' => sprintf('Item %02d', $i), 'current_location' => 'GENERAL STORE LABUAN YARD 1', 'unit' => 'PCS', 'stock_balance' => 1, 'storage_rack' => '=literal']);
+        }
+        foreach (['LBN', 'GENERAL STORE LABUAN YARD 2', 'GENERAL STORE LABUAN YARD 10'] as $location) {
+            MiriConstructionItem::create(['branch_id' => $branch, 'category' => 'CONSUMABLE', 'description' => 'EXCLUDED OTHER STORE', 'current_location' => $location, 'unit' => 'PCS', 'stock_balance' => 999]);
         }
         $response = $this->get(route('miri-reports.labuan-consumable.export'))->assertOk()->assertDownload('labuan-warehouse-general-store-consumable-inventory-report-2026-09.xlsx');
         $path = $response->baseResponse->getFile()->getPathname();
@@ -81,7 +87,8 @@ class MiriLabuanConsumableReportTest extends TestCase
             }
             $xml = $zip->getFromName('xl/worksheets/sheet1.xml');
             $this->assertStringContainsString('Item 35', $xml);
-            $this->assertStringContainsString('LABUAN GENERAL STORES', $xml);
+            $this->assertStringContainsString('GENERAL STORE LABUAN YARD 1', $xml);
+            $this->assertStringNotContainsString('EXCLUDED OTHER STORE', $xml);
             $this->assertStringContainsString('=literal', $xml);
             $this->assertStringNotContainsString('<f>', $xml);
             $this->assertSame(1, substr_count($xml, 'GRAND TOTAL'));

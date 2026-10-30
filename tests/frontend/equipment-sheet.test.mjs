@@ -1,8 +1,30 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cellValue, columnLetter, parseClipboard, pasteCells, sheetChanges, sheetRows } from '../../resources/js/Support/equipmentSheet.js';
+import { cellValue, columnLetter, parseClipboard, pasteCells, sheetChanges, sheetRows, sheetLayout } from '../../resources/js/Support/equipmentSheet.js';
 
 const columns = [{ key: 'tag_no', type: 'text' }, { key: 'description', type: 'text' }, { key: 'issue_out_cog_date', type: 'date' }];
+
+test('freeze offsets close hidden gaps and retain original column letters and boundary', () => {
+    const layout = sheetLayout(columns, ['__record', 'description'], 'description');
+    assert.deepEqual(layout.map(({ key, letter, frozen, left }) => ({ key, letter, frozen, left })), [
+        { key: 'tag_no', letter: 'A', frozen: true, left: 0 },
+        { key: 'issue_out_cog_date', letter: 'C', frozen: false, left: 192 },
+    ]);
+    assert.deepEqual(sheetLayout(columns, [], 'description').map(column => [column.frozen, column.left]), [[true, 0], [true, 112], [true, 304], [false, 496]]);
+    assert.ok(sheetLayout(columns, [], '').every(column => !column.frozen));
+    assert.equal(sheetLayout(columns)[0].frozen, true);
+});
+
+test('pasting across visible columns preserves hidden values and unsaved edits', () => {
+    const original = sheetRows([{ id: 1, tag_no: '001', description: 'Hidden value', issue_out_cog_date: '' }], columns);
+    const edited = [{ ...original[0], description: 'Unsaved hidden edit' }];
+    const visible = sheetLayout(columns, ['description']).filter(column => column.key !== '__record');
+    const pasted = pasteCells(edited, visible, 0, 0, '002\t30/10/2026');
+    assert.equal(pasted[0].description, 'Unsaved hidden edit');
+    assert.equal(pasted[0].issue_out_cog_date, '2026-10-30');
+    assert.equal(sheetChanges(pasted, original, columns)[0].changes.description, 'Unsaved hidden edit');
+    assert.throws(() => pasteCells(edited, visible, 0, 0, 'A\tB\tC'), /beyond this page/);
+});
 
 test('sheet keeps identifiers, blank values and dates and sends only edited cells', () => {
     const original = sheetRows([{ id: 1, tag_no: '00123', description: null, issue_out_cog_date: '2026-08-10T00:00:00.000000Z' }], columns);

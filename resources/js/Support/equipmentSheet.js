@@ -61,3 +61,17 @@ export function columnLetter(index) {
     for (let value = index + 1; value; value = Math.floor((value - 1) / 26)) label = String.fromCharCode(65 + (value - 1) % 26) + label;
     return label;
 }
+
+// Keep original letters and freeze boundaries even when intermediate columns are hidden.
+export function sheetLayout(columns, hiddenKeys = [], freezeThrough = '__record') {
+    const all = [{ key: '__record', label: 'Record', width: 112 }, ...columns.map((column, index) => ({ ...column, letter: columnLetter(index), width: 192 }))];
+    const boundary = all.findIndex(column => column.key === freezeThrough);
+    let left = 0;
+    return all.flatMap((column, index) => {
+        if (hiddenKeys.includes(column.key)) return [];
+        const frozen = index <= boundary;
+        const result = { ...column, frozen, left };
+        if (frozen) left += column.width;
+        return [result];
+    });
+}

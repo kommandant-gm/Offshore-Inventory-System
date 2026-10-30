@@ -12,7 +12,7 @@ class LabuanConsumableReportWorkbook
 
     public function create(array $report, array $filters, array $layout = []): string
     {
-        $layout += ['template' => 'labuan-consumable-inventory.xlsx', 'location' => 'LABUAN GENERAL STORES', 'sheet' => 'GENERAL STORE', 'total' => true, 'preserve_styles' => false];
+        $layout += ['template' => 'labuan-consumable-inventory.xlsx', 'location' => 'GENERAL STORE LABUAN YARD 1', 'sheet' => 'GENERAL STORE', 'total' => true, 'preserve_styles' => false];
         $path = tempnam(sys_get_temp_dir(), 'labuan-consumable-');
         if ($path === false) {
             throw new RuntimeException('Unable to create report file.');
