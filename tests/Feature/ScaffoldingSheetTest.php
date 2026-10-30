@@ -53,7 +53,7 @@ class ScaffoldingSheetTest extends TestCase
                 return $columns['labuan_balance']['readonly'] && $columns['issue_10_reference']['readonly']
                     && $columns['description']['dependsOn'] === 'section_2'
                     && in_array('SHELL', $columns['scaffolding_contract']['options'])
-                    && ! $columns->has('section_1');
+                    && $columns['section_1']['readonly'];
             }));
     }
 
@@ -82,5 +82,34 @@ class ScaffoldingSheetTest extends TestCase
             $this->get(route('scaffolding.index', $filters))->assertOk()->assertInertia(fn (Assert $p) => $p->where('equipment.total', 1));
         }
         $this->getJson(route('scaffolding.index', ['filter_options' => 1]))->assertOk()->assertJsonPath('issueOutLocationOptions', ['Project A', 'Project B']);
+    }
+
+    public function test_original_columns_and_values_remain_available_alongside_scaffold_columns(): void
+    {
+        $item = $this->scaffold();
+        $legacy = ['tag_no' => 'TAG-001', 'model_brand' => 'MODEL-A', 'serial_no' => 'SERIAL-001',
+            'issue_out_location' => 'Original project', 'issue_out_cog_no' => 'OLD-COG', 'issue_out_cog_date' => '2026-10-01',
+            'received_backload_cog_no' => 'OLD-RETURN', 'received_backload_cog_date' => '2026-10-02',
+            'mr_request' => 'OLD-MR', 'purchase_order' => 'PO-001', 'delivery_order' => 'DO-001', 'supplier' => 'Supplier A'];
+        $item->update($legacy);
+        $originalKeys = array_column(\App\Support\EquipmentSheet::columns('machinery'), 'key');
+        $this->get(route('scaffolding.index'))->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('sheetColumns', function ($columns) use ($originalKeys) {
+                $keys = collect($columns)->pluck('key')->all();
+                return array_slice($keys, 0, count($originalKeys)) === $originalKeys
+                    && count($keys) === count(array_unique($keys))
+                    && in_array('scaffolding_contract', $keys) && in_array('labuan_balance', $keys)
+                    && in_array('issue_10_reference', $keys);
+            })
+            ->where('equipment.data.0.model_brand', 'MODEL-A')->where('equipment.data.0.serial_no', 'SERIAL-001')
+            ->where('equipment.data.0.purchase_order', 'PO-001')->where('equipment.data.0.issue_out_cog_no', 'OLD-COG'));
+        $changed = array_map(fn ($value) => 'UPDATED '.$value, array_diff_key($legacy, array_flip(['issue_out_cog_date', 'received_backload_cog_date'])));
+        $changed['issue_out_cog_date'] = '2026-10-03';
+        $changed['received_backload_cog_date'] = '2026-10-04';
+        $this->save($item, $changed, $legacy)->assertOk();
+        $item->refresh();
+        foreach ($changed as $key => $expected) $this->assertSame($expected, \App\Support\EquipmentSheet::value($item, $key));
+        $this->assertDatabaseHas('scaffolding_stock_accounts', ['equipment_id' => $item->id, 'balance' => 65]);
+        $this->assertDatabaseHas('scaffolding_stock_movements', ['reference' => 'EXT-A', 'balance_after' => 80]);
     }
 }

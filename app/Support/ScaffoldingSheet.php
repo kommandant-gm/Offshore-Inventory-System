@@ -7,10 +7,15 @@ use Illuminate\Support\Facades\DB;
 class ScaffoldingSheet
 {
     public const EDITABLE = [
-        'company' => 'Company', 'category' => 'Category', 'section_2' => 'Subcategory (Note 1)',
-        'description' => 'Description (Note 2)', 'unit' => 'Unit', 'current_location' => 'Stock location',
-        'scaffolding_contract' => 'Contract', 'status' => 'Status',
+        'company' => 'Company', 'tag_no' => 'Tag No.', 'description' => 'Description (Note 2)',
+        'category' => 'Category', 'section_2' => 'Subcategory (Note 1)',
+        'model_brand' => 'Model / Brand', 'serial_no' => 'Serial No.',
+        'unit' => 'Unit', 'current_location' => 'Stock location', 'issue_out_location' => 'Issue-out location', 'status' => 'Status',
+        'issue_out_cog_no' => 'Issue-out COG No.', 'issue_out_cog_date' => 'Issue-out COG Date',
+        'received_backload_cog_no' => 'Backload COG No.', 'received_backload_cog_date' => 'Backload COG Date',
+        'mr_request' => 'MR Request', 'purchase_order' => 'Purchase Order', 'delivery_order' => 'Delivery Order', 'supplier' => 'Supplier',
         'unfit_report' => 'Unfit Report', 'write_off_reference' => 'Write-off Reference', 'remarks' => 'Remarks',
+        'scaffolding_contract' => 'Contract',
     ];
 
     public const ISSUE_FIELDS = ['yard' => 'Yard', 'destination' => 'Location / project', 'contract' => 'Contract',
@@ -23,8 +28,12 @@ class ScaffoldingSheet
             'section_2' => $options['subcategory'], 'description' => $options['description'],
             'current_location' => ['BINTULU', 'LABUAN'], 'scaffolding_contract' => $options['contract']];
         $columns = [];
-        foreach (self::EDITABLE as $key => $label) {
-            $column = ['key' => $key, 'label' => $label, 'type' => 'text'];
+        // Retain every original machinery column, in its original order, then append scaffold fields.
+        $base = [...EquipmentSheet::columns('machinery'), ['key' => 'scaffolding_contract', 'label' => 'Contract', 'type' => 'text']];
+        foreach ($base as $column) {
+            $key = $column['key'];
+            $column['label'] = self::EDITABLE[$key] ?? $column['label'];
+            if ($key === 'section_1') $column['readonly'] = true;
             if (isset($choices[$key])) $column['options'] = $choices[$key];
             if ($key === 'description') $column += ['dependsOn' => 'section_2', 'optionsByValue' => $options['descriptionsBySubcategory']];
             $columns[] = $column;
@@ -36,9 +45,6 @@ class ScaffoldingSheet
         }
         for ($i = 1; $i <= 10; $i++) foreach (self::ISSUE_FIELDS as $key => $label) {
             $columns[] = ['key' => "issue_{$i}_{$key}", 'label' => "Issue {$i} — {$label}", 'readonly' => true, 'type' => 'text'];
-        }
-        foreach (['tag_no', 'issue_out_location', 'mr_request', 'issue_out_cog_no', 'issue_out_cog_date'] as $key) {
-            $columns[] = ['key' => $key, 'label' => 'Original register — '.EquipmentSheet::FIELDS[$key], 'readonly' => true, 'type' => str_ends_with($key, '_date') ? 'date' : 'text'];
         }
         return $columns;
     }

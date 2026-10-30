@@ -4,12 +4,12 @@ import { Link } from '@inertiajs/vue3';
 import DeleteRegisterItem from '@/Components/DeleteRegisterItem.vue';
 const props = defineProps({ records: Array, columns: Array, canEdit: Boolean });
 const selectedIds = defineModel('selectedIds', { default: () => [] });
-const columns = computed(() => props.columns.filter(column => !column.key.startsWith('issue_') && !column.label.startsWith('Original register')));
+const columns = computed(() => props.columns.filter(column => !/^issue_\d+_/.test(column.key)));
 const allSelected = computed({
     get: () => props.records.length > 0 && props.records.every(row => selectedIds.value.includes(row.id)),
     set: value => { selectedIds.value = value ? props.records.map(row => row.id) : []; },
 });
-const value = raw => raw === null || raw === undefined || raw === '' ? 'Not recorded' : raw;
+const value = (raw, type) => raw === null || raw === undefined || raw === '' ? 'Not recorded' : type === 'date' ? String(raw).slice(0, 10) : raw;
 </script>
 
 <template>
@@ -24,7 +24,7 @@ const value = raw => raw === null || raw === undefined || raw === '' ? 'Not reco
                 <tr v-for="item in records" :key="item.id">
                     <td v-if="canEdit"><input v-model="selectedIds" type="checkbox" :value="item.id" :aria-label="`Select record #${item.id}`" /></td>
                     <td><Link :href="route('major-equipment.show', item.id)" class="font-bold text-green-800">#{{ item.id }}</Link><p v-if="item.tag_no" class="mt-1 text-xs">{{ item.tag_no }}</p></td>
-                    <td v-for="column in columns" :key="column.key" class="whitespace-pre-wrap">{{ value(item[column.key]) }}</td>
+                    <td v-for="column in columns" :key="column.key" class="whitespace-pre-wrap">{{ value(item[column.key], column.type) }}</td>
                     <td class="min-w-64 align-top">
                         <details v-if="item.scaffold_issues.length">
                             <summary class="cursor-pointer font-semibold text-green-800">{{ item.scaffold_issue_count > 10 ? 'Latest 10 of ' + item.scaffold_issue_count : item.scaffold_issue_count }} confirmed issues</summary>
