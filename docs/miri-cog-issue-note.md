@@ -19,7 +19,7 @@ Header fields include consignee/department, from department/location, to, copy, 
 
 The PDF uses A4 landscape, the existing Dayang logo, green company heading, red number, sample table columns, form/revision codes, certification and acknowledgement-return text. Long item/reference/remarks text wraps into continuation rows. Pages repeat the header and show Page X of Y. Totals are separated by uppercase/trimmed unit; synonymous units are not silently converted. Unknown units on historical notes are marked UNSPECIFIED. More than four unit totals get a dedicated totals section.
 
-Long header fields are abbreviated with an asterisk and their complete values included in the document's continuation rows. General remarks likewise appear as document rows so page numbering remains accurate. The web preview is document-style; the downloadable PDF is the authoritative print layout.
+Header and signatory values stay in their own fields in both the web preview and PDF. Long fields wrap, and exceptionally long values continue in the same boxes on subsequent numbered pages, with a continuation note. These pages reserve additional space for metadata rather than inserting it into item descriptions. General remarks have a separate remarks area. The downloadable PDF is the authoritative print layout.
 
 Issued/checked, verified, and received blocks have name/designation/date lines and signing space. Names/dates alone do not constitute signatures or approval. Only the receiver block uses the existing digital-signature action. It requires a valid bounded PNG, prevents repeated signing and records an audit event. HOD approval routing, emails and additional digital signers are not introduced.
 

@@ -104,6 +104,25 @@ class EquipmentSheetTest extends TestCase
         $this->assertSame('Standby', $other->fresh()->status);
     }
 
+    public function test_cargo_section_can_be_cleared_and_stays_blank_after_another_save(): void
+    {
+        $this->staff();
+        $item = $this->item(['inventory_type' => 'cargo', 'section_1' => 'CARGO SET', 'section_2' => 'CARGO SLING', 'description' => 'SINGLE LEGGED WIRE SLING']);
+
+        $this->saveRows([['id' => $item->id, 'changes' => ['section_1' => ''],
+            'original' => ['section_1' => 'CARGO SET']]], 'cargo')->assertOk();
+
+        $this->assertSame('', $item->fresh()->section_1);
+        $this->assertSame('cargo', $item->fresh()->inventory_type);
+        $this->assertSame('CARGO SLING', $item->fresh()->section_2);
+
+        $this->saveRows([['id' => $item->id, 'changes' => ['status' => 'In Use'],
+            'original' => ['status' => 'Standby']]], 'cargo')->assertOk();
+
+        $this->assertSame('', $item->fresh()->section_1);
+        $this->assertSame('In Use', $item->fresh()->status);
+    }
+
     public function test_cargo_and_source_whitespace_are_handled_without_false_conflicts(): void
     {
         $this->staff(); $item = $this->item(['inventory_type' => 'cargo', 'section_1' => 'CARGO SET', 'description' => '  Cargo basket  ', 'quantity' => '2.00']);

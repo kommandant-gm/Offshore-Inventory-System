@@ -39,27 +39,46 @@ class MiriCogDocument
         $header = [];
         foreach (['consignee_name','consignee_department','from_department','from_location','to_location','copy_to','destination','issued_by_name','issued_designation','verified_by_name','verified_designation','receiver_name','receiver_designation'] as $key) {
             $value = (string) $cog->$key;
-            $limit = match ($key) {
-                'consignee_name', 'consignee_department', 'from_department', 'from_location' => 27,
-                'to_location', 'copy_to' => 17,
-                'destination' => 20,
-                default => 14,
-            };
-            $header[$key] = mb_strlen($value) > $limit ? mb_substr($value,0,$limit).' *' : $value;
-            if (mb_strlen($value) > $limit) {
-                $rows[] = ['description'=>'* '.strtoupper(str_replace('_',' ',$key)).':'];
-                foreach (preg_split('/\\R/u',$value) as $line) foreach (mb_str_split($line,$widths['description']) ?: [''] as $part) $rows[] = ['description'=>$part];
-            }
+            $header[$key] = $value;
         }
         $totals = collect($totals)->map(fn ($value,$unit) => rtrim(rtrim(number_format($value/1000,3,'.',''),'0'),'.').' '.$unit)->values()->all();
         if (count($totals)>4) {
             $rows[] = ['description'=>'TOTAL QUANTITY BY UNIT:'];
             foreach ($totals as $total) foreach (mb_str_split($total,$widths['description']) as $part) $rows[] = ['description'=>$part];
         }
-        $pages = array_chunk($rows ?: [[]],8);
-        while (count($pages) < count($remarks)) $pages[] = [];
-        foreach ($pages as &$page) while (count($page)<8) $page[] = [];
+        // Continue very long metadata in the same field on subsequent sheets.
+        // It must never become an equipment description or shrink to unreadable text.
+        $headerChunks = [];
+        foreach ($header as $key => $value) {
+            if ($key === 'consignee_name' && $value === '') $value = $header['receiver_name'];
+            if ($key === 'destination' && $value === '') $value = $header['to_location'];
+            $width = match ($key) {
+                'consignee_name', 'consignee_department', 'from_department', 'from_location' => 27,
+                'to_location', 'copy_to' => 17,
+                'destination' => 20,
+                default => 20,
+            };
+            $lines = [];
+            foreach (preg_split('/\\R/u', $value) as $line) {
+                array_push($lines, ...(mb_str_split($line, $width) ?: ['']));
+            }
+            $headerChunks[$key] = array_map(fn ($lines) => implode("\n", $lines), array_chunk($lines, 2));
+        }
+        $metadataPages = max(array_map('count', $headerChunks));
+        $wrappedMetadata = collect($headerChunks)->flatten()->contains(fn ($value) => str_contains($value, "\n"));
+        $rowsPerPage = $metadataPages > 1 ? 1 : ($wrappedMetadata ? 2 : 8);
+        $pages = array_chunk($rows ?: [[]], $rowsPerPage);
+        $pageCount = max(count($pages), count($remarks), $metadataPages);
+        while (count($pages) < $pageCount) $pages[] = [];
+        foreach ($pages as &$page) while (count($page)<$rowsPerPage) $page[] = [];
         unset($page);
-        return ['pages'=>$pages,'totals'=>$totals,'header'=>$header,'remarks'=>$remarks];
+        $pageHeaders = [];
+        foreach ($pages as $index => $_) {
+            $pageHeaders[] = collect($headerChunks)->map(function ($chunks) use ($index) {
+                if (count($chunks) === 1) return $chunks[0];
+                return $chunks[$index] ?? '';
+            })->all();
+        }
+        return ['pages'=>$pages,'totals'=>$totals,'header'=>$header,'pageHeaders'=>$pageHeaders,'metadataPages'=>$metadataPages,'remarks'=>$remarks];
     }
 }

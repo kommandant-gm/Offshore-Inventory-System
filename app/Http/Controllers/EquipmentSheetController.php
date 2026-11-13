@@ -53,7 +53,7 @@ class EquipmentSheetController extends Controller
                 }
                 if (array_key_exists('section_1', $changes)) {
                     $section = trim((string) $changes['section_1']);
-                    $changes['section_1'] = $item->inventory_type === 'cargo' ? 'CARGO SET'
+                    $changes['section_1'] = $item->inventory_type === 'cargo' ? ($section === '' ? '' : 'CARGO SET')
                         : (in_array(strtoupper($section), ['MACHINARY', 'MACHINERY'], true) ? 'Machinery' : $section);
                 }
                 $before = $item->only(array_keys($changes));

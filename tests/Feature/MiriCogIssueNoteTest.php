@@ -171,6 +171,26 @@ class MiriCogIssueNoteTest extends TestCase
         Storage::disk('local')->put('testing/miri-cog-multipage.pdf',$bytes);
         $this->assertSame(count($doc['pages']),$pdf->getDomPDF()->getCanvas()->get_page_count());
     }
+    public function test_designation_stays_in_signature_box_without_description_overflow(): void
+    {
+        $branch = $this->staff();
+        $cog = MiriCog::create(['branch_id'=>$branch, 'cog_no'=>'DESB/26/016', 'document_date'=>'2026-10-31', 'movement_type'=>'Issue out',
+            'issued_by_name'=>'STEPHEN TEE', 'issued_designation'=>'HOD MAINTENANCE', 'issued_date'=>'2026-10-31',
+            'verified_by_name'=>'PATRICK LEONG', 'verified_designation'=>'OM', 'receiver_name'=>'DANIEL CHNG', 'receiver_designation'=>'PM',
+            'consignee_name'=>'SUKI ADIR', 'consignee_department'=>'PROJECT MCM', 'from_department'=>'MAINTENANCE DEPT',
+            'from_location'=>'MIRI WAREHOUSE', 'to_location'=>'STEPHEN TEE', 'copy_to'=>'DANIEL CHNG', 'destination'=>'BINTULU YARD']);
+        foreach (['AIR COOLED AIR DRYER', 'AIR COMPRESSOR, 190 CFM'] as $description) {
+            $cog->items()->create(['branch_id'=>$branch, 'item_type'=>'Major equipment', 'item_id'=>1, 'quantity'=>1, 'unit'=>'UNIT', 'description'=>$description]);
+        }
+        $doc = app(MiriCogDocument::class)->data($cog->load('items'));
+        $this->assertSame('HOD MAINTENANCE', $doc['pageHeaders'][0]['issued_designation']);
+        $this->assertStringNotContainsString('ISSUED DESIGNATION', json_encode($doc['pages']));
+        $this->assertStringNotContainsString('HOD MAINTENANCE', json_encode($doc['pages']));
+        $pdf = app('dompdf.wrapper')->loadView('miri-cogs.pdf', ['cog'=>$cog, 'document'=>$doc, 'logoPath'=>'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/dayang-logo.png')))])->setPaper('a4', 'landscape');
+        Storage::disk('local')->put('testing/miri-cog-designation.pdf', $pdf->output(['compress'=>0]));
+        $this->assertSame(1, $pdf->getDomPDF()->getCanvas()->get_page_count());
+    }
+
     public function test_large_text_headers_and_quantities_fit_planned_pdf_pages(): void
     {
         $branch = $this->staff();
@@ -179,6 +199,10 @@ class MiriCogIssueNoteTest extends TestCase
         $cog->items()->create(['branch_id'=>$branch, 'item_type'=>'Paint', 'item_id'=>1, 'quantity'=>'999999999.999', 'unit'=>'LTR', 'description'=>str_repeat('W', 255)]);
         $cog->load('items');
         $doc = app(MiriCogDocument::class)->data($cog);
+        foreach ($fields as $key => $value) {
+            $this->assertSame($value, str_replace("\n", '', collect($doc['pageHeaders'])->pluck($key)->implode('')));
+        }
+        $this->assertStringNotContainsString('ISSUED DESIGNATION', json_encode($doc['pages']));
         $this->assertSame($cog->remarks, collect($doc['remarks'])->flatten()->implode(''));
         $this->assertSame('999999999.999', collect($doc['pages'])->flatten(1)->pluck('quantity')->implode(''));
         $pdf = app('dompdf.wrapper')->loadView('miri-cogs.pdf', ['cog'=>$cog, 'document'=>$doc, 'logoPath'=>'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/dayang-logo.png')))])->setPaper('a4', 'landscape');
