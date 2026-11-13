@@ -7,7 +7,7 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{vertical-alig
 .head{border:1px solid #000}.brand{text-align:center;font-weight:bold;color:#328024;font-size:20px}.company{font-size:10pt;color:#000}
 .title{font-size:23px;color:#000;font-weight:bold}.logo-window{width:52px;height:54px;overflow:hidden}.logo{width:260px;margin-left:-17px;margin-top:-9px}
 .header-details td{padding:2pt 4pt;font-size:10pt}.number{color:red;font-size:15pt;font-weight:bold;white-space:nowrap}.destination-value{min-height:12pt}
-.header-reference{text-align:right;padding:4pt 6pt 0 0}.reference-label{font-size:9pt}.reference-block{display:inline-block;text-align:left;vertical-align:top}.document-meta{margin-top:6pt;text-align:left;font-size:10pt;line-height:14pt}
+.header-reference{text-align:right;padding:4pt 4pt 0 0}.reference-label{font-size:9pt}.reference-block{display:inline-block;text-align:left;vertical-align:top}.document-meta{margin-top:6pt;text-align:left;font-size:10pt;line-height:14pt}
 .party-fields{line-height:1.2}.party-fields .field-row{white-space:pre-line;position:relative;padding-left:68pt;min-height:12pt}.party-fields .field-label{position:absolute;left:0;top:0;width:68pt;white-space:nowrap}.header-details td.aligned-field{padding:2pt 4pt;border-bottom:0}.destination-value{white-space:pre-line}.routing-label,.routing-value{white-space:pre-line;min-height:12pt;line-height:1.2}
 .items th,.items td{border:1px solid #000}.items th{font-size:9pt;vertical-align:middle;height:24pt;text-align:center}
 .items td{height:14pt;line-height:14pt;padding:0 2pt;font-size:10pt;font-family:DejaVu Sans Mono,monospace;white-space:nowrap}
@@ -21,7 +21,7 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{vertical-alig
 <div class="sheet">
 <div class="code">DE-F-07E</div>
 <div class="head">
-<table><tr><td style="width:10%;padding:5px"><div class="logo-window"><img class="logo" src="{{ $logoPath }}"></div></td><td style="width:60%;text-align:center"><div class="brand">DAYANG ENTERPRISE SDN. BHD.</div><div class="company">NO. SYARIKAT: 198001007721 (61505-V)</div><div class="title">Internal Issue Note</div></td><td style="width:30%" class="header-reference"><div class="reference-block"><div><span class="reference-label">No : </span><span class="number">{{ $cog->display_cog_no }}</span></div><div class="document-meta">DATE: {{ $cog->document_date?->format('d/m/Y') }}<br>PAGE: {{ $pageIndex+1 }} OF {{ count($document['pages']) }}</div></div></td></tr></table>
+<table><tr><td style="width:20%;padding:4pt 0 0 4pt"><div class="logo-window"><img class="logo" src="{{ $logoPath }}"></div></td><td style="width:60%;text-align:center"><div class="brand">DAYANG ENTERPRISE SDN. BHD.</div><div class="company">NO. SYARIKAT: 198001007721 (61505-V)</div><div class="title">Internal Issue Note</div></td><td style="width:20%" class="header-reference"><div class="reference-block"><div><span class="reference-label">No : </span><span class="number">{{ $cog->display_cog_no }}</span></div><div class="document-meta">DATE: {{ $cog->document_date?->format('d/m/Y') }}<br>PAGE: {{ $pageIndex+1 }} OF {{ count($document['pages']) }}</div></div></td></tr></table>
 <table class="header-details">
 <tr>
 <td class="aligned-field" style="width:45%"><div class="party-fields"><div class="field-row"><span class="field-label">CONSIGNEE:</span>{{ $header['consignee_name'] }}</div><div class="field-row">{{ $header['consignee_department'] ?: ' ' }}</div></div></td>

@@ -73,7 +73,7 @@ const sign = () => { signatureForm.signature = signature.value; signatureForm.po
 </AuthenticatedLayout>
 </template>
 <style scoped>
-.issue-header{display:grid;grid-template-columns:10% 60% 30%;align-items:start}
+.issue-header{display:grid;grid-template-columns:20% 60% 20%;align-items:start}
 .issue-brand{font-size:25px;line-height:1.2}.issue-number{font-size:20pt;white-space:nowrap}
 .issue-details{width:100%;table-layout:fixed;border-collapse:collapse}.issue-details td{vertical-align:top;padding:2pt 4pt;overflow-wrap:anywhere}.issue-details .aligned-field{border:0}.issue-details .aligned-field p,.issue-details .destination-field p{min-height:14pt;line-height:14pt}.issue-details .destination-field{vertical-align:middle}
 .party-fields{display:grid;grid-template-columns:68pt minmax(0,1fr);line-height:14pt}.party-fields>span{min-height:14pt;overflow-wrap:anywhere}.party-fields>span:nth-child(odd){white-space:nowrap}
