@@ -9,6 +9,35 @@ use Illuminate\Validation\ValidationException;
 
 class MiriRegisterDeletionController extends Controller
 {
+    public function destroyAllGas(Request $request, AuditLogger $audit)
+    {
+        $branch = app(BranchContext::class)->branch($request->user());
+        abort_unless($branch?->code === 'MIRI', 404);
+        abort_unless($request->user()?->isSuperAdmin() && $request->user()->canEdit('assets'), 403);
+        $request->validate([
+            'confirmed' => ['required', 'accepted'],
+            'confirmation' => ['required', 'in:DELETE ALL GAS'],
+        ]);
+
+        $count = DB::transaction(function () use ($branch, $request, $audit) {
+            Branch::whereKey($branch->id)->lockForUpdate()->firstOrFail();
+            $records = MiriRentalItem::query()->where('branch_id', $branch->id)
+                ->forRegister(true)->lockForUpdate()->get();
+            $linked = DB::table('miri_cog_items')->where('item_type', 'Rental')
+                ->whereIn('item_id', $records->modelKeys())->exists();
+            if ($linked) {
+                throw ValidationException::withMessages(['deletion' => 'No records were deleted. Some Gas records are linked to COG documents and their history must be retained.']);
+            }
+            // Reuse individual deletion safeguards, audit logging and attachment cleanup.
+            foreach ($records as $record) {
+                $this->destroy($request, 'rental', $record->id, $audit);
+            }
+            return $records->count();
+        });
+
+        return redirect()->route('miri-gas.index')->with('success', "Deleted {$count} Gas register records.");
+    }
+
     public function destroy(Request $request, string $register, int $item, AuditLogger $audit)
     {
         $branch = app(BranchContext::class)->branch($request->user());
